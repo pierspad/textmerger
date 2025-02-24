@@ -1,0 +1,21 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/resources">
+    <file>assets/icons/c.svg</file>
+    <file>assets/icons/cpp.svg</file>
+    <file>assets/icons/json.svg</file>
+    <file>assets/icons/markdown.svg</file>
+    <file>assets/icons/python.svg</file>
+    <file>assets/icons/trash.png</file>
+    <file>assets/icons/trash_all.png</file>
+    <file>assets/icons/copy.png</file>
+    <file>assets/icons/update.png</file>
+    <file>assets/icons/open.png</file>
+    <file>assets/icons/save.png</file>
+    <file>assets/icons/exit.png</file>
+    <file>assets/icons/folder.png</file>
+    <file>assets/icons/sun.png</file>
+    <file>assets/icons/moon.png</file>
+    <file>assets/logo/logo.ico</file>
+    <file>assets/logo/logo.png</file>
+</qresource>
+</RCC>
