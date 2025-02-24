@@ -1,10 +1,8 @@
-name: Build, Test and Release
+name: Build on Release
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  release:
+    types: [published]
 
 jobs:
   build-test:
@@ -12,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
             artifact_name: TextMerger-ubuntu
@@ -71,7 +69,7 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
-  release:
+  attach-to-release:
     needs: [build-test]
     runs-on: ubuntu-latest
     permissions:
@@ -93,15 +91,11 @@ jobs:
             cp artifacts/TextMerger-ubuntu release/
           fi
 
-      - name: Create Release
+      - name: Upload artifacts to the existing Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.event.release.tag_name }}
+          update_release: true
           files: release/*
-          name: "TextMerger Release"
-          body: |
-            ## TextMerger Release
-
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
