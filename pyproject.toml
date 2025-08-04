@@ -15,7 +15,7 @@ authors = [
 dependencies = [
     "PyQt5>=5.15",
     "Flask==2.2.2",
-    "Werkzeug==2.2.3",
+    "Werkzeug==3.0.6",
 ]
 requires-python = ">=3.8"
 classifiers = [
