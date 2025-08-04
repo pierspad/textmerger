@@ -19,7 +19,10 @@ prepare() {
 
 build() {
   cd "$srcdir/TextMerger-$pkgver"
-  python -m build --wheel --no-isolation
+  # Deactivate any virtual environment and use system python
+  unset VIRTUAL_ENV
+  export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+  /usr/bin/python -m build --wheel --no-isolation
 }
 
 check() {
@@ -29,11 +32,19 @@ check() {
 
 package() {
   cd "$srcdir/TextMerger-$pkgver"
-  python -m installer --destdir="$pkgdir" dist/*.whl
+  # Use system python for installation
+  /usr/bin/python -m installer --destdir="$pkgdir" dist/*.whl
 
   # Install license
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
   # Install desktop file
   install -Dm644 textmerger.desktop "$pkgdir/usr/share/applications/textmerger.desktop"
+
+  # Install icon for the application
+  install -Dm644 textmerger/assets/logo/logo.png "$pkgdir/usr/share/pixmaps/textmerger.png"
+
+  # Install hicolor icon theme icons
+  install -Dm644 textmerger/assets/logo/logo.png "$pkgdir/usr/share/icons/hicolor/48x48/apps/textmerger.png"
+  install -Dm644 textmerger/assets/logo/logo.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/textmerger.png"
 }

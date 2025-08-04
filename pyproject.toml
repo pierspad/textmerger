@@ -10,7 +10,7 @@ description = "A Python GUI application for merging text files"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "PierpaoloSpadafora", email = ""},
+    {name = "PierpaoloSpadafora"},
 ]
 dependencies = [
     "PyQt5>=5.15",
@@ -21,7 +21,6 @@ requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -48,7 +47,10 @@ Issues = "https://github.com/PierpaoloSpadafora/TextMerger/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["textmerger*", "core*", "ui*", "utils*", "translations*"]
+include = ["textmerger*"]
 
 [tool.setuptools.package-data]
-textmerger = ["assets/**/*", "translations/*.json"]
+textmerger = [
+    "assets/**/*",
+    "translations/*",
+]
