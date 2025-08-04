@@ -1,0 +1,13 @@
+PyQt5>=5.15
+Flask==2.2.2
+Werkzeug==2.2.3
+
+[all]
+nbformat>=5.9
+PyPDF2
+
+[jupyter]
+nbformat>=5.9
+
+[pdf]
+PyPDF2
