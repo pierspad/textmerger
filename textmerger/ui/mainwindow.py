@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.theme_button.setIcon(icon)
 
     def init_ui(self):
-        logo_path = get_asset_path(os.path.join('icons', 'logo', 'logo.png'))
+        logo_path = get_asset_path(os.path.join('logo', 'logo.png'))
         icon = QIcon(logo_path)
         self.setWindowIcon(icon)
         QApplication.setWindowIcon(icon)
@@ -1187,4 +1187,3 @@ class MainWindow(QMainWindow):
                 placeholder += "  " + ", ".join(sorted(extensions)) + "\n"
         
         self.text_edit.setPlaceholderText(placeholder)
-
