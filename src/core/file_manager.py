@@ -1,18 +1,8 @@
 import os
 import mimetypes
 import concurrent.futures
-
-try:
-    import nbformat
-    NBFORMAT_AVAILABLE = True
-except ImportError:
-    NBFORMAT_AVAILABLE = False
-
-try:
-    from PyPDF2 import PdfReader
-    PYPDF2_AVAILABLE = True
-except ImportError:
-    PYPDF2_AVAILABLE = False
+import nbformat
+from PyPDF2 import PdfReader
 
 DASH_LINE = "-------------------"
 
@@ -42,9 +32,6 @@ def _get_metadata(path, mime_type):
 
 
 def _read_notebook_content(path):
-    if not NBFORMAT_AVAILABLE:
-        return "# Jupyter Notebook support not available\n# Install nbformat: pip install nbformat"
-
     try:
         with open(path, "r", encoding="utf-8") as f:
             notebook = nbformat.read(f, as_version=4)

@@ -1,0 +1,101 @@
+name: Build on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: TextMerger-ubuntu
+            executable_name: TextMerger
+          - os: windows-latest
+            artifact_name: TextMerger-windows
+            executable_name: TextMerger.exe
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: '**/requirements.txt'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run Tests
+        run: |
+          python -m unittest discover
+
+      - name: Build Executable with PyInstaller
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            pyinstaller --onefile --noconsole --hidden-import=PyQt5.QtNetwork --icon=assets/logo/logo.ico --name TextMerger __main__.py
+          else
+            pyinstaller --onefile --noconsole --hidden-import=PyQt5.QtNetwork --icon=assets/logo/logo.png --name TextMerger __main__.py
+          fi
+
+      - name: Prepare Artifacts
+        shell: bash
+        run: |
+          mkdir -p release
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp dist/TextMerger.exe release/TextMerger-windows.exe
+          else
+            cp dist/TextMerger release/TextMerger-ubuntu
+          fi
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release/*
+          retention-days: 5
+          compression-level: 6
+          overwrite: true
+          if-no-files-found: error
+
+  attach-to-release:
+    needs: [build-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release
+          if [ -f artifacts/TextMerger-windows.exe ]; then
+            cp artifacts/TextMerger-windows.exe release/
+          fi
+          if [ -f artifacts/TextMerger-ubuntu ]; then
+            cp artifacts/TextMerger-ubuntu release/
+          fi
+
+      - name: Upload artifacts to the existing Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          update_release: true
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

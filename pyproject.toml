@@ -1,7 +1,54 @@
 # pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "myapp"
+name = "textmerger"
 version = "1.0.0"
-dependencies = ["requests"]
+description = "A Python GUI application for merging text files"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "PierpaoloSpadafora", email = ""},
+]
+dependencies = [
+    "PyQt5>=5.15",
+    "Flask==2.2.2",
+    "Werkzeug==2.2.3",
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing",
+    "Topic :: Utilities",
+]
+
+[project.optional-dependencies]
+jupyter = ["nbformat>=5.9"]
+pdf = ["PyPDF2"]
+all = ["nbformat>=5.9", "PyPDF2"]
+
 [project.scripts]
-myapp = "myapp.__main__:main"
+textmerger = "textmerger.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/PierpaoloSpadafora/TextMerger"
+Repository = "https://github.com/PierpaoloSpadafora/TextMerger"
+Issues = "https://github.com/PierpaoloSpadafora/TextMerger/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["textmerger*", "core*", "ui*", "utils*", "translations*"]
+
+[tool.setuptools.package-data]
+textmerger = ["assets/**/*", "translations/*.json"]

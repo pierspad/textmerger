@@ -1,0 +1,7 @@
+# Requirements for Windows build
+PyQt5>=5.15
+Flask==2.2.2
+Werkzeug==2.2.3
+nbformat>=5.9
+PyInstaller>=5.0
+
