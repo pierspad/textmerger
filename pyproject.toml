@@ -1,0 +1,7 @@
+# pyproject.toml
+[project]
+name = "myapp"
+version = "1.0.0"
+dependencies = ["requests"]
+[project.scripts]
+myapp = "myapp.__main__:main"
