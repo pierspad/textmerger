@@ -2,6 +2,7 @@
 
 TextMerger is a Python application built with PyQt5 that lets you easily merge content from multiple files into one.
 
+
 ## Features
 - **Drag & Drop** support for files and folders
 - **One-click Copy** of merged text
