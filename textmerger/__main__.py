@@ -2,6 +2,11 @@ import sys
 import os
 import traceback
 
+# Add the textmerger directory to the Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 if 'linux' in sys.platform:
     os.environ["QT_QPA_PLATFORM"] = "xcb"
 
@@ -9,8 +14,10 @@ def main():
     try:
         from PyQt5.QtWidgets import QApplication
         from PyQt5.QtGui import QIcon
-        from textmerger.ui.mainwindow import MainWindow
-        from textmerger.utils.helpers import get_asset_path
+
+        # Import modules directly without relative imports
+        import ui.mainwindow
+        import utils.helpers
 
         app = QApplication(sys.argv)
         app.setApplicationName("TextMerger")
@@ -19,13 +26,13 @@ def main():
 
         # Set application icon
         try:
-            icon_path = get_asset_path("logo/logo.png")
+            icon_path = utils.helpers.get_asset_path("logo/logo.png")
             if os.path.exists(icon_path):
                 app.setWindowIcon(QIcon(icon_path))
         except Exception as e:
             print(f"Warning: Could not set application icon: {e}")
 
-        window = MainWindow()
+        window = ui.mainwindow.MainWindow()
         window.show()
 
         sys.exit(app.exec_())
