@@ -48,5 +48,8 @@ Pull requests are welcome!
 I wouldn't mind some help in traslating the app properly in various languages and packaging it for Windows/MacOS and maybe other distributions like Debian, Ubuntu, Fedora, etc.
 For major changes, please open an issue first to discuss your ideas.
 
+## AI Disclosure
+This project was developed with the assistance of Large Language Models, used to support code writing and documentation.
+
 ## License
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
