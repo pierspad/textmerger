@@ -26,7 +26,7 @@ EXTENSION_COLOR_MAP = {
     '.cpp': "#00BFFF",
     '.c': "#00BFFF",
     '.cu': "#00BFFF",
-    '.ipynb': "#ADFF2F",
+    '.ipynb': "#F37726",
     '.txt': "#FFFFFF",
 }
 DEFAULT_COLOR = "#CCCCCC"
@@ -718,7 +718,7 @@ class MainWindow(QMainWindow):
             '.cu': 'languages/cuda.svg',
             '.txt': 'languages/txt.svg',
             '.json': 'languages/json.svg',
-            '.ipynb': 'languages/python.svg',
+            '.ipynb': 'languages/jupyter.svg',
             '.yaml': 'languages/yaml.svg',
             '.yml': 'languages/yaml.svg',
         }

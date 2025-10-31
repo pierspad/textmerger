@@ -1,12 +1,7 @@
 import os
 import mimetypes
 import concurrent.futures
-
-try:
-    import nbformat
-    NBFORMAT_AVAILABLE = True
-except ImportError:
-    NBFORMAT_AVAILABLE = False
+import json
 
 try:
     from PyPDF2 import PdfReader
@@ -42,29 +37,83 @@ def _get_metadata(path, mime_type):
 
 
 def _read_notebook_content(path):
-    if not NBFORMAT_AVAILABLE:
-        return "# Jupyter Notebook support not available\n# Install nbformat: pip install nbformat"
-
+    """Read Jupyter Notebook (.ipynb) files by parsing the JSON structure directly."""
     try:
         with open(path, "r", encoding="utf-8") as f:
-            notebook = nbformat.read(f, as_version=4)
+            notebook = json.load(f)
+        
+        # Validate that it's a Jupyter Notebook
+        if not isinstance(notebook, dict) or 'cells' not in notebook:
+            return "# Error: Invalid Jupyter Notebook format\n# The file does not contain the expected notebook structure"
+        
         lines = []
         cell_num = 1
-        for cell in notebook.cells:
-            tipo_label = "CODE" if cell.cell_type == "code" else "MARKDOWN"
+        
+        for cell in notebook.get('cells', []):
+            if not isinstance(cell, dict):
+                continue
+                
+            cell_type = cell.get('cell_type', 'unknown')
+            tipo_label = "CODE" if cell_type == "code" else cell_type.upper()
+            
             lines.append(f"{DASH_LINE}\nBegin Cell {cell_num} - {tipo_label}")
-            source = cell['source']
+            
+            # Get cell source (can be a string or list of strings)
+            source = cell.get('source', '')
             if isinstance(source, list):
-                source = "\n".join(source)
+                source = ''.join(source)
+            elif not isinstance(source, str):
+                source = str(source)
+            
             lines.append(source)
+            
+            # For code cells, optionally show outputs
+            if cell_type == "code" and cell.get('outputs'):
+                outputs = cell.get('outputs', [])
+                if outputs:
+                    lines.append(f"\n{DASH_LINE}\nCell Outputs:")
+                    for output in outputs:
+                        if isinstance(output, dict):
+                            # Handle different output types
+                            output_type = output.get('output_type', '')
+                            
+                            if output_type == 'stream':
+                                text = output.get('text', '')
+                                if isinstance(text, list):
+                                    text = ''.join(text)
+                                lines.append(f"[Stream Output]\n{text}")
+                            
+                            elif output_type in ('execute_result', 'display_data'):
+                                data = output.get('data', {})
+                                if 'text/plain' in data:
+                                    plain_text = data['text/plain']
+                                    if isinstance(plain_text, list):
+                                        plain_text = ''.join(plain_text)
+                                    lines.append(f"[Result]\n{plain_text}")
+                            
+                            elif output_type == 'error':
+                                ename = output.get('ename', 'Error')
+                                evalue = output.get('evalue', '')
+                                lines.append(f"[Error] {ename}: {evalue}")
+            
             lines.append(f"End Cell {cell_num} - {tipo_label}\n{DASH_LINE}")
             cell_num += 1
+        
+        if cell_num == 1:
+            return "# Empty Jupyter Notebook\n# No cells found in this notebook"
+        
         return "\n".join(lines)
-    except Exception:
-        return None
+        
+    except json.JSONDecodeError as e:
+        return f"# Error: Invalid JSON format\n# {str(e)}\n# The file may be corrupted or not a valid Jupyter Notebook"
+    except Exception as e:
+        return f"# Error reading Jupyter Notebook\n# {str(e)}\n# The file may be corrupted or in an incompatible format"
 
 
 def _read_pdf_content(path):
+    if not PYPDF2_AVAILABLE:
+        return "# PDF support not available\n# Install PyPDF2: pip install PyPDF2"
+    
     try:
         reader = PdfReader(path)
         lines = []
@@ -76,8 +125,8 @@ def _read_pdf_content(path):
             lines.append("\nPossible images on this page (placeholder).\n")
             lines.append(f"End Page {i + 1}\n{DASH_LINE}")
         return "\n".join(lines)
-    except:
-        return None
+    except Exception as e:
+        return f"# Error reading PDF file\n# {str(e)}\n# The file may be corrupted, encrypted, or in an incompatible format"
 
 
 def _process_file(path):

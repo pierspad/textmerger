@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Jupyter Notebook icon inspired by the official logo -->
+  <!-- Main circle background -->
+  <circle cx="12" cy="12" r="10" fill="#F37726" opacity="0.15"/>
+  
+  <!-- Notebook representation -->
+  <rect x="7" y="5" width="10" height="14" rx="1" fill="currentColor" opacity="0.9"/>
+  <rect x="8" y="6" width="8" height="12" rx="0.5" fill="#F37726" opacity="0.2"/>
+  
+  <!-- Three dots representing cells (like official Jupyter logo) -->
+  <circle cx="12" cy="8" r="1.2" fill="#F37726"/>
+  <circle cx="12" cy="12" r="1.2" fill="#F37726"/>
+  <circle cx="12" cy="16" r="1.2" fill="#F37726"/>
+  
+  <!-- Small accent lines for notebook pages -->
+  <line x1="8.5" y1="7" x2="8.5" y2="17" stroke="#F37726" stroke-width="0.3" opacity="0.4"/>
+  <line x1="15.5" y1="7" x2="15.5" y2="17" stroke="currentColor" stroke-width="0.3" opacity="0.3"/>
+</svg>
