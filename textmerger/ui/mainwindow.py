@@ -838,6 +838,7 @@ class MainWindow(QMainWindow):
         self.ipynb_toggle_button.setVisible(has_ipynb)
 
     def merge_contents_html(self):
+        import html
         html_parts = []
         separator = "<br><br>"
         for path, data in self.files_dict.items():
@@ -850,7 +851,9 @@ class MainWindow(QMainWindow):
             norm_path = os.path.normpath(path)
             part = f"<pre>{DASH_LINE}\n{norm_path}\n{DASH_LINE}\n"
             if data['content'] is not None:
-                part += data['content']
+                # Escape HTML special characters to prevent truncation
+                escaped_content = html.escape(data['content'])
+                part += escaped_content
             else:
                 md = data.get('metadata', {})
                 part += f"{norm_path} ({self.localization.tr('file_not_text')})\n"
