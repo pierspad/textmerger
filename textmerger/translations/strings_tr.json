@@ -60,5 +60,11 @@
   "some_files_not_found": "Seçilen bazı dosyalar artık mevcut değil",
   "shortcuts_table_icon": "Simge",
   "shortcuts_table_action": "Eylem",
-  "shortcuts_table_shortcut": "Kısayol"
+  "shortcuts_table_shortcut": "Kısayol",
+  "hide_ipynb_outputs": ".ipynb hücresi çıktılarını gizle",
+  "show_ipynb_outputs": ".ipynb hücresi çıktılarını göster",
+  "hide_output_cells": "Çıktı\nhücrelerini gizle",
+  "show_output_cells": "Çıktı\nhücrelerini göster",
+  "ipynb_outputs_hidden": ".ipynb çıktıları gizlendi",
+  "ipynb_outputs_shown": ".ipynb çıktıları gösterildi"
 }

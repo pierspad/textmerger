@@ -60,5 +60,9 @@
   "some_files_not_found": "Einige ausgewählte Dateien existieren nicht mehr",
   "shortcuts_table_icon": "Symbol",
   "shortcuts_table_action": "Aktion",
-  "shortcuts_table_shortcut": "Verknüpfung"
+  "shortcuts_table_shortcut": "Verknüpfung",
+  "hide_output_cells": "Ausgabe\nzellen ausblenden",
+  "show_output_cells": "Ausgabe\nzellen anzeigen",
+  "ipynb_outputs_hidden": ".ipynb-Ausgaben ausgeblendet",
+  "ipynb_outputs_shown": ".ipynb-Ausgaben angezeigt"
 }

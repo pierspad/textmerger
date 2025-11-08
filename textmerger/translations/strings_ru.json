@@ -60,5 +60,9 @@
   "some_files_not_found": "Некоторые выбранные файлы больше не существуют",
   "shortcuts_table_icon": "Значок",
   "shortcuts_table_action": "Действие",
-  "shortcuts_table_shortcut": "Горячая клавиша"
+  "shortcuts_table_shortcut": "Горячая клавиша",
+  "hide_output_cells": "Скрыть\nячейки вывода",
+  "show_output_cells": "Показать\nячейки вывода",
+  "ipynb_outputs_hidden": "Выходные данные .ipynb скрыты",
+  "ipynb_outputs_shown": "Выходные данные .ipynb показаны"
 }

@@ -60,5 +60,11 @@
   "some_files_not_found": "कुछ चयनित फ़ाइलें अब मौजूद नहीं हैं",
   "shortcuts_table_icon": "आइकन",
   "shortcuts_table_action": "कार्रवाई",
-  "shortcuts_table_shortcut": "शॉर्टकट"
+  "shortcuts_table_shortcut": "शॉर्टकट",
+  "hide_ipynb_outputs": ".ipynb कक्षों के आउटपुट छिपाएं",
+  "show_ipynb_outputs": ".ipynb कक्षों के आउटपुट दिखाएं",
+  "hide_output_cells": "आउटपुट\nकक्षों को छिपाएं",
+  "show_output_cells": "आउटपुट\nकक्षों को दिखाएं",
+  "ipynb_outputs_hidden": ".ipynb आउटपुट छिपा दिए गए हैं",
+  "ipynb_outputs_shown": ".ipynb आउटपुट दिखाए गए हैं"
 }

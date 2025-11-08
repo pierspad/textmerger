@@ -60,5 +60,11 @@
   "some_files_not_found": "Alcuni file selezionati non esistono più",
   "shortcuts_table_icon": "Icona",
   "shortcuts_table_action": "Azione",
-  "shortcuts_table_shortcut": "Scorciatoia"
+  "shortcuts_table_shortcut": "Scorciatoia",
+  "hide_ipynb_outputs": "Nascondi output celle .ipynb",
+  "show_ipynb_outputs": "Mostra output celle .ipynb",
+  "hide_output_cells": "Nascondi\ncelle output",
+  "show_output_cells": "Mostra\ncelle output",
+  "ipynb_outputs_hidden": "Output .ipynb nascosti",
+  "ipynb_outputs_shown": "Output .ipynb mostrati"
 }

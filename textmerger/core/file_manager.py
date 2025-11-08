@@ -36,7 +36,7 @@ def _get_metadata(path, mime_type):
     }
 
 
-def _read_notebook_content(path):
+def _read_notebook_content(path, hide_outputs=False):
     """Read Jupyter Notebook (.ipynb) files by parsing the JSON structure directly."""
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -68,7 +68,7 @@ def _read_notebook_content(path):
             lines.append(source)
             
             # For code cells, optionally show outputs
-            if cell_type == "code" and cell.get('outputs'):
+            if cell_type == "code" and cell.get('outputs') and not hide_outputs:
                 outputs = cell.get('outputs', [])
                 if outputs:
                     lines.append(f"\n{DASH_LINE}\nCell Outputs:")
@@ -129,13 +129,13 @@ def _read_pdf_content(path):
         return f"# Error reading PDF file\n# {str(e)}\n# The file may be corrupted, encrypted, or in an incompatible format"
 
 
-def _process_file(path):
+def _process_file(path, hide_ipynb_outputs=False):
     if os.path.isdir(path):
         return path, {'content': None, 'metadata': {'name': os.path.basename(path), 'size': 0, 'type': 'folder'}}
 
     ext = os.path.splitext(path)[1].lower()
     if ext == '.ipynb':
-        content = _read_notebook_content(path)
+        content = _read_notebook_content(path, hide_outputs=hide_ipynb_outputs)
         return path, {'content': content, 'metadata': _get_metadata(path, 'application/x-ipynb+json')}
     if ext == '.pdf':
         content = _read_pdf_content(path)
@@ -157,7 +157,7 @@ def _process_file(path):
         }
 
 
-def load_files(file_paths):
+def load_files(file_paths, hide_ipynb_outputs=False):
     all_files = []
     for path in file_paths:
         if os.path.isdir(path):
@@ -175,7 +175,7 @@ def load_files(file_paths):
     files_content = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-        for path, data in executor.map(_process_file, all_files):
+        for path, data in executor.map(lambda p: _process_file(p, hide_ipynb_outputs), all_files):
             files_content[path] = data
 
     return files_content

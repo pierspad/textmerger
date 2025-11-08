@@ -86,6 +86,9 @@ class MainWindow(QMainWindow):
         self.shortcuts_page = None
         self.right_stacked = None
         self.text_page = None
+        self.hide_ipynb_outputs = False
+        self.ipynb_toggle_button = None
+        self.current_open_file_path = None
         self.action_icons = {
             'open_action': 'open.svg',
             'save_action': 'save.svg',
@@ -242,10 +245,21 @@ class MainWindow(QMainWindow):
         bottom_layout = QHBoxLayout(bottom_frame)
         bottom_layout.setContentsMargins(5, 5, 5, 5)
         bottom_layout.setSpacing(8)
+        
+        self.ipynb_toggle_button = QPushButton()
+        self.ipynb_toggle_button.setObjectName("ipynb_toggle_button")
+        self.ipynb_toggle_button.setFont(QFont('Segoe UI', 9))
+        self.ipynb_toggle_button.setCheckable(True)
+        self.ipynb_toggle_button.setChecked(False)
+        self.ipynb_toggle_button.clicked.connect(self.toggle_ipynb_outputs)
+        self.ipynb_toggle_button.setVisible(False)
+        self.update_ipynb_button_text()
+        
         self.copy_button = QPushButton()
         self.copy_button.setObjectName("copy_button")
         self.copy_button.setFont(QFont('Segoe UI', 10, QFont.Bold))
         self.copy_button.clicked.connect(self.copy_text)
+        bottom_layout.addWidget(self.ipynb_toggle_button)
         bottom_layout.addWidget(self.copy_button)
         self.update_button = QPushButton()
         self.update_button.setObjectName("update_button")
@@ -778,10 +792,61 @@ class MainWindow(QMainWindow):
             self.snackbar.showMessage(self.localization.tr("no_files_to_remove"), duration=700)
         self.update_text_content()
 
+    def toggle_ipynb_outputs(self):
+        self.hide_ipynb_outputs = self.ipynb_toggle_button.isChecked()
+        self.update_ipynb_button_text()
+        self.update_text_content()
+        msg = self.localization.tr("ipynb_outputs_hidden") if self.hide_ipynb_outputs else self.localization.tr("ipynb_outputs_shown")
+        self.snackbar.showMessage(msg, duration=700)
+
+    def update_ipynb_button_text(self):
+        if self.hide_ipynb_outputs:
+            self.ipynb_toggle_button.setText(self.localization.tr("show_ipynb_outputs"))
+            self.ipynb_toggle_button.setIcon(get_colored_icon("open_eye.svg", "#FFFFFF", size=18))
+            self.ipynb_toggle_button.setStyleSheet("""
+                QPushButton#ipynb_toggle_button {
+                    background-color: #f39c12;
+                    color: #FFFFFF;
+                    padding: 6px 10px;
+                }
+                QPushButton#ipynb_toggle_button:hover {
+                    background-color: #d68910;
+                }
+            """)
+        else:
+            self.ipynb_toggle_button.setText(self.localization.tr("hide_ipynb_outputs"))
+            self.ipynb_toggle_button.setIcon(get_colored_icon("closed_eye.svg", "#FFFFFF", size=18))
+            self.ipynb_toggle_button.setStyleSheet("""
+                QPushButton#ipynb_toggle_button {
+                    background-color: #28a745;
+                    color: #FFFFFF;
+                    padding: 6px 10px;
+                }
+                QPushButton#ipynb_toggle_button:hover {
+                    background-color: #218838;
+                }
+            """)
+
+    def update_text_content(self):
+        merged_html = self.merge_contents_html()
+        self.text_edit.setHtml(merged_html)
+        self.update_char_count()
+        self.check_ipynb_file_open()
+
+    def check_ipynb_file_open(self):
+        has_ipynb = any(path.endswith('.ipynb') for path in self.files_dict.keys())
+        self.ipynb_toggle_button.setVisible(has_ipynb)
+
     def merge_contents_html(self):
         html_parts = []
         separator = "<br><br>"
         for path, data in self.files_dict.items():
+            # Reload content if it's an .ipynb file and outputs visibility changed
+            if path.endswith('.ipynb'):
+                from core.file_manager import _read_notebook_content
+                content = _read_notebook_content(path, hide_outputs=self.hide_ipynb_outputs)
+                data = {'content': content, 'metadata': data.get('metadata', {})}
+            
             norm_path = os.path.normpath(path)
             part = f"<pre>{DASH_LINE}\n{norm_path}\n{DASH_LINE}\n"
             if data['content'] is not None:
@@ -796,133 +861,6 @@ class MainWindow(QMainWindow):
             html_parts.append(part)
             html_parts.append(separator)
         return "".join(html_parts)
-
-    def update_text_content(self):
-        merged_html = self.merge_contents_html()
-        self.text_edit.setHtml(merged_html)
-        self.update_char_count()
-
-    def update_char_count(self):
-        text_length = len(self.text_edit.toPlainText())
-        formatted = f"{text_length:,}".replace(",", ".")
-        self.char_count_label.setText(f"{self.localization.tr('characters')} {formatted}")
-
-    def save_file(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseCustomDirectoryIcons
-        file_name, _ = QFileDialog.getSaveFileName(self, self.localization.tr("save_action"), "",
-                                                   "Text Files (*.txt);;All Files (*)", options=options)
-        if file_name:
-            try:
-                with open(file_name, 'w', encoding='utf-8') as f:
-                    f.write(self.text_edit.toPlainText())
-                self.snackbar.showMessage(self.localization.tr("file_saved"), duration=700)
-            except Exception as e:
-                self.snackbar.showMessage(self.localization.tr("file_save_error"), duration=700)
-
-    def update_files(self):
-        if not self.files_dict and not self.dir_files_map:
-            self.snackbar.showMessage(self.localization.tr("no_files_to_update"), duration=700)
-            return
-
-        self.loading_overlay.show_overlay()
-        QCoreApplication.processEvents()
-
-        paths_to_update = []
-        for dir_path, dir_files in self.dir_files_map.items():
-            if os.path.exists(dir_path):
-                paths_to_update.append(dir_path)
-            else:
-                del self.dir_files_map[dir_path]
-
-        for file_path in list(self.files_dict.keys()):
-            if os.path.exists(file_path):
-                if not any(file_path.startswith(dir_path) for dir_path in self.dir_files_map):
-                    paths_to_update.append(file_path)
-            else:
-                del self.files_dict[file_path]
-
-        if paths_to_update:
-            self.add_files(paths_to_update, from_update=True)
-            self.snackbar.showMessage(self.localization.tr("content_updated"), duration=700)
-        else:
-            self.snackbar.showMessage(self.localization.tr("no_files_to_update"), duration=700)
-
-        self.loading_overlay.hide_overlay()
-
-    def copy_text(self):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.text_edit.toPlainText())
-        self.snackbar.showMessage(self.localization.tr("copied_clipboard"), duration=700)
-
-    def on_item_double_clicked(self, item):
-        data = item.data(0, Qt.UserRole)
-        if not data:
-            return
-        path = data.get('path')
-        if path and path in self.offset_map:
-            offset = self.offset_map[path]
-            cursor = self.text_edit.textCursor()
-            cursor.setPosition(offset)
-            self.text_edit.setTextCursor(cursor)
-            self.text_edit.setFocus()
-            block_number = cursor.blockNumber()
-            line_height = self.text_edit.fontMetrics().lineSpacing()
-            scroll_bar = self.text_edit.verticalScrollBar()
-            scroll_bar.setValue(block_number * line_height)
-
-    def toggle_language(self):
-        self.current_language = 'it' if self.current_language == 'en' else 'en'
-        self.localization.load_language(self.current_language)
-        self.apply_translations()
-
-    def update_language_menu(self):
-        self.language_menu.clear()
-        current_lang = self.localization.current_language
-        flag_icons = {
-            'bn': 'flags/bangladesh.svg',
-            'de': 'flags/germany.svg',
-            'en': 'flags/uk.svg',
-            'es': 'flags/spain.svg',
-            'fr': 'flags/france.svg',
-            'hi': 'flags/india.svg',
-            'it': 'flags/italy.svg',
-            'ja': 'flags/japan.svg',
-            'ko': 'flags/south-korea.svg',
-            'pt': 'flags/portugal.svg',
-            'tr': 'flags/turkey.svg',
-            'vi': 'flags/vietnam.svg',
-            'zh': 'flags/china.svg',
-            'ru': 'flags/russia.svg',
-        }
-        def load_flag_icon(icon_path):
-            full_path = get_asset_path(os.path.join('icons', icon_path))
-            return QIcon(full_path)
-        for lang_code, lang_name in self.localization.get_available_languages():
-            action = QAction(lang_name, self)
-            if lang_code in flag_icons:
-                icon = load_flag_icon(flag_icons[lang_code])
-                action.setIcon(icon)
-            action.setData(lang_code)
-            action.setCheckable(True)
-            action.setChecked(lang_code == current_lang)
-            if lang_code == current_lang:
-                if lang_code in flag_icons:
-                    icon = load_flag_icon(flag_icons[lang_code])
-                    text = f" {lang_name}"
-                    self.language_button.setText(text)
-                    if icon:
-                        self.language_button.setIcon(icon)
-            action.triggered.connect(lambda checked, code=lang_code, name=lang_name: self.change_language(code, name))
-            self.language_menu.addAction(action)
-
-    def change_language(self, lang_code, lang_name):
-        if lang_code != self.localization.current_language:
-            self.localization.load_language(lang_code)
-            self.language_button.setText(f" {lang_name}")
-            self.apply_translations()
-            self.update_language_menu()
-            self.snackbar.showMessage(self.localization.tr("language_changed"), duration=700)
 
     def apply_translations(self):
         self.setWindowTitle(self.localization.tr("app_title"))
@@ -944,6 +882,7 @@ class MainWindow(QMainWindow):
             self.localization.tr("dark_mode") if not self.dark_mode else self.localization.tr("light_mode"))
         self.language_button.setText(self.localization.tr("language_menu"))
         self.shortcuts_button.setText(self.localization.tr("edit_shortcuts"))
+        self.update_ipynb_button_text()
         self.update_shortcuts_table()
         self.text_edit.setPlaceholderText(self.localization.tr("supported_formats"))
         self.update_supported_formats_placeholder()
@@ -1076,7 +1015,7 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def exit_button_clicked(self):
-        self.close
+        self.close()
 
     def confirm_reset_shortcuts(self):
         message_box = QMessageBox(
@@ -1218,3 +1157,125 @@ class MainWindow(QMainWindow):
         
         placeholder = "\n".join(final_lines)
         self.text_edit.setPlaceholderText(placeholder)
+
+    def on_item_double_clicked(self, item):
+        data = item.data(0, Qt.UserRole)
+        if not data:
+            return
+        path = data.get('path')
+        if path and path in self.offset_map:
+            offset = self.offset_map[path]
+            cursor = self.text_edit.textCursor()
+            cursor.setPosition(offset)
+            self.text_edit.setTextCursor(cursor)
+            self.text_edit.setFocus()
+            block_number = cursor.blockNumber()
+            line_height = self.text_edit.fontMetrics().lineSpacing()
+            scroll_bar = self.text_edit.verticalScrollBar()
+            scroll_bar.setValue(block_number * line_height)
+
+    def copy_text(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.text_edit.toPlainText())
+        self.snackbar.showMessage(self.localization.tr("copied_clipboard"), duration=700)
+
+    def save_file(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseCustomDirectoryIcons
+        file_name, _ = QFileDialog.getSaveFileName(self, self.localization.tr("save_action"), "",
+                                                   "Text Files (*.txt);;All Files (*)", options=options)
+        if file_name:
+            try:
+                with open(file_name, 'w', encoding='utf-8') as f:
+                    f.write(self.text_edit.toPlainText())
+                self.snackbar.showMessage(self.localization.tr("file_saved"), duration=700)
+            except Exception as e:
+                self.snackbar.showMessage(self.localization.tr("file_save_error"), duration=700)
+
+    def update_files(self):
+        if not self.files_dict and not self.dir_files_map:
+            self.snackbar.showMessage(self.localization.tr("no_files_to_update"), duration=700)
+            return
+
+        self.loading_overlay.show_overlay()
+        QCoreApplication.processEvents()
+
+        paths_to_update = []
+        for dir_path, dir_files in self.dir_files_map.items():
+            if os.path.exists(dir_path):
+                paths_to_update.append(dir_path)
+            else:
+                del self.dir_files_map[dir_path]
+
+        for file_path in list(self.files_dict.keys()):
+            if os.path.exists(file_path):
+                if not any(file_path.startswith(dir_path) for dir_path in self.dir_files_map):
+                    paths_to_update.append(file_path)
+            else:
+                del self.files_dict[file_path]
+
+        if paths_to_update:
+            self.add_files(paths_to_update, from_update=True)
+            self.snackbar.showMessage(self.localization.tr("content_updated"), duration=700)
+        else:
+            self.snackbar.showMessage(self.localization.tr("no_files_to_update"), duration=700)
+
+        self.loading_overlay.hide_overlay()
+
+    def toggle_language(self):
+        self.current_language = 'it' if self.current_language == 'en' else 'en'
+        self.localization.load_language(self.current_language)
+        self.apply_translations()
+
+    def update_language_menu(self):
+        self.language_menu.clear()
+        current_lang = self.localization.current_language
+        flag_icons = {
+            'bn': 'flags/bangladesh.svg',
+            'de': 'flags/germany.svg',
+            'en': 'flags/uk.svg',
+            'es': 'flags/spain.svg',
+            'fr': 'flags/france.svg',
+            'hi': 'flags/india.svg',
+            'it': 'flags/italy.svg',
+            'ja': 'flags/japan.svg',
+            'ko': 'flags/south-korea.svg',
+            'pt': 'flags/portugal.svg',
+            'tr': 'flags/turkey.svg',
+            'vi': 'flags/vietnam.svg',
+            'zh': 'flags/china.svg',
+            'ru': 'flags/russia.svg',
+        }
+        def load_flag_icon(icon_path):
+            full_path = get_asset_path(os.path.join('icons', icon_path))
+            return QIcon(full_path)
+        for lang_code, lang_name in self.localization.get_available_languages():
+            action = QAction(lang_name, self)
+            if lang_code in flag_icons:
+                icon = load_flag_icon(flag_icons[lang_code])
+                action.setIcon(icon)
+            action.setData(lang_code)
+            action.setCheckable(True)
+            action.setChecked(lang_code == current_lang)
+            if lang_code == current_lang:
+                if lang_code in flag_icons:
+                    icon = load_flag_icon(flag_icons[lang_code])
+                    text = f" {lang_name}"
+                    self.language_button.setText(text)
+                    if icon:
+                        self.language_button.setIcon(icon)
+            action.triggered.connect(lambda checked, code=lang_code, name=lang_name: self.change_language(code, name))
+            self.language_menu.addAction(action)
+
+    def change_language(self, lang_code, lang_name):
+        if lang_code != self.localization.current_language:
+            self.localization.load_language(lang_code)
+            self.language_button.setText(f" {lang_name}")
+            self.apply_translations()
+            self.update_language_menu()
+            self.snackbar.showMessage(self.localization.tr("language_changed"), duration=700)
+
+    def update_char_count(self):
+        text_length = len(self.text_edit.toPlainText())
+        formatted = f"{text_length:,}".replace(",", ".")
+        self.char_count_label.setText(f"{self.localization.tr('characters')} {formatted}")

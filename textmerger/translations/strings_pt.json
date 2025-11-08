@@ -60,5 +60,11 @@
   "some_files_not_found": "Alguns arquivos selecionados não existem mais",
   "shortcuts_table_icon": "Ícone",
   "shortcuts_table_action": "Ação",
-  "shortcuts_table_shortcut": "Atalho"
+  "shortcuts_table_shortcut": "Atalho",
+  "hide_ipynb_outputs": "Ocultar saídas de células .ipynb",
+  "show_ipynb_outputs": "Mostrar saídas de células .ipynb",
+  "hide_output_cells": "Ocultar\ncélulas de saída",
+  "show_output_cells": "Mostrar\ncélulas de saída",
+  "ipynb_outputs_hidden": "Saídas .ipynb ocultas",
+  "ipynb_outputs_shown": "Saídas .ipynb mostradas"
 }

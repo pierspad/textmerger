@@ -60,5 +60,9 @@
   "some_files_not_found": "Certains fichiers sélectionnés n'existent plus",
   "shortcuts_table_icon": "Icône",
   "shortcuts_table_action": "Action",
-  "shortcuts_table_shortcut": "Raccourci"
+  "shortcuts_table_shortcut": "Raccourci",
+  "hide_output_cells": "Masquer les\nrésultats",
+  "show_output_cells": "Afficher les\nrésultats",
+  "ipynb_outputs_hidden": "Résultats .ipynb masqués",
+  "ipynb_outputs_shown": "Résultats .ipynb affichés"
 }

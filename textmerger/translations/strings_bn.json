@@ -60,5 +60,9 @@
   "some_files_not_found": "কিছু নির্বাচিত ফাইল আর বিদ্যমান নেই",
   "shortcuts_table_icon": "আইকন",
   "shortcuts_table_action": "ক্রিয়া",
-  "shortcuts_table_shortcut": "শর্টকাট"
+  "shortcuts_table_shortcut": "শর্টকাট",
+  "hide_output_cells": "আউটপুট ঘর\nলুকান",
+  "show_output_cells": "আউটপুট ঘর\nদেখান",
+  "ipynb_outputs_hidden": ".ipynb আউটপুট লুকানো হয়েছে",
+  "ipynb_outputs_shown": ".ipynb আউটপুট দেখানো হয়েছে"
 }

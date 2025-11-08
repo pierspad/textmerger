@@ -60,5 +60,11 @@
   "some_files_not_found": "Một số tệp đã chọn không còn tồn tại",
   "shortcuts_table_icon": "Biểu tượng",
   "shortcuts_table_action": "Hành động",
-  "shortcuts_table_shortcut": "Phím tắt"
+  "shortcuts_table_shortcut": "Phím tắt",
+  "hide_ipynb_outputs": "Ẩn đầu ra ô .ipynb",
+  "show_ipynb_outputs": "Hiển thị đầu ra ô .ipynb",
+  "hide_output_cells": "Ẩn ô\nđầu ra",
+  "show_output_cells": "Hiển thị ô\nđầu ra",
+  "ipynb_outputs_hidden": "Đầu ra .ipynb đã ẩn",
+  "ipynb_outputs_shown": "Đầu ra .ipynb đã hiển thị"
 }
