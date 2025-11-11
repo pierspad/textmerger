@@ -1,0 +1,34 @@
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+tests/__pycache__/
+
+.flatpak-builder
+.flatpak-build/
+
+build-publish-scripts
+/build-publish-scripts/*tar.gz*
+
+aur-repo-textmerger
