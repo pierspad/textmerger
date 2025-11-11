@@ -34,7 +34,7 @@ TextMerger works with a wide range of file types, including source code, web scr
 3. Build the application and print the command to install it:
    ```bash
    cd build-publish-scripts/
-   sh build-aur.sh 2>&1 | tail -n 1
+   sh 1_build-aur-locally.sh 2>&1 | tail -n 1
    ```
 4. Execute the output of the previous command, e.g.:
    ```bash
