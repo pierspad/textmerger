@@ -10,33 +10,61 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: textmerger-linux
+            executable_name: textmerger
+          - os: windows-latest
+            artifact_name: textmerger-windows.exe
+            executable_name: textmerger.exe
+    
     runs-on: ${{ matrix.os }}
-
+    
     steps:
     - uses: actions/checkout@v3
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-
-    - name: Install package + deps from pyproject
+    
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libxcb-xinerama0 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-shape0 \
+          libxkbcommon-x11-0 \
+          libxcb-cursor0 \
+          libxcb1 \
+          x11-utils
+    
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        # Installa il pacchetto definito in textmerger/ (inclusi gli optional se vuoi)
-        pip install "./textmerger[all]"
+        pip install .[all]
         pip install pyinstaller
-
+    
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --windowed --noconfirm ^
-          --name textmerger ^
-          --add-data "textmerger\\assets;assets" ^
-          --add-data "textmerger\\translations;translations" ^
-          textmerger\\__main__.py
-
+        pyinstaller --onefile --windowed --noconfirm `
+          --name textmerger `
+          --add-data "textmerger/assets;assets" `
+          --add-data "textmerger/translations;translations" `
+          --hidden-import=PyQt5 `
+          --hidden-import=PyQt5.QtCore `
+          --hidden-import=PyQt5.QtGui `
+          --hidden-import=PyQt5.QtWidgets `
+          --collect-all PyQt5 `
+          textmerger/__main__.py
+    
     - name: Build with PyInstaller (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -44,40 +72,51 @@ jobs:
           --name textmerger \
           --add-data "textmerger/assets:assets" \
           --add-data "textmerger/translations:translations" \
+          --hidden-import=PyQt5 \
+          --hidden-import=PyQt5.QtCore \
+          --hidden-import=PyQt5.QtGui \
+          --hidden-import=PyQt5.QtWidgets \
+          --collect-all PyQt5 \
           textmerger/__main__.py
-
-    - name: Rename executables
+    
+    - name: Rename and prepare executable
       shell: bash
       run: |
         if [ "$RUNNER_OS" == "Windows" ]; then
-          mv dist/textmerger.exe dist/textmerger-windows.exe
+          mv dist/textmerger.exe "dist/${{ matrix.artifact_name }}"
         else
-          mv dist/textmerger dist/textmerger-linux
-          chmod +x dist/textmerger-linux
+          mv dist/textmerger "dist/${{ matrix.artifact_name }}"
+          chmod +x "dist/${{ matrix.artifact_name }}"
         fi
-
+    
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: textmerger-${{ matrix.os }}
-        path: dist/textmerger-*
+        name: ${{ matrix.artifact_name }}
+        path: dist/${{ matrix.artifact_name }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    
     steps:
-    - name: Download artifacts
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        pattern: textmerger-*
         path: dist
-        merge-multiple: true
-
+    
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        find dist -type f -exec cp {} release/ \;
+        ls -la release/
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/*
+        files: release/*
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
