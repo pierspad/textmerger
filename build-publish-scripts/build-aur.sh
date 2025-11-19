@@ -36,13 +36,15 @@ cd ..
 
 # Rimozione mirata senza globstar ricorsivi fragili
 rm -rf build dist ./*.egg-info
-find . -type d -name __pycache__ -prune -exec rm -rf {} +
-find . -type f -name "*.pyc" -delete
+find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete 2>/dev/null || true
 echo "Cleaned old build files"
 
 echo "Preparing source package..."
 cd build-publish-scripts
 rm -rf src pkg *.pkg.tar.*
+# Rimuovi tutti i tarball esistenti
+rm -f textmerger-*.tar.gz
 mkdir -p src
 
 echo "Creating source tarball..."

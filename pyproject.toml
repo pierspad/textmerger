@@ -7,8 +7,8 @@ build-backend = "setuptools.build_meta"
 name = "textmerger"
 version = "1.2.1"
 description = "A Python GUI application for merging text files"
-readme = "README.md"
-license = {text = "MIT"}
+readme = "docs/README.md"
+license = "MIT"
 authors = [
     {name = "pierspad"},
 ]

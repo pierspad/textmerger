@@ -33,3 +33,5 @@ tests/__pycache__/
 aur-repo-textmerger
 build-publish-scripts/textmerger
 build-publish-scripts/textmerger-*-any.pkg.tar.zst
+build-publish-scripts/src
+build-publish-scripts/pkg
