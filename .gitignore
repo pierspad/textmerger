@@ -28,7 +28,8 @@ tests/__pycache__/
 .flatpak-builder
 .flatpak-build/
 
-build-publish-scripts
 /build-publish-scripts/*tar.gz*
 
 aur-repo-textmerger
+build-publish-scripts/textmerger
+build-publish-scripts/textmerger-*-any.pkg.tar.zst

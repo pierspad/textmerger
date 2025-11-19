@@ -1090,8 +1090,9 @@ class MainWindow(QMainWindow):
             dir_item.setData(0, Qt.UserRole, {'type': 'directory', 'path': dir_path})
             
             for file_path in sorted(dir_file_list):
-                file_item = QTreeWidgetItem([file_path])
+                file_item = QTreeWidgetItem([os.path.basename(file_path)])
                 file_item.setIcon(0, self.get_file_icon(file_path))
+                file_item.setToolTip(0, file_path)
                 file_item.setData(0, Qt.UserRole, {
                     'type': 'file',
                     'path': file_path,
@@ -1102,8 +1103,9 @@ class MainWindow(QMainWindow):
             self.file_tree.addTopLevelItem(dir_item)
 
         for file_path in sorted(single_files):
-            file_item = QTreeWidgetItem([file_path])
+            file_item = QTreeWidgetItem([os.path.basename(file_path)])
             file_item.setIcon(0, self.get_file_icon(file_path))
+            file_item.setToolTip(0, file_path)
             file_item.setData(0, Qt.UserRole, {
                 'type': 'file',
                 'path': file_path,

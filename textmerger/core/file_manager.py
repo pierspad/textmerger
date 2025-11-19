@@ -1,7 +1,7 @@
-import os
-import mimetypes
 import concurrent.futures
 import json
+import mimetypes
+import os
 
 try:
     from PyPDF2 import PdfReader
@@ -157,6 +157,14 @@ def _process_file(path, hide_ipynb_outputs=False):
         }
 
 
+def _is_valid_file(filename):
+    return not (filename.startswith('.') or 
+                filename.endswith('.pyc') or 
+                filename == '.DS_Store' or 
+                filename.endswith('.meta') or 
+                filename.endswith('.prefab'))
+
+
 def load_files(file_paths, hide_ipynb_outputs=False):
     all_files = []
     for path in file_paths:
@@ -165,11 +173,12 @@ def load_files(file_paths, hide_ipynb_outputs=False):
                 dirs[:] = [d for d in dirs if not (d.startswith('.') or d == '__pycache__')]
                 filtered_files = [
                     os.path.join(root, f) for f in filenames
-                    if not (f.startswith('.') or f.endswith('.pyc') or f == '.DS_Store')
+                    if _is_valid_file(f)
                 ]
                 all_files.extend(filtered_files)
         else:
-            all_files.append(path)
+            if _is_valid_file(os.path.basename(path)):
+                all_files.append(path)
 
     all_files = list(dict.fromkeys(all_files))
     files_content = {}
