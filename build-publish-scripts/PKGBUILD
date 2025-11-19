@@ -41,20 +41,10 @@ package() {
   # Install desktop file
   install -Dm644 packaging/textmerger.desktop "$pkgdir/usr/share/applications/textmerger.desktop"
   
+  # Install icon
+  install -Dm644 textmerger/assets/logo/logo.png "$pkgdir/usr/share/pixmaps/textmerger.png"
+  
   # Install docs and license
   install -Dm644 docs/README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 docs/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-}
-  
-  # Install desktop file
-  install -Dm644 packaging/textmerger.desktop "$pkgdir/usr/share/applications/textmerger.desktop"
-  
-  # Install icon
-  install -Dm644 textmerger/assets/logo/logo.png "$pkgdir/usr/share/pixmaps/textmerger.png"
-
-  # Create a startup script
-  install -d "$pkgdir/usr/bin"
-  echo "#!/bin/sh" > "$pkgdir/usr/bin/$pkgname"
-  echo "exec python /usr/lib/$pkgname/textmerger/__main__.py \"\$@\"" >> "$pkgdir/usr/bin/$pkgname"
-  chmod 755 "$pkgdir/usr/bin/$pkgname"
 }
