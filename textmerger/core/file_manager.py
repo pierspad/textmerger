@@ -162,7 +162,7 @@ def _is_valid_file(filename):
                 filename.endswith('.pyc') or 
                 filename == '.DS_Store' or 
                 filename.endswith('.meta') or 
-                filename.endswith('.prefab'))
+                filename.endswith('.fbx'))
 
 
 def load_files(file_paths, hide_ipynb_outputs=False):
