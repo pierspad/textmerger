@@ -13,7 +13,7 @@ get_release() {
     grep -E '^pkgrel=' PKGBUILD | head -1 | cut -d '=' -f2
 }
 
-echo "Building imgpdfsquisher for Arch Linux..."
+echo "Building textmerger for Arch Linux..."
 
 if ! command -v pacman &> /dev/null; then
     echo "Warning: This script is designed for Arch Linux"
@@ -65,12 +65,12 @@ tar --exclude='.git' \
     --exclude='flatpak-build' \
     --exclude='compressed' \
     --exclude='tmp' \
-    --exclude='.imgpdfsquisher_defaults.json' \
-    -czf "build-publish-scripts/imgpdfsquisher-$VERSION.tar.gz" \
-    --transform="s,^,imgpdfsquisher-$VERSION/," \
+    --exclude='.textmerger_defaults.json' \
+    -czf "build-publish-scripts/textmerger-$VERSION.tar.gz" \
+    --transform="s,^,textmerger-$VERSION/," \
     --exclude='build-publish-scripts/src' \
     --exclude='build-publish-scripts/pkg' \
-    --exclude='build-publish-scripts/imgpdfsquisher' \
+    --exclude='build-publish-scripts/textmerger' \
     .
 
 cd build-publish-scripts
@@ -80,7 +80,7 @@ echo "Building Arch package..."
 makepkg -sfc
 
 echo ""
-PKG_FILE="imgpdfsquisher-$VERSION-$RELEASE-any.pkg.tar.zst"
+PKG_FILE="textmerger-$VERSION-$RELEASE-any.pkg.tar.zst"
 if [ ! -f "$PKG_FILE" ]; then
     echo "Error: Package file $PKG_FILE not found. build failed?"
     ls -lah

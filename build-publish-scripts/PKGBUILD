@@ -23,7 +23,7 @@ optdepends=(
 source=(
   "$pkgname-$pkgver.tar.gz::https://github.com/pierspad/textmerger/archive/refs/tags/v$pkgver.tar.gz"
 )
-sha256sums=('SKIP')
+sha256sums=('c5d4e0b816b347c3fb6ca15e3878af91f60eee6bd85bf6d16707c5adda4a6a5c')
 
 prepare() {
   cd "$srcdir/$pkgname-$pkgver"
