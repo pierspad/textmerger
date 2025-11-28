@@ -100,7 +100,7 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel git rust nodejs npm webkit2gtk gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3 pacman-contrib
+          pacman -S --noconfirm base-devel git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3 pacman-contrib
 
       - name: Build Package
         run: |

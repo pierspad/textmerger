@@ -7,8 +7,10 @@ arch=('x86_64')
 url="https://github.com/pierspad/textmerger"
 license=('GPL3')
 
+options=('!debug')
+
 depends=(
-  'webkit2gtk'
+  'webkit2gtk-4.1'
   'gtk3'
   'cairo'
   'gdk-pixbuf2'
