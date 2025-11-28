@@ -1,0 +1,55 @@
+{
+    "app": {
+        "title": "Vista Fusionada",
+        "addedFiles": "Archivos Añadidos:",
+        "dragFiles": "Arrastra archivos aquí",
+        "remove": "Eliminar",
+        "removeAll": "Eliminar Todo",
+        "open": "Abrir",
+        "settings": "Configuración",
+        "characters": "Caracteres",
+        "hideOutputs": "Ocultar Salidas",
+        "showOutputs": "Mostrar Salidas",
+        "copyText": "Copiar Texto",
+        "refresh": "Actualizar",
+        "save": "Guardar",
+        "exit": "Salir",
+        "noContent": "No hay contenido para mostrar.",
+        "addFilesHint": "Añade archivos para ver la salida fusionada."
+    },
+    "settings": {
+        "title": "Configuración",
+        "general": "General",
+        "shortcuts": "Editar Atajos",
+        "generalSettings": "Configuración General",
+        "lightMode": "Modo Claro",
+        "language": "Idioma",
+        "keyboardShortcuts": "Atajos de Teclado",
+        "icon": "Icono",
+        "action": "Acción",
+        "shortcut": "Atajo",
+        "resetDefaults": "Restablecer Predeterminados",
+        "resetConfirm": "¿Estás seguro de que quieres restablecer todos los atajos a los valores predeterminados?",
+        "resetSuccess": "Atajos restablecidos a los valores predeterminados",
+        "resetError": "Error al restablecer los atajos"
+    },
+    "contextMenu": {
+        "copyPath": "Copiar ruta absoluta",
+        "copyFilename": "Copiar nombre de archivo"
+    },
+    "messages": {
+        "showingOutputs": "Mostrando salidas",
+        "hidingOutputs": "Ocultando salidas",
+        "filesAdded": "Archivos añadidos",
+        "selectedRemoved": "Elementos seleccionados eliminados",
+        "allRemoved": "Todos los archivos eliminados",
+        "copied": "Copiado al portapapeles",
+        "copyFailed": "Error al copiar",
+        "saved": "Archivo guardado",
+        "saveFailed": "Error al guardar",
+        "refreshed": "Actualizado",
+        "pathCopied": "Ruta copiada",
+        "filenameCopied": "Nombre de archivo copiado",
+        "scrolledTo": "Desplazado a"
+    }
+}

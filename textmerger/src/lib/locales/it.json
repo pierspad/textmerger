@@ -1,0 +1,61 @@
+{
+    "app": {
+        "title": "Vista Unita",
+        "addedFiles": "File Aggiunti:",
+        "dragFiles": "Trascina i file qui",
+        "remove": "Rimuovi",
+        "removeAll": "Rimuovi Tutto",
+        "open": "Apri",
+        "settings": "Impostazioni",
+        "characters": "Caratteri",
+        "hideOutputs": "Nascondi Output",
+        "showOutputs": "Mostra Output",
+        "copyText": "Copia Testo",
+        "refresh": "Aggiorna",
+        "save": "Salva",
+        "exit": "Esci",
+        "noContent": "Nessun contenuto da visualizzare.",
+        "addFilesHint": "Aggiungi file per vedere l'output unito."
+    },
+    "settings": {
+        "title": "Impostazioni",
+        "general": "Generale",
+        "shortcuts": "Modifica Scorciatoie",
+        "generalSettings": "Impostazioni Generali",
+        "lightMode": "Modalità Chiara",
+        "language": "Lingua",
+        "keyboardShortcuts": "Scorciatoie da Tastiera",
+        "icon": "Icona",
+        "action": "Azione",
+        "shortcut": "Scorciatoia",
+        "resetDefaults": "Ripristina Predefiniti",
+        "resetConfirm": "Sei sicuro di voler ripristinare tutte le scorciatoie ai valori predefiniti?",
+        "resetSuccess": "Scorciatoie ripristinate ai valori predefiniti",
+        "resetError": "Errore nel ripristino delle scorciatoie",
+        "exclusions": "File Esclusi",
+        "addPattern": "Aggiungi Pattern",
+        "patternPlaceholder": "es. *.log o node_modules",
+        "exclusionDescription": "File e cartelle che corrispondono a questi pattern verranno ignorati durante l'aggiunta di directory.",
+        "resetPatterns": "Ripristina Pattern"
+    },
+    "contextMenu": {
+        "copyPath": "Copia percorso assoluto",
+        "copyFilename": "Copia nome file"
+    },
+    "messages": {
+        "showingOutputs": "Mostrando gli output",
+        "hidingOutputs": "Nascondendo gli output",
+        "filesAdded": "File aggiunti",
+        "filesAddedWithErrors": "File aggiunti con errori:",
+        "selectedRemoved": "Elementi selezionati rimossi",
+        "allRemoved": "Tutti i file rimossi",
+        "copied": "Copiato negli appunti",
+        "copyFailed": "Copia fallita",
+        "saved": "File salvato",
+        "saveFailed": "Salvataggio fallito",
+        "refreshed": "Aggiornato",
+        "pathCopied": "Percorso copiato",
+        "filenameCopied": "Nome file copiato",
+        "scrolledTo": "Scorso a"
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "app": {
+        "title": "Zusammengeführte Ansicht",
+        "addedFiles": "Hinzugefügte Dateien:",
+        "dragFiles": "Dateien hierher ziehen",
+        "remove": "Entfernen",
+        "removeAll": "Alle Entfernen",
+        "open": "Öffnen",
+        "settings": "Einstellungen",
+        "characters": "Zeichen",
+        "hideOutputs": "Ausgaben Ausblenden",
+        "showOutputs": "Ausgaben Anzeigen",
+        "copyText": "Text Kopieren",
+        "refresh": "Aktualisieren",
+        "save": "Speichern",
+        "exit": "Beenden",
+        "noContent": "Kein Inhalt zum Anzeigen.",
+        "addFilesHint": "Fügen Sie Dateien hinzu, um die zusammengeführte Ausgabe zu sehen."
+    },
+    "settings": {
+        "title": "Einstellungen",
+        "general": "Allgemein",
+        "shortcuts": "Tastenkürzel Bearbeiten",
+        "generalSettings": "Allgemeine Einstellungen",
+        "lightMode": "Heller Modus",
+        "language": "Sprache",
+        "keyboardShortcuts": "Tastenkürzel",
+        "icon": "Symbol",
+        "action": "Aktion",
+        "shortcut": "Kürzel",
+        "resetDefaults": "Standardwerte Wiederherstellen",
+        "resetConfirm": "Sind Sie sicher, dass Sie alle Tastenkürzel auf die Standardwerte zurücksetzen möchten?",
+        "resetSuccess": "Tastenkürzel auf Standardwerte zurückgesetzt",
+        "resetError": "Fehler beim Zurücksetzen der Tastenkürzel"
+    },
+    "contextMenu": {
+        "copyPath": "Absoluten Pfad kopieren",
+        "copyFilename": "Dateinamen kopieren"
+    },
+    "messages": {
+        "showingOutputs": "Ausgaben werden angezeigt",
+        "hidingOutputs": "Ausgaben werden ausgeblendet",
+        "filesAdded": "Dateien hinzugefügt",
+        "selectedRemoved": "Ausgewählte Elemente entfernt",
+        "allRemoved": "Alle Dateien entfernt",
+        "copied": "In die Zwischenablage kopiert",
+        "copyFailed": "Kopieren fehlgeschlagen",
+        "saved": "Datei gespeichert",
+        "saveFailed": "Speichern fehlgeschlagen",
+        "refreshed": "Aktualisiert",
+        "pathCopied": "Pfad kopiert",
+        "filenameCopied": "Dateiname kopiert",
+        "scrolledTo": "Gescrollt zu"
+    }
+}

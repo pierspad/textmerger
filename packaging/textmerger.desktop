@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=2.0
+Type=Application
+Name=TextMerger
+Comment=A Rust/Tauri GTK3 application for merging text files
+Exec=textmerger
+Icon=textmerger
+Terminal=false
+Categories=Office;Utility;TextEditor;
+Keywords=text;merge;files;editor;
+StartupNotify=true

@@ -1,0 +1,61 @@
+{
+    "app": {
+        "title": "Merged View",
+        "addedFiles": "Added Files:",
+        "dragFiles": "Drag files here",
+        "remove": "Remove",
+        "removeAll": "Remove All",
+        "open": "Open",
+        "settings": "Settings",
+        "characters": "Characters",
+        "hideOutputs": "Hide Outputs",
+        "showOutputs": "Show Outputs",
+        "copyText": "Copy Text",
+        "refresh": "Refresh",
+        "save": "Save",
+        "exit": "Exit",
+        "noContent": "No content to display.",
+        "addFilesHint": "Add files to see the merged output."
+    },
+    "settings": {
+        "title": "Settings",
+        "general": "General",
+        "shortcuts": "Edit Shortcuts",
+        "generalSettings": "General Settings",
+        "lightMode": "Light Mode",
+        "language": "Language",
+        "keyboardShortcuts": "Keyboard Shortcuts",
+        "icon": "Icon",
+        "action": "Action",
+        "shortcut": "Shortcut",
+        "resetDefaults": "Reset Defaults",
+        "resetConfirm": "Are you sure you want to reset all shortcuts to default?",
+        "resetSuccess": "Shortcuts reset to defaults",
+        "resetError": "Error resetting shortcuts",
+        "exclusions": "Excluded Files",
+        "addPattern": "Add Pattern",
+        "patternPlaceholder": "e.g. *.log or node_modules",
+        "exclusionDescription": "Files and folders matching these patterns will be ignored when adding directories.",
+        "resetPatterns": "Reset Patterns"
+    },
+    "contextMenu": {
+        "copyPath": "Copy absolute path",
+        "copyFilename": "Copy filename"
+    },
+    "messages": {
+        "showingOutputs": "Showing outputs",
+        "hidingOutputs": "Hiding outputs",
+        "filesAdded": "Files added",
+        "filesAddedWithErrors": "Files added with errors:",
+        "selectedRemoved": "Selected items removed",
+        "allRemoved": "All files removed",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy",
+        "saved": "File saved",
+        "saveFailed": "Failed to save",
+        "refreshed": "Refreshed",
+        "pathCopied": "Path copied",
+        "filenameCopied": "Filename copied",
+        "scrolledTo": "Scrolled to"
+    }
+}

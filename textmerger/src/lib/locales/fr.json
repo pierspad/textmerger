@@ -1,0 +1,55 @@
+{
+    "app": {
+        "title": "Vue Fusionnée",
+        "addedFiles": "Fichiers Ajoutés:",
+        "dragFiles": "Glissez les fichiers ici",
+        "remove": "Supprimer",
+        "removeAll": "Tout Supprimer",
+        "open": "Ouvrir",
+        "settings": "Paramètres",
+        "characters": "Caractères",
+        "hideOutputs": "Masquer les Sorties",
+        "showOutputs": "Afficher les Sorties",
+        "copyText": "Copier le Texte",
+        "refresh": "Actualiser",
+        "save": "Enregistrer",
+        "exit": "Quitter",
+        "noContent": "Aucun contenu à afficher.",
+        "addFilesHint": "Ajoutez des fichiers pour voir la sortie fusionnée."
+    },
+    "settings": {
+        "title": "Paramètres",
+        "general": "Général",
+        "shortcuts": "Modifier les Raccourcis",
+        "generalSettings": "Paramètres Généraux",
+        "lightMode": "Mode Clair",
+        "language": "Langue",
+        "keyboardShortcuts": "Raccourcis Clavier",
+        "icon": "Icône",
+        "action": "Action",
+        "shortcut": "Raccourci",
+        "resetDefaults": "Rétablir les Défauts",
+        "resetConfirm": "Êtes-vous sûr de vouloir rétablir tous les raccourcis par défaut ?",
+        "resetSuccess": "Raccourcis rétablis par défaut",
+        "resetError": "Erreur lors de la réinitialisation des raccourcis"
+    },
+    "contextMenu": {
+        "copyPath": "Copier le chemin absolu",
+        "copyFilename": "Copier le nom de fichier"
+    },
+    "messages": {
+        "showingOutputs": "Affichage des sorties",
+        "hidingOutputs": "Masquage des sorties",
+        "filesAdded": "Fichiers ajoutés",
+        "selectedRemoved": "Éléments sélectionnés supprimés",
+        "allRemoved": "Tous les fichiers supprimés",
+        "copied": "Copié dans le presse-papiers",
+        "copyFailed": "Échec de la copie",
+        "saved": "Fichier enregistré",
+        "saveFailed": "Échec de l'enregistrement",
+        "refreshed": "Actualisé",
+        "pathCopied": "Chemin copié",
+        "filenameCopied": "Nom de fichier copié",
+        "scrolledTo": "Défilé vers"
+    }
+}
