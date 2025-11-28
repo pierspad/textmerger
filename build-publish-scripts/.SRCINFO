@@ -8,13 +8,14 @@ pkgbase = textmerger
 	makedepends = cargo
 	makedepends = nodejs
 	makedepends = npm
-	depends = webkit2gtk
+	depends = webkit2gtk-4.1
 	depends = gtk3
 	depends = cairo
 	depends = gdk-pixbuf2
 	depends = glib2
 	depends = pango
 	depends = libappindicator-gtk3
+	options = !debug
 	source = textmerger-2.0.0.tar.gz::https://github.com/pierspad/textmerger/archive/refs/tags/v2.0.0.tar.gz
 	sha256sums = edfb3b72a02cb6e473f54433c1c67a27100cb0c3a3c7df51b800bae2533ce54c
 
