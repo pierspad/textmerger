@@ -1,6 +1,6 @@
 # Maintainer: pierspad <pierpaolospadafora@proton.me>
 pkgname=textmerger
-pkgver=2.1.0
+pkgver=2.1.1
 pkgrel=1
 pkgdesc="A Rust/Tauri GTK3 application for merging text files"
 arch=('x86_64')
