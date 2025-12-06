@@ -1,26 +1,26 @@
-use tauri::State;
-use std::sync::Mutex;
 use rayon::prelude::*;
 use glob::Pattern;
+use std::path::Path;
 
 mod file_ops;
 
-struct AppState {
-    files: Mutex<Vec<String>>,
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+struct FileNode {
+    path: String,
+    name: String,
+    char_count: usize,
+    size_bytes: u64,
+    extension: String,
 }
-
-use walkdir::WalkDir;
 
 #[derive(serde::Serialize)]
 struct AddFilesResult {
-    files: Vec<String>,
+    files: Vec<FileNode>,
     errors: Vec<String>,
 }
 
 #[tauri::command]
-fn add_files(state: State<AppState>, paths: Vec<String>, excluded_patterns: Vec<String>) -> Result<AddFilesResult, String> {
-    let mut state_files = state.files.lock().map_err(|_| "Failed to lock state".to_string())?;
-    
+fn add_files(paths: Vec<String>, excluded_patterns: Vec<String>) -> Result<AddFilesResult, String> {
     let patterns: Vec<Pattern> = excluded_patterns.iter()
         .filter_map(|p| Pattern::new(p).ok())
         .collect();
@@ -32,9 +32,9 @@ fn add_files(state: State<AppState>, paths: Vec<String>, excluded_patterns: Vec<
     let mut all_paths = Vec::new();
     
     for path in paths {
-        let path_obj = std::path::Path::new(&path);
+        let path_obj = Path::new(&path);
         if path_obj.is_dir() {
-            let walker = WalkDir::new(&path).into_iter();
+            let walker = walkdir::WalkDir::new(&path).into_iter();
             for entry in walker.filter_entry(|e| {
                 let name = e.file_name().to_str().unwrap_or("");
                 !is_excluded(name) && !name.starts_with('.')
@@ -55,10 +55,23 @@ fn add_files(state: State<AppState>, paths: Vec<String>, excluded_patterns: Vec<
     }
 
     // Process files in parallel and collect results (ok or error)
-    let results: Vec<Result<String, String>> = all_paths.into_par_iter()
+    let results: Vec<Result<FileNode, String>> = all_paths.into_par_iter()
         .map(|path| {
             match file_ops::read_and_check_file(&path, false) {
-                Ok(_) => Ok(path),
+                Ok(content) => {
+                    let path_obj = Path::new(&path);
+                    let name = path_obj.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    let extension = path_obj.extension().unwrap_or_default().to_string_lossy().to_string();
+                    let size_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                    
+                    Ok(FileNode {
+                        path,
+                        name,
+                        char_count: content.len(),
+                        size_bytes,
+                        extension,
+                    })
+                },
                 Err(e) => Err(e),
             }
         })
@@ -69,38 +82,21 @@ fn add_files(state: State<AppState>, paths: Vec<String>, excluded_patterns: Vec<
 
     for res in results {
         match res {
-            Ok(path) => new_files.push(path),
+            Ok(node) => new_files.push(node),
             Err(e) => errors.push(e),
-        }
-    }
-
-    for file in &new_files {
-        if !state_files.contains(file) {
-            state_files.push(file.clone());
         }
     }
     
     Ok(AddFilesResult {
-        files: state_files.clone(),
+        files: new_files,
         errors,
     })
 }
 
 #[tauri::command]
-fn remove_file(state: State<AppState>, path: String) -> Result<Vec<String>, String> {
-    let mut state_files = state.files.lock().map_err(|_| "Failed to lock state".to_string())?;
-    if let Some(pos) = state_files.iter().position(|x| *x == path) {
-        state_files.remove(pos);
-    }
-    Ok(state_files.clone())
-}
-
-#[tauri::command]
-fn get_merged_content(state: State<AppState>, show_outputs: bool) -> Result<String, String> {
-    let state_files = state.files.lock().map_err(|_| "Failed to lock state".to_string())?;
-    
+fn get_merged_content(paths: Vec<String>, show_outputs: bool) -> Result<String, String> {
     // Read and merge in parallel
-    let contents: Vec<String> = state_files.par_iter().enumerate()
+    let contents: Vec<String> = paths.par_iter().enumerate()
         .map(|(index, path)| {
             match file_ops::read_and_check_file(path, show_outputs) {
                 Ok(content) => {
@@ -132,10 +128,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState {
-            files: Mutex::new(Vec::new()),
-        })
-        .invoke_handler(tauri::generate_handler![add_files, remove_file, get_merged_content, exit_app])
+        .invoke_handler(tauri::generate_handler![add_files, get_merged_content, exit_app])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

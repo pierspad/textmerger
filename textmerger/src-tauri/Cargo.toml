@@ -35,15 +35,15 @@ pdf-extract = "0.7"
 
 [profile.dev]
 opt-level = 0
-debug = false  
-incremental = true
+debug = 0
+strip = "debuginfo"
 
 [profile.dev.package."*"]
-opt-level = 0
+opt-level = 1
 
 [profile.release]
 codegen-units = 1
-lto = true
+lto = "thin"
 opt-level = 3
 panic = "abort"
 strip = true
