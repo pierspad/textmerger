@@ -53,6 +53,15 @@
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" class="w-4 h-4"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`;
   }
 
+  function getHeavinessColor(charCount: number): string {
+      if (charCount < 1000) return '#22c55e'; // Green < 1KB
+      if (charCount < 10000) return '#eab308'; // Yellow < 10KB
+      if (charCount < 100000) return '#f97316'; // Orange < 100KB
+      return '#ef4444'; // Red > 100KB
+  }
+
+
+
   function sortChildren(children: any) {
     return Object.values(children).sort((a: any, b: any) => {
         if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
@@ -80,7 +89,14 @@
     <span class="mr-2" on:click|stopPropagation={toggle} role="button" tabindex="0" on:keydown={() => {}}>
       {@html getIcon(node.name, node.isFile, node.isOpen)}
     </span>
-    <span class="truncate text-[var(--text-secondary)]">{node.name}</span>
+    <span class="truncate text-[var(--text-secondary)] flex-1">{node.name}</span>
+    {#if node.isFile && typeof node.charCount === 'number'}
+      <div 
+        class="w-2.5 h-2.5 rounded-full ml-auto mr-1 flex-shrink-0" 
+        style="background-color: {getHeavinessColor(node.charCount)}"
+        title="{node.charCount.toLocaleString()} chars"
+      ></div>
+    {/if}
   </div>
 
   {#if !node.isFile && node.isOpen}

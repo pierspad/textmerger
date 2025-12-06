@@ -2,7 +2,8 @@
   import { createEventDispatcher } from "svelte";
   import FileTreeNode from "./FileTreeNode.svelte";
 
-  export let files: string[] = [];
+  import type { FileNode } from "./stores/tabs";
+  export let files: FileNode[] = [];
   export let selectedFiles: Set<string> = new Set();
 
   const dispatch = createEventDispatcher();
@@ -13,6 +14,7 @@
     children: Record<string, TreeNode>;
     isFile: boolean;
     isOpen: boolean;
+    charCount?: number;
   }
 
   let tree: TreeNode = {
@@ -32,7 +34,8 @@
       isOpen: true,
     };
     // Sort files to ensure consistent tree building
-    [...files].sort().forEach((path) => {
+    [...files].sort((a, b) => a.path.localeCompare(b.path)).forEach((file) => {
+      const path = file.path;
       // Handle Windows/Unix paths
       const normalizedPath = path.replace(/\\/g, "/");
       const parts = normalizedPath.split("/");
@@ -83,6 +86,7 @@
         if (index === parts.length - 1) {
           current.children[part].isFile = true;
           current.children[part].path = path; // Use original full path for file to be safe
+          current.children[part].charCount = file.char_count;
         }
 
         current = current.children[part];

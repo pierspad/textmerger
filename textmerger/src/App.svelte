@@ -9,13 +9,16 @@
   import { t } from "./lib/stores/i18n";
   import { settings } from "./lib/stores/settings";
   import { shortcuts } from "./lib/stores/shortcuts";
+  import { tabs, type FileNode } from "./lib/stores/tabs";
 
   interface AddFilesResult {
-    files: string[];
+    files: FileNode[];
     errors: string[];
   }
 
-  let files: string[] = [];
+  // Reactive state from store
+  $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
+
   let mergedContent = "";
   let selectedFiles: Set<string> = new Set();
   let isSidebarExpanded = true;
@@ -26,9 +29,19 @@
   let snackbarTimeout: any;
   let showSettings = false;
   let contextMenu = { show: false, x: 0, y: 0, path: "", name: "" };
+  let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
+  
+  // Drag and drop for tabs
+  let draggedTabId: string | null = null;
+  let dragOverTabId: string | null = null;
 
-  $: hasIpynb = files.some((f) => f.toLowerCase().endsWith(".ipynb"));
+  $: hasIpynb = files.some((f) => f.path.toLowerCase().endsWith(".ipynb"));
+  
+  // Auto-update content when files change
+  $: if (files) {
+      updateContent();
+  }
 
   function showSnackbar(msg: string) {
     snackbarMessage = msg;
@@ -40,9 +53,19 @@
 
   async function updateContent() {
     try {
-      mergedContent = await invoke("get_merged_content", { showOutputs });
+      if (files.length === 0) {
+        mergedContent = "";
+        return;
+      }
+      // Pass paths to backend
+      const paths = files.map((f) => f.path);
+      mergedContent = await invoke("get_merged_content", {
+        paths,
+        showOutputs,
+      });
     } catch (e) {
       console.error(e);
+      mergedContent = `<div class='error'>Error: ${e}</div>`;
     }
   }
 
@@ -77,8 +100,8 @@
             });
 
             const { files: newFiles, errors } = result as AddFilesResult;
-            files = newFiles;
-            await updateContent();
+            tabs.addFilesToTab($tabs.activeTabId, newFiles);
+            // files updates reactively
 
             if (errors.length > 0) {
               const errorMsg =
@@ -124,8 +147,8 @@
           excludedPatterns: $settings.excludedPatterns,
         });
         const { files: newFiles, errors } = result as AddFilesResult;
-        files = newFiles;
-        await updateContent();
+        tabs.addFilesToTab($tabs.activeTabId, newFiles);
+        
         if (errors.length > 0) {
           const errorMsg =
             errors.slice(0, 3).join("\n") +
@@ -145,51 +168,40 @@
   async function removeSelected() {
     if (selectedFiles.size === 0) return;
 
+    // Check all files in active tab
     const filesToRemove = new Set<string>();
 
     for (const selectedPath of selectedFiles) {
-      if (files.includes(selectedPath)) {
+      // Check if selectedPath is exactly one of the files
+      if (files.some(f => f.path === selectedPath)) {
         filesToRemove.add(selectedPath);
       } else {
-        const prefix =
+         // Check if it's a directory (prefix)
+         const prefix =
           selectedPath.endsWith("/") || selectedPath.endsWith("\\")
             ? selectedPath
             : selectedPath + "/";
-        for (const file of files) {
-          if (
-            file.startsWith(selectedPath + "/") ||
-            file.startsWith(selectedPath + "\\")
-          ) {
-            filesToRemove.add(file);
-          }
-        }
+            
+         files.forEach(f => {
+             if (f.path.startsWith(prefix) || f.path.startsWith(selectedPath + "\\")) {
+                 filesToRemove.add(f.path);
+             }
+         });
       }
     }
-
-    for (const path of filesToRemove) {
-      try {
-        files = await invoke("remove_file", { path });
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    
+    // Convert to removeFile calls or just setFiles
+    // We can just filter the current list
+    const remaining = files.filter(f => !filesToRemove.has(f.path));
+    tabs.setFilesForTab($tabs.activeTabId, remaining);
 
     selectedFiles.clear();
     selectedFiles = selectedFiles;
-    await updateContent();
     showSnackbar($t("messages.selectedRemoved"));
   }
 
   async function removeAll() {
-    const filesCopy = [...files];
-    for (const path of filesCopy) {
-      try {
-        files = await invoke("remove_file", { path });
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    await updateContent();
+    tabs.setFilesForTab($tabs.activeTabId, []);
     showSnackbar($t("messages.allRemoved"));
   }
 
@@ -209,7 +221,10 @@
 
   async function saveFile() {
     try {
+      const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+      const defaultName = activeTab ? activeTab.name : "merged";
       const path = await save({
+        defaultPath: defaultName + ".txt",
         filters: [
           {
             name: "Text",
@@ -243,6 +258,99 @@
   function toggleSidebar() {
     isSidebarExpanded = !isSidebarExpanded;
   }
+  
+  // Tab functions
+  function handleTabClick(id: string) {
+      tabs.setActiveTab(id);
+  }
+  
+  function handleAddTab() {
+      tabs.addTab();
+  }
+  
+  function handleCloseTab(e: MouseEvent, id: string) {
+      e.stopPropagation();
+      tabs.closeTab(id);
+  }
+  
+  function handleTabContextMenu(e: MouseEvent, id: string) {
+      e.preventDefault();
+      tabContextMenu = {
+          show: true,
+          x: e.clientX,
+          y: e.clientY,
+          tabId: id
+      };
+  }
+  
+  function renameTab() {
+      const id = tabContextMenu.tabId;
+      const tab = $tabs.tabs.find(t => t.id === id);
+      if (tab) {
+          const newName = prompt("Rename Tab", tab.name);
+          if (newName) {
+              tabs.renameTab(id, newName);
+          }
+      }
+      closeContextMenu();
+  }
+  
+  function handleMergeTab() {
+      const targetId = tabContextMenu.tabId;
+      // Show simple prompt to pick source
+      // In a real app, use a modal.
+      const sourceName = prompt("Enter the exact name of the tab you want to merge into this one:");
+      if (!sourceName) {
+           closeContextMenu();
+           return;
+      }
+      const sourceTab = $tabs.tabs.find(t => t.name === sourceName);
+      if (sourceTab) {
+          if (sourceTab.id === targetId) {
+              alert("Cannot merge tab into itself.");
+          } else {
+              tabs.uniteTabs(targetId, sourceTab.id);
+              showSnackbar(`Merged ${sourceName} into current tab.`);
+          }
+      } else {
+          alert("Tab not found.");
+      }
+      closeContextMenu();
+  }
+
+    // Drag and Drop Tabs
+  function handleTabDragStart(e: DragEvent, id: string) {
+      draggedTabId = id;
+      if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.dropEffect = 'move';
+      }
+  }
+
+  function handleTabDragOver(e: DragEvent, id: string) {
+      e.preventDefault();
+      dragOverTabId = id;
+  }
+
+  function handleTabDrop(e: DragEvent, id: string) {
+      e.preventDefault();
+      if (draggedTabId && draggedTabId !== id) {
+           // Move draggedTabId to position of id
+           // Naive swap or move?
+           // The store has moveTab implementation (left/right). 
+           // Implementation of full D&D reorder in store needs to be more robust.
+           // For now, let's just use context menu for reordering or implement reorder in store.
+           // Let's implement robust reorder here.
+           reorderTabs(draggedTabId, id);
+      }
+      draggedTabId = null;
+      dragOverTabId = null;
+  }
+
+  function reorderTabs(fromId: string, toId: string) {
+      tabs.reorderTabs(fromId, toId);
+  }
+
 
   function handleKeydown(event: KeyboardEvent) {
     const keys = [];
@@ -304,6 +412,7 @@
 
   function closeContextMenu() {
     contextMenu.show = false;
+    tabContextMenu.show = false;
   }
 
   async function copyPath() {
@@ -329,16 +438,18 @@
   }
 
   function scrollToFile(path: string) {
-    const index = files.indexOf(path);
-    if (index !== -1) {
-      const el = document.getElementById(`file-${index}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        showSnackbar(
-          `${$t("messages.scrolledTo")} ${path.split(/[/\\]/).pop()}`,
-        );
-      }
-    }
+     const tab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+     if (!tab) return;
+     const index = tab.files.findIndex(f => f.path === path);
+     if (index !== -1) {
+       const el = document.getElementById(`file-${index}`);
+       if (el) {
+         el.scrollIntoView({ behavior: "smooth", block: "start" });
+         showSnackbar(
+           `${$t("messages.scrolledTo")} ${path.split(/[/\\]/).pop()}`,
+         );
+       }
+     }
   }
 
   function handleFileDblClick(e: CustomEvent) {
@@ -351,6 +462,7 @@
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
       return;
     }
+    if (target.closest('.tab-item')) return; // Allow tab context menu
     e.preventDefault();
   }
 </script>
@@ -455,11 +567,13 @@
           {$t("app.open")}
         </button>
       </div>
+      
+      <!-- Tab Bar removed from here -->
 
       <div
         class="px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-secondary)]"
       >
-        {$t("app.addedFiles")}
+        {$t("app.addedFiles")} {files.length ? `(${files.length})` : ''}
       </div>
 
       <div
@@ -544,9 +658,9 @@
     <header
       class="h-12 border-b border-[var(--border-color)] flex items-center px-4 justify-between bg-[var(--bg-tertiary)]"
     >
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 overflow-hidden flex-1 h-full pt-2">
         <button
-          class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)]"
+          class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] mb-1"
           on:click={toggleSidebar}
         >
           <svg
@@ -564,9 +678,41 @@
             />
           </svg>
         </button>
-        <h1 class="font-bold text-[var(--text-primary)] text-lg">
-          {$t("app.title")}
-        </h1>
+        
+        <!-- Tab Bar in Header -->
+         <div class="flex overflow-x-auto scrollbar-hide h-full items-end gap-1 select-none flex-1">
+          {#each $tabs.tabs as tab (tab.id)}
+            <div 
+               class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent hover:bg-[var(--bg-hover)] {tab.id === $tabs.activeTabId ? 'bg-[var(--bg-primary)] border-[var(--border-color)] z-10 -mb-[1px] border-b-0' : 'bg-[#1e1e1e] text-[var(--text-muted)] border-b border-[var(--border-color)] mt-1'}"
+               draggable="true"
+               on:click={() => handleTabClick(tab.id)}
+               on:contextmenu={(e) => handleTabContextMenu(e, tab.id)}
+               on:dragstart={(e) => handleTabDragStart(e, tab.id)}
+               on:dragover={(e) => handleTabDragOver(e, tab.id)}
+               on:drop={(e) => handleTabDrop(e, tab.id)}
+               class:brightness-110={dragOverTabId === tab.id}
+            >
+                <div class="truncate text-xs font-medium pr-4">{tab.name}</div>
+                <button 
+                  class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[var(--bg-hover-strong)] opacity-0 group-hover:opacity-100 {tab.id === $tabs.activeTabId ? 'opacity-100' : ''}"
+                  on:click={(e) => handleCloseTab(e, tab.id)}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+          {/each}
+          <button 
+             class="p-1 mb-1 ml-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)]"
+             on:click={handleAddTab}
+             title="New Tab"
+          >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+              </svg>
+          </button>
+      </div>
       </div>
     </header>
 
@@ -707,6 +853,7 @@
   </section>
 </main>
 
+<!-- Context Menu for Files -->
 {#if contextMenu.show}
   <div
     class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"
@@ -723,6 +870,27 @@
       on:click={copyFilename}
     >
       {$t("contextMenu.copyFilename")}
+    </button>
+  </div>
+{/if}
+
+<!-- Context Menu for Tabs -->
+{#if tabContextMenu.show}
+  <div
+    class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px"
+  >
+    <button
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      on:click={renameTab}
+    >
+      Rename Tab
+    </button>
+    <button
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      on:click={handleMergeTab}
+    >
+      Merge with...
     </button>
   </div>
 {/if}
