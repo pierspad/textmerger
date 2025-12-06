@@ -39,13 +39,17 @@
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClose}
+  on:keydown={(e) => e.key === 'Escape' && handleClose()}
   role="presentation"
+  tabindex="-1"
 >
   <div
     class="w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-xl shadow-2xl overflow-hidden transform"
     transition:scale={{ duration: 200, start: 0.95 }}
     on:click|stopPropagation
+    on:keydown={(e) => { /* handled by window, just satisfying a11y */ }}
     role="dialog"
+    tabindex="-1"
     aria-modal="true"
     aria-labelledby="modal-title"
   >

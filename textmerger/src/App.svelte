@@ -17,6 +17,11 @@
     errors: string[];
   }
 
+  // Action to focus element on mount
+  function focusElement(node: HTMLElement) {
+      node.focus();
+  }
+
   // Reactive state from store
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
@@ -526,7 +531,7 @@
                   bind:value={newTabName}
                   class="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
                   placeholder="Enter tab name..."
-                  autofocus
+                  use:focusElement
                   on:keydown={(e) => e.key === 'Enter' && confirmRename()}
               />
           </div>
