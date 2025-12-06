@@ -63,15 +63,38 @@ function createTabsStore() {
                 tabs: s.tabs.map(t => {
                     if (t.id === id) {
                         let newName = t.name;
-                        // Auto-rename if this is the first batch of files and name looks like default "Tab X"
-                        // Or just if we have no files yet? User said "first file/folder loaded".
+                        // Auto-rename logic
                         if (t.files.length === 0 && newFiles.length > 0 && t.name.startsWith("Tab ")) {
-                            // Try to find a common folder or just use the first file/folder name
-                            // Simplest: First file name (without extension?) or parent folder?
-                            // Let's use the first item's name.
-                            if (newFiles[0]) {
-                                // If path has separators, pick the name, but FileNode already has name.
+                            // Find common prefix
+                            if (newFiles.length === 1) {
                                 newName = newFiles[0].name;
+                            } else {
+                                const splitPaths = newFiles.map(f => f.path.split(/[/\\]/));
+                                // Find shortest path length
+                                const minLen = Math.min(...splitPaths.map(p => p.length));
+                                let commonLen = 0;
+                                for (let i = 0; i < minLen; i++) {
+                                    const part = splitPaths[0][i];
+                                    if (splitPaths.every(p => p[i] === part)) {
+                                        commonLen++;
+                                    } else {
+                                        break;
+                                    }
+                                }
+
+                                // if commonLen > 0, we have a common path.
+                                // The common path ends at index commonLen - 1.
+                                // Example: /home/user/dir/file1, /home/user/dir/file2
+                                // Split: ["", "home", "user", "dir", "file1"]
+                                // Common: ["", "home", "user", "dir"] (len 4)
+                                // Name should be "dir" -> index 3 (commonLen - 1)
+                                if (commonLen > 0) {
+                                    const commonPart = splitPaths[0][commonLen - 1];
+                                    // If commonPart is empty (root?), grab next? NO.
+                                    newName = commonPart || newFiles[0].name;
+                                } else {
+                                    newName = newFiles[0].name;
+                                }
                             }
                         }
 

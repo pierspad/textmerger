@@ -66,7 +66,7 @@
         
         parts.forEach((part, i) => {
             if (!part && i === 0) {
-                // Handle root path if it starts with slash (linux)
+                // Root slash handling
                 currentPath = ""; 
                 return;
             }
@@ -96,10 +96,6 @@
             
             if (isLast) {
                 // Add metadata to the file node
-                // Note: getNode creates it if missing, but we need to ensure we update the specific node for this file
-                // If it was created as a folder earlier (unlikely if loop order is correct, but possible), update it.
-                // The sort ensures folders usually come before files if structure implies it? No.
-                // But we are on the leaf now.
                 const leaf = nodeMap[myPath];
                 if (leaf) {
                     leaf.charCount = file.char_count;
@@ -111,6 +107,48 @@
             
             currentPath = myPath;
         });
+    });
+
+    // Compact folders (flatten single directory chains)
+    const compactNode = (node: TreeNode) => {
+        if (!node.children || node.isFile) return;
+        
+        // Compact children first (bottom-up recursion)
+        Object.values(node.children).forEach(compactNode);
+        
+        // Check if I have exactly one child and it is a folder (not a file)
+        const childrenKeys = Object.keys(node.children);
+        if (childrenKeys.length === 1) {
+             const childKey = childrenKeys[0];
+             const child = node.children[childKey];
+             // Ensure child is not a file and we are not losing info?
+             // Users want to see "home/user/code" 
+             if (!child.isFile) {
+                 // Merge child into current node
+                 node.name = `${node.name}/${child.name}`;
+                 // We don't change the KEY in the parent's children map because the parent points to US (node object ref).
+                 // We just mutate US.
+                 // Update our path to match the child's path (more specific)
+                 node.path = child.path; 
+                 // Adopt grandchildren
+                 node.children = child.children;
+                 
+                 // Re-run compaction on self because we might now be a single child of our new self?
+                 // No, we consumed a child. We might now have 1 grandchild that is strict.
+                 compactNode(node);
+             }
+        }
+    };
+    
+    // Run compaction on root nodes
+    // Using a copy of keys because we might modify tree if we were re-assigning, 
+    // but here we are modifying the objects in place.
+    [...rootNodes].forEach(key => {
+        // If the root node itself gets compacted? 
+        // Example: root is "home", child "user". "home" becomes "home/user". 
+        // The tree[key] object is mutated.
+        // references in tree are strictly object refs.
+        compactNode(tree[key]);
     });
   }
 
