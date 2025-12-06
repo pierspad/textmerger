@@ -6,6 +6,7 @@
   import { onMount, tick } from "svelte";
   import FileTree from "./lib/FileTree.svelte";
   import Settings from "./lib/components/Settings.svelte";
+  import Modal from "./lib/components/Modal.svelte";
   import { t } from "./lib/stores/i18n";
   import { settings } from "./lib/stores/settings";
   import { shortcuts } from "./lib/stores/shortcuts";
@@ -31,6 +32,12 @@
   let contextMenu = { show: false, x: 0, y: 0, path: "", name: "" };
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
+  
+  // Dialog States
+  let showRenameModal = false;
+  let showMergeModal = false;
+  let newTabName = "";
+  let selectedMergeSourceId = "";
   
   // Drag and drop for tabs
   let draggedTabId: string | null = null;
@@ -283,39 +290,34 @@
       };
   }
   
-  function renameTab() {
-      const id = tabContextMenu.tabId;
-      const tab = $tabs.tabs.find(t => t.id === id);
+  function openRenameModal() {
+      const tab = $tabs.tabs.find(t => t.id === tabContextMenu.tabId);
       if (tab) {
-          const newName = prompt("Rename Tab", tab.name);
-          if (newName) {
-              tabs.renameTab(id, newName);
-          }
+          newTabName = tab.name;
+          showRenameModal = true;
       }
       closeContextMenu();
   }
   
-  function handleMergeTab() {
-      const targetId = tabContextMenu.tabId;
-      // Show simple prompt to pick source
-      // In a real app, use a modal.
-      const sourceName = prompt("Enter the exact name of the tab you want to merge into this one:");
-      if (!sourceName) {
-           closeContextMenu();
-           return;
+  function confirmRename() {
+      if (newTabName.trim()) {
+           tabs.renameTab(tabContextMenu.tabId, newTabName.trim());
       }
-      const sourceTab = $tabs.tabs.find(t => t.name === sourceName);
-      if (sourceTab) {
-          if (sourceTab.id === targetId) {
-              alert("Cannot merge tab into itself.");
-          } else {
-              tabs.uniteTabs(targetId, sourceTab.id);
-              showSnackbar(`Merged ${sourceName} into current tab.`);
-          }
-      } else {
-          alert("Tab not found.");
+      showRenameModal = false;
+  }
+  
+  function openMergeModal() {
+     selectedMergeSourceId = "";
+     showMergeModal = true;
+     closeContextMenu();
+  }
+  
+  function confirmMerge() {
+      if (selectedMergeSourceId && selectedMergeSourceId !== tabContextMenu.tabId) {
+           tabs.uniteTabs(tabContextMenu.tabId, selectedMergeSourceId);
+           showSnackbar("Tabs merged successfully");
       }
-      closeContextMenu();
+      showMergeModal = false;
   }
 
     // Drag and Drop Tabs
@@ -335,12 +337,6 @@
   function handleTabDrop(e: DragEvent, id: string) {
       e.preventDefault();
       if (draggedTabId && draggedTabId !== id) {
-           // Move draggedTabId to position of id
-           // Naive swap or move?
-           // The store has moveTab implementation (left/right). 
-           // Implementation of full D&D reorder in store needs to be more robust.
-           // For now, let's just use context menu for reordering or implement reorder in store.
-           // Let's implement robust reorder here.
            reorderTabs(draggedTabId, id);
       }
       draggedTabId = null;
@@ -353,6 +349,9 @@
 
 
   function handleKeydown(event: KeyboardEvent) {
+    // If modal is open, let modal handle keys or check specific conditions
+    if (showRenameModal || showMergeModal) return;
+
     const keys = [];
     if (event.ctrlKey) keys.push("Ctrl");
     if (event.altKey) keys.push("Alt");
@@ -510,6 +509,61 @@
       on:snackbar={handleSnackbarEvent}
     />
   {/if}
+  
+  <!-- Rename Modal -->
+  {#if showRenameModal}
+      <Modal 
+          title="Rename Tab" 
+          confirmText="Rename" 
+          on:close={() => showRenameModal = false} 
+          on:confirm={confirmRename}
+      >
+          <div class="flex flex-col gap-2">
+              <label for="rename-input" class="text-sm font-medium text-[var(--text-secondary)]">New Name</label>
+              <input 
+                  id="rename-input"
+                  type="text" 
+                  bind:value={newTabName}
+                  class="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
+                  placeholder="Enter tab name..."
+                  autofocus
+                  on:keydown={(e) => e.key === 'Enter' && confirmRename()}
+              />
+          </div>
+      </Modal>
+  {/if}
+
+  <!-- Merge Modal -->
+  {#if showMergeModal}
+      <Modal 
+          title="Merge Tabs" 
+          confirmText="Merge" 
+          disabled={!selectedMergeSourceId}
+          on:close={() => showMergeModal = false} 
+          on:confirm={confirmMerge}
+      >
+          <div class="flex flex-col gap-2">
+              <p class="text-sm text-[var(--text-muted)] mb-2">
+                  Select a tab to merge into <strong>{$tabs.tabs.find(t => t.id === tabContextMenu.tabId)?.name}</strong>.
+              </p>
+              <label for="merge-select" class="text-sm font-medium text-[var(--text-secondary)]">Source Tab</label>
+              <select 
+                  id="merge-select"
+                  bind:value={selectedMergeSourceId}
+                  class="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
+              >
+                  <option value="" disabled selected>Select a tab...</option>
+                  {#each $tabs.tabs.filter(t => t.id !== tabContextMenu.tabId) as tab}
+                      <option value={tab.id}>{tab.name}</option>
+                  {/each}
+              </select>
+              {#if $tabs.tabs.length <= 1}
+                   <p class="text-xs text-red-400 mt-1">No other tabs available to merge.</p>
+              {/if}
+          </div>
+      </Modal>
+  {/if}
+
 
   <!-- Sidebar -->
   {#if isSidebarExpanded}
@@ -525,6 +579,7 @@
           class="p-2 bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)] transition-colors"
           on:click={() => (showSettings = true)}
           title="Settings"
+          aria-label="Settings"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -549,6 +604,7 @@
         <button
           class="flex-1 px-3 py-2 bg-[#0e639c] hover:bg-[#1177bb] text-white rounded font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
           on:click={openFiles}
+          aria-label="Open Files"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -568,7 +624,6 @@
         </button>
       </div>
       
-      <!-- Tab Bar removed from here -->
 
       <div
         class="px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-secondary)]"
@@ -620,6 +675,7 @@
           on:click={removeSelected}
           title="Remove Selected"
           disabled={selectedFiles.size === 0}
+          aria-label="Remove Selected"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -637,6 +693,7 @@
           on:click={removeAll}
           title="Remove All"
           disabled={files.length === 0}
+          aria-label="Remove All"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -662,6 +719,7 @@
         <button
           class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] mb-1"
           on:click={toggleSidebar}
+          aria-label="Toggle Sidebar"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -685,17 +743,22 @@
             <div 
                class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent hover:bg-[var(--bg-hover)] {tab.id === $tabs.activeTabId ? 'bg-[var(--bg-primary)] border-[var(--border-color)] z-10 -mb-[1px] border-b-0' : 'bg-[#1e1e1e] text-[var(--text-muted)] border-b border-[var(--border-color)] mt-1'}"
                draggable="true"
+               role="button"
+               tabindex="0"
                on:click={() => handleTabClick(tab.id)}
+               on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleTabClick(tab.id)}
                on:contextmenu={(e) => handleTabContextMenu(e, tab.id)}
                on:dragstart={(e) => handleTabDragStart(e, tab.id)}
                on:dragover={(e) => handleTabDragOver(e, tab.id)}
                on:drop={(e) => handleTabDrop(e, tab.id)}
                class:brightness-110={dragOverTabId === tab.id}
+               aria-label={`Tab: ${tab.name}`}
             >
                 <div class="truncate text-xs font-medium pr-4">{tab.name}</div>
                 <button 
                   class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[var(--bg-hover-strong)] opacity-0 group-hover:opacity-100 {tab.id === $tabs.activeTabId ? 'opacity-100' : ''}"
                   on:click={(e) => handleCloseTab(e, tab.id)}
+                  aria-label={`Close ${tab.name}`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -707,6 +770,7 @@
              class="p-1 mb-1 ml-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)]"
              on:click={handleAddTab}
              title="New Tab"
+             aria-label="New Tab"
           >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
@@ -882,13 +946,13 @@
   >
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
-      on:click={renameTab}
+      on:click={openRenameModal}
     >
       Rename Tab
     </button>
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
-      on:click={handleMergeTab}
+      on:click={openMergeModal}
     >
       Merge with...
     </button>

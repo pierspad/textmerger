@@ -57,18 +57,33 @@ function createTabsStore() {
         setActiveTab: (id: string) => update(s => ({ ...s, activeTabId: id })),
 
         // Updates files for the ACTIVE tab (common use case) or specific tab
-        addFilesToTab: (id: string, newFiles: FileNode[]) => update(s => ({
-            ...s,
-            tabs: s.tabs.map(t => {
-                if (t.id === id) {
-                    // Filter duplicates based on path
-                    const existingPaths = new Set(t.files.map(f => f.path));
-                    const uniqueNew = newFiles.filter(f => !existingPaths.has(f.path));
-                    return { ...t, files: [...t.files, ...uniqueNew] };
-                }
-                return t;
-            })
-        })),
+        addFilesToTab: (id: string, newFiles: FileNode[]) => update(s => {
+            return {
+                ...s,
+                tabs: s.tabs.map(t => {
+                    if (t.id === id) {
+                        let newName = t.name;
+                        // Auto-rename if this is the first batch of files and name looks like default "Tab X"
+                        // Or just if we have no files yet? User said "first file/folder loaded".
+                        if (t.files.length === 0 && newFiles.length > 0 && t.name.startsWith("Tab ")) {
+                            // Try to find a common folder or just use the first file/folder name
+                            // Simplest: First file name (without extension?) or parent folder?
+                            // Let's use the first item's name.
+                            if (newFiles[0]) {
+                                // If path has separators, pick the name, but FileNode already has name.
+                                newName = newFiles[0].name;
+                            }
+                        }
+
+                        // Filter duplicates based on path
+                        const existingPaths = new Set(t.files.map(f => f.path));
+                        const uniqueNew = newFiles.filter(f => !existingPaths.has(f.path));
+                        return { ...t, name: newName, files: [...t.files, ...uniqueNew] };
+                    }
+                    return t;
+                })
+            };
+        }),
 
         removeFileFromTab: (id: string, path: string) => update(s => ({
             ...s,
