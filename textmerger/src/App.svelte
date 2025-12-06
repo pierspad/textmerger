@@ -42,6 +42,45 @@
   let showRenameModal = false;
   let showMergeModal = false;
   let newTabName = "";
+  
+  // Tab Scrolling
+  let tabContainer: HTMLElement;
+  let showScrollButtons = false;
+
+  function scrollTabs(direction: 'left' | 'right') {
+    if (!tabContainer) return;
+    const scrollAmount = 200;
+    tabContainer.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  }
+
+  function checkScroll() {
+    if (!tabContainer) return;
+    showScrollButtons = tabContainer.scrollWidth > tabContainer.clientWidth;
+  }
+  
+  // Update scroll buttons on resize and tab changes
+  $: if ($tabs.tabs) {
+      tick().then(checkScroll);
+  }
+
+  // Scroll active tab into view
+  $: if ($tabs.activeTabId && tabContainer) {
+      tick().then(() => {
+          const activeTabEl = tabContainer.querySelector(`[data-id="${$tabs.activeTabId}"]`) as HTMLElement;
+          if (activeTabEl) {
+              activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+      });
+  }
+  
+  onMount(() => {
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  });
+
   let selectedMergeSourceId = "";
   
   // Drag and drop for tabs
@@ -743,13 +782,35 @@
         </button>
         
         <!-- Tab Bar in Header -->
-         <div class="flex overflow-x-auto scrollbar-hide h-full items-end gap-1 select-none flex-1">
+         <div class="flex items-center flex-1 min-w-0 h-full gap-1 pt-2 relative">
+            {#if showScrollButtons}
+              <button 
+                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] z-10"
+                on:click={() => scrollTabs('left')}
+                aria-label="Scroll tabs left"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+                  </svg>
+              </button>
+            {/if}
+            
+            <div 
+              class="flex overflow-x-auto scrollbar-hide h-full items-end gap-1 select-none flex-1 px-1"
+              bind:this={tabContainer}
+              on:scroll={checkScroll}
+            >
+
           {#each $tabs.tabs as tab (tab.id)}
             <div 
-               class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent hover:bg-[var(--bg-hover)] {tab.id === $tabs.activeTabId ? 'bg-[var(--bg-primary)] border-[var(--border-color)] z-10 -mb-[1px] border-b-0' : 'bg-[#1e1e1e] text-[var(--text-muted)] border-b border-[var(--border-color)] mt-1'}"
+               class="group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent transition-all duration-200 select-none
+               {tab.id === $tabs.activeTabId 
+                  ? 'bg-[var(--tab-bg-active)] text-[var(--text-primary)] z-10 border-[var(--border-color)] border-b-0 shadow-sm' 
+                  : 'bg-[var(--tab-bg-inactive)] text-[var(--text-muted)] hover:bg-[var(--tab-bg-hover)] border-b border-[var(--border-color)] opacity-80 hover:opacity-100'}"
                draggable="true"
                role="button"
                tabindex="0"
+               data-id={tab.id}
                on:click={() => handleTabClick(tab.id)}
                on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleTabClick(tab.id)}
                on:contextmenu={(e) => handleTabContextMenu(e, tab.id)}
@@ -759,9 +820,12 @@
                class:brightness-110={dragOverTabId === tab.id}
                aria-label={`Tab: ${tab.name}`}
             >
-                <div class="truncate text-xs font-medium pr-4">{tab.name}</div>
+                <!-- Separator (visual trick for inactive tabs, strictly optional, relying on spacing for now) -->
+                
+                <div class="truncate text-xs font-medium pr-5 flex-1">{tab.name}</div>
                 <button 
-                  class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[var(--bg-hover-strong)] opacity-0 group-hover:opacity-100 {tab.id === $tabs.activeTabId ? 'opacity-100' : ''}"
+                  class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[var(--bg-hover-strong)] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity
+                  {tab.id === $tabs.activeTabId ? 'opacity-100 text-[var(--text-muted)]' : 'text-[var(--text-muted)]'}"
                   on:click={(e) => handleCloseTab(e, tab.id)}
                   aria-label={`Close ${tab.name}`}
                 >
@@ -771,17 +835,34 @@
                 </button>
             </div>
           {/each}
-          <button 
-             class="p-1 mb-1 ml-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)]"
-             on:click={handleAddTab}
-             title="New Tab"
-             aria-label="New Tab"
-          >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-              </svg>
-          </button>
-      </div>
+          </div>
+          
+            {#if showScrollButtons}
+              <button 
+                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] z-10"
+                on:click={() => scrollTabs('right')}
+                aria-label="Scroll tabs right"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                  </svg>
+              </button>
+            {/if}
+
+          <div class="h-full flex items-center border-b border-[var(--border-color)] px-1 relative z-20">
+            <button 
+               class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--text-muted)]"
+               on:click={handleAddTab}
+               title="New Tab"
+               aria-label="New Tab"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+            </button>
+          </div>
+         </div>
+
       </div>
     </header>
 
