@@ -24,7 +24,7 @@ depends=(
 source=(
   "textmerger-2.1.1-1-x86_64.pkg.tar.zst::https://github.com/pierspad/textmerger/releases/download/v$pkgver/textmerger-$pkgver-1-x86_64.pkg.tar.zst"
 )
-sha256sums=('c443cdd661811dd8d2d0222f58426ce7b61712abc668cf703ff079fa36cf84cc')
+sha256sums=('ef174ede71281fb0beaf6901d086a640de2a4646f8a17c4392ea003c45bdbaa9')
 
 package() {
   cd "$srcdir"

@@ -29,9 +29,12 @@ TextMerger is a cross-platform desktop application built with Rust/Tauri that le
 
 ## Features
 
+- **Tabbed Interface**: Work on multiple projects at once. Create, rename, merge, and reorder tabs.
 - **Drag & Drop** support for files and folders
+- **Smart Filtering**: Configure global exclusion patterns (e.g., `node_modules`, `.git`)
 - **One-click Copy** of merged text
 - **Save** merged content to a new file
+- **Toggle Preview**: Show or hide file contents in the merged output
 - **Customizable Shortcuts**
 - **Multi-language support** (English, Italian, German, French, Spanish)
 - **Light/Dark theme**
@@ -147,7 +150,7 @@ chmod +x textmerger_x.x.x_amd64.AppImage
 
 ### Prerequisites
 
-- **Rust** (1.70 or later) - [Install Rust](https://rustup.rs/)
+- **Rust** (1.77 or later) - [Install Rust](https://rustup.rs/)
 - **Node.js** (v18 or later) and **npm** - [Install Node.js](https://nodejs.org/)
 - **System dependencies** (Linux only):
 
