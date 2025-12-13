@@ -222,19 +222,20 @@
     // Check all files in active tab
     const filesToRemove = new Set<string>();
 
+    const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+
     for (const selectedPath of selectedFiles) {
-      // Check if selectedPath is exactly one of the files
       if (files.some(f => f.path === selectedPath)) {
         filesToRemove.add(selectedPath);
       } else {
          // Check if it's a directory (prefix)
-         const prefix =
-          selectedPath.endsWith("/") || selectedPath.endsWith("\\")
-            ? selectedPath
-            : selectedPath + "/";
-            
+         // We normalize both paths to check for adherence
+         const normSelected = normalize(selectedPath);
+         
          files.forEach(f => {
-             if (f.path.startsWith(prefix) || f.path.startsWith(selectedPath + "\\")) {
+             const normPath = normalize(f.path);
+             // Check if it matches exactly or is a child
+             if (normPath === normSelected || normPath.startsWith(normSelected + '/')) {
                  filesToRemove.add(f.path);
              }
          });

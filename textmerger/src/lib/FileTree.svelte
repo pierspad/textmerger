@@ -67,7 +67,7 @@
         parts.forEach((part, i) => {
             if (!part && i === 0) {
                 // Root slash handling
-                currentPath = ""; 
+                currentPath = "/"; 
                 return;
             }
             if (!part) return;
@@ -150,6 +150,17 @@
         // references in tree are strictly object refs.
         compactNode(tree[key]);
     });
+    
+    // Sort rootNodes to match getSortedChildren logic (Folders first, then Files)
+    rootNodes.sort((aPath, bPath) => {
+         const a = tree[aPath];
+         const b = tree[bPath];
+         // Safe check if nodes exist (should exist)
+         if (!a || !b) return 0;
+         
+         if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+         return a.isFile ? 1 : -1;
+    });
   }
 
   function handleDblClick(event: CustomEvent) {
@@ -158,6 +169,91 @@
 
   function handleContextMenu(event: CustomEvent) {
       dispatch("contextmenu", event.detail);
+  }
+
+  // --- Selection Logic ---
+  let lastSelectedPath: string | null = null;
+
+  // Flatten the visible tree into a list of paths
+  function getVisiblePaths(): string[] {
+      const paths: string[] = [];
+      
+      // We traverse using Node objects directly because 'tree' only contains roots
+      const traverse = (nodes: any[]) => {
+          // Sort nodes to match visual display
+          const sortedNodes = [...nodes].sort((a, b) => {
+             if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+             return a.isFile ? 1 : -1;
+          });
+
+          for (const node of sortedNodes) {
+              paths.push(node.path);
+              
+              // If folder and open, recurse
+              if (!node.isFile && node.isOpen && node.children) {
+                   traverse(Object.values(node.children));
+              }
+          }
+      };
+
+      const roots = rootNodes.map(key => tree[key]).filter(n => !!n);
+      traverse(roots);
+      return paths;
+  }
+
+  function handleSelect(event: CustomEvent) {
+      const { path, event: originalEvent } = event.detail;
+      const e = originalEvent as MouseEvent;
+      
+      // Prevent text selection
+      if (e.shiftKey) {
+        window.getSelection()?.removeAllRanges();
+      }
+
+      if (e.shiftKey && lastSelectedPath) {
+          // Range selection
+          const visiblePaths = getVisiblePaths();
+          const startIdx = visiblePaths.indexOf(lastSelectedPath);
+          const endIdx = visiblePaths.indexOf(path);
+          
+          if (startIdx !== -1 && endIdx !== -1) {
+              const start = Math.min(startIdx, endIdx);
+              const end = Math.max(startIdx, endIdx);
+              
+              const range = visiblePaths.slice(start, end + 1);
+              
+              // If ctrl is NOT pressed, clear previous unless we are adding to a set?
+              // Standard behavior: Shift+Click extends selection from anchor.
+              // Usually it clears everything else unless Ctrl is also held?
+              // Let's implement robust: Shift+Click selects range. 
+              // If Ctrl is NOT held, we should technically clear outside range, but keeping it additive is often friendlier or we just add the range.
+              // User asked for "cliccare selezionarne di più" (ctrl) and "shift + click per porzione continua".
+              
+              if (!e.ctrlKey && !e.metaKey) {
+                   selectedFiles.clear();
+              }
+              
+              range.forEach(p => selectedFiles.add(p));
+          }
+      } else if (e.ctrlKey || e.metaKey) {
+          // Toggle selection
+          if (selectedFiles.has(path)) {
+              selectedFiles.delete(path);
+              // Update last selected to null? No, keep it or move it? 
+              // Usually anchor doesn't change on deselect, but on select it does.
+              lastSelectedPath = path; 
+          } else {
+              selectedFiles.add(path);
+              lastSelectedPath = path;
+          }
+      } else {
+          // Single select
+          selectedFiles.clear();
+          selectedFiles.add(path);
+          lastSelectedPath = path;
+      }
+      
+      selectedFiles = selectedFiles; // Trigger reactivity
   }
 </script>
 
@@ -169,6 +265,7 @@
        bind:selectedFiles 
        on:contextmenu={handleContextMenu}
        on:dblclick={handleDblClick}
+       on:select={handleSelect}
        maxCharCount={maxCharCount}
     />
   {/each}

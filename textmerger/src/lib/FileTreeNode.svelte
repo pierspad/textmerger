@@ -121,6 +121,7 @@
           bind:selectedFiles 
           depth={depth + 1} 
           on:toggle 
+          on:select 
           on:contextmenu 
           on:dblclick 
           maxCharCount={maxCharCount}
