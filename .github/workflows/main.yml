@@ -102,6 +102,24 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --noconfirm base-devel git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3 pacman-contrib
 
+      - name: Get Version
+        run: |
+          VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Detected version: $VERSION"
+
+      - name: Prepare Source Tarball
+        run: |
+          # Create the source directory structure expected by PKGBUILD (matches extraction of release tarball)
+          mkdir -p "textmerger-${VERSION}"
+          cp -r textmerger "textmerger-${VERSION}/"
+          
+          # Create the tarball
+          tar -czf "build-publish-scripts/textmerger-${VERSION}.tar.gz" "textmerger-${VERSION}"
+          
+          # Patch PKGBUILD to use local source file instead of URL
+          sed -i "s|^source=.*|source=(\"\${pkgname}-\${pkgver}.tar.gz\")|" build-publish-scripts/PKGBUILD
+
       - name: Build Package
         run: |
           # Create builder user (makepkg cannot run as root)
@@ -112,7 +130,8 @@ jobs:
           # Build
           cd build-publish-scripts
           
-          # Update checksums because the tarball content changes with the tag
+          # Update checksums for the local tarball
+          # We need to run this as builder, and the file is already there
           su builder -c "updpkgsums"
           
           # Build the package
