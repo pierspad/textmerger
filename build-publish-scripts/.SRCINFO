@@ -1,6 +1,6 @@
 pkgbase = textmerger
 	pkgdesc = A Rust/Tauri GTK3 application for merging text files
-	pkgver = 2.2.0
+	pkgver = 2.2.1
 	pkgrel = 1
 	url = https://github.com/pierspad/textmerger
 	arch = x86_64
@@ -19,7 +19,7 @@ pkgbase = textmerger
 	conflicts = textmerger
 	options = !strip
 	options = !debug
-	source = textmerger-2.2.0.tar.gz::https://github.com/pierspad/textmerger/archive/refs/tags/v2.2.0.tar.gz
-	sha256sums = fa450ab72d18b2920b5ba896cab77e897bf4df9a6470a8e0f8e750fc8d225ebb
+	source = textmerger-2.2.1.tar.gz::https://github.com/pierspad/textmerger/archive/refs/tags/v2.2.1.tar.gz
+	sha256sums = 1c44766e60885af918bca4e355da83afc2daeda6cc53bbd6002acfe2c5ff4ef4
 
 pkgname = textmerger
