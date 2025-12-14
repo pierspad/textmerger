@@ -1,10 +1,20 @@
-# Source the official PKGBUILD to inherit version, description, depends, etc.
+# Source the official PKGBUILD
 source ./PKGBUILD
 
 # Override source to use the locally built .deb
 # This file is copied here by build-aur.sh
 source=("textmerger_${pkgver}_amd64.deb")
 sha256sums=('SKIP')
+
+# Override prepare to do nothing (we don't need to npm install sources)
+prepare() {
+  :
+}
+
+# Override build to do nothing (we don't need to compile, we have the deb)
+build() {
+  :
+}
 
 # Override package function to extract the local .deb
 package() {
@@ -13,7 +23,6 @@ package() {
   ar x "textmerger_${pkgver}_amd64.deb"
 
   # Extract data.tar containing the filesystem
-  # Support multiple compression formats just in case
   if [ -f data.tar.zst ]; then
     tar -xf data.tar.zst -C "$pkgdir"
   elif [ -f data.tar.gz ]; then
