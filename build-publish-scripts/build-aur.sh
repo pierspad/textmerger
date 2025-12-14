@@ -4,77 +4,64 @@ export LC_ALL=C
 
 cd "$(dirname "$0")"
 
-TAURI_CONF="../textmerger/src-tauri/tauri.conf.json"
-
-get_version_from_pkgbuild() {
-    if [ -f "PKGBUILD" ]; then
-        grep -Po '^pkgver=\K.*' PKGBUILD
-    else
-        echo ""
-    fi
-}
-
-echo "Building textmerger (Rust/Tauri) for Arch Linux..."
-
-VERSION=$(get_version_from_pkgbuild)
-if [ -z "$VERSION" ]; then
-    echo "Error: Could not extract version from PKGBUILD"
+# 1. Get version from PKGBUILD
+if [ ! -f "PKGBUILD" ]; then
+    echo "Error: PKGBUILD not found"
     exit 1
 fi
-echo "Detected version from PKGBUILD: $VERSION"
+VERSION=$(grep -Po '^pkgver=\K.*' PKGBUILD)
+echo "Building TextMerger v$VERSION locally..."
 
-if [ -f "$TAURI_CONF" ]; then
-    echo "Updating tauri.conf.json version to $VERSION..."
-    sed -i 's/"version": *"[^"]*"/"version": "'"$VERSION"'"/' "$TAURI_CONF"
-else
-    echo "Warning: tauri.conf.json not found at $TAURI_CONF"
+# 2. Build the .deb using Tauri
+PROJECT_ROOT="../textmerger"
+echo "Building Tauri project..."
+cd "$PROJECT_ROOT"
+# Ensure dependencies are installed
+if [ ! -d "node_modules" ]; then
+    npm install
+fi
+# Build .deb package
+npm run tauri build -- --bundles deb
+
+# 3. Copy the .deb to the build script directory
+cd - > /dev/null
+DEB_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/deb/textmerger_${VERSION}_amd64.deb"
+
+if [ ! -f "$DEB_PATH" ]; then
+    echo "Error: .deb package not found at $DEB_PATH"
+    exit 1
 fi
 
-echo "Cleaning old build files..."
-rm -f *.pkg.tar.zst *.src.tar.gz
-rm -rf src/ pkg/
+echo "Copying .deb package..."
+cp "$DEB_PATH" "textmerger_${VERSION}_amd64.deb"
 
-echo "Creating source tarball..."
-cd ..
-tar --exclude='.git' \
-    --exclude='dist' \
-    --exclude='build' \
-    --exclude='pkg' \
-    --exclude='textmerger/node_modules' \
-    --exclude='textmerger/src-tauri/target' \
-    --exclude='build-publish-scripts/src' \
-    --exclude='build-publish-scripts/pkg' \
-    --exclude='*.pkg.tar.*' \
-    --exclude='.idea' \
-    --exclude='.vscode' \
-    --exclude='.DS_Store' \
-    -czf "build-publish-scripts/textmerger-$VERSION.tar.gz" \
-    --transform="s,^,textmerger-$VERSION/," \
-    .
+# 4. Build the Arch package using PKGBUILD.local
+echo "Packaging for Arch with PKGBUILD.local..."
+rm -f *.pkg.tar.zst
+makepkg -p PKGBUILD.local -sfc --noconfirm
 
-cd build-publish-scripts
-
-echo "Updating checksums..."
-updpkgsums
-
-echo "Building Arch package..."
-makepkg -sfc
-
-echo ""
+# 5. Output result
 PKG_FILE=$(ls textmerger-*.pkg.tar.zst 2>/dev/null | head -n 1)
-
 if [ ! -f "$PKG_FILE" ]; then
-    echo "Error: Package file not found. Build failed?"
+    echo "Error: Arch package creation failed."
     exit 1
 fi
 
-echo "Build completed successfully!"
-echo "Package created: $PKG_FILE"
+echo "------------------------------------------------"
+echo "Build success!"
+echo "Arch Package: $PWD/$PKG_FILE"
+echo "------------------------------------------------"
 
-if pacman -Qi textmerger &> /dev/null; then
-    echo "Removing existing textmerger package..."
-    sudo pacman -Rns textmerger --noconfirm
+# 6. Install (optional, but requested implicitly for testing)
+read -p "Do you want to install this package now? [y/N] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if pacman -Qi textmerger &> /dev/null; then
+        echo "Removing previous version..."
+        sudo pacman -Rns textmerger --noconfirm
+    fi
+    echo "Installing..."
+    sudo pacman -U "$PKG_FILE" --noconfirm
+else
+    echo "Skipping installation."
 fi
-
-echo "Installing new package..."
-sudo pacman -U "$PKG_FILE" --noconfirm

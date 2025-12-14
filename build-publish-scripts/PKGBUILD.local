@@ -1,0 +1,27 @@
+# Source the official PKGBUILD to inherit version, description, depends, etc.
+source ./PKGBUILD
+
+# Override source to use the locally built .deb
+# This file is copied here by build-aur.sh
+source=("textmerger_${pkgver}_amd64.deb")
+sha256sums=('SKIP')
+
+# Override package function to extract the local .deb
+package() {
+  # Extract the deb package
+  cd "$srcdir"
+  ar x "textmerger_${pkgver}_amd64.deb"
+
+  # Extract data.tar containing the filesystem
+  # Support multiple compression formats just in case
+  if [ -f data.tar.zst ]; then
+    tar -xf data.tar.zst -C "$pkgdir"
+  elif [ -f data.tar.gz ]; then
+    tar -xf data.tar.gz -C "$pkgdir"
+  elif [ -f data.tar.xz ]; then
+    tar -xf data.tar.xz -C "$pkgdir"
+  else
+    echo "Error: Could not find data.tar.* in .deb archive"
+    return 1
+  fi
+}

@@ -93,48 +93,49 @@ jobs:
   build-arch:
     name: Build Arch Package
     runs-on: ubuntu-latest
-    container: archlinux:latest
+    container: archlinux:base-devel
     steps:
       - uses: actions/checkout@v4
       
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3 pacman-contrib
+          # Installa tutto ciò che serve per compilare Rust e GTK
+          pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3
 
       - name: Get Version
         run: |
           VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Detected version: $VERSION"
 
       - name: Prepare Source Tarball
         run: |
-          # Create the source directory structure expected by PKGBUILD (matches extraction of release tarball)
+          # Crea la cartella con il nome esatto che il PKGBUILD si aspetta
           mkdir -p "textmerger-${VERSION}"
+          # Copia tutto il contenuto dentro
           cp -r textmerger "textmerger-${VERSION}/"
           
-          # Create the tarball
+          # Crea l'archivio sorgente
           tar -czf "build-publish-scripts/textmerger-${VERSION}.tar.gz" "textmerger-${VERSION}"
           
-          # Patch PKGBUILD to use local source file instead of URL
-          sed -i "s|^source=.*|source=(\"\${pkgname}-\${pkgver}.tar.gz\")|" build-publish-scripts/PKGBUILD
+          # Modifica il PKGBUILD per aggiornare la versione dinamicamente
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" build-publish-scripts/PKGBUILD
 
       - name: Build Package
         run: |
-          # Create builder user (makepkg cannot run as root)
+          # Crea utente builder
           useradd -m builder
-          # Fix permissions
           chown -R builder:builder .
           
-          # Build
+          # Permetti a builder di usare pacman/sudo senza password (a volte serve a makepkg per installare dipendenze al volo)
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          
           cd build-publish-scripts
           
-          # Update checksums for the local tarball
-          # We need to run this as builder, and the file is already there
-          su builder -c "updpkgsums"
-          
-          # Build the package
+          # Esegue makepkg
+          # -s: installa dipendenze mancanti
+          # -f: forza sovrascrittura
+          # -c: pulisce dopo la build
           su builder -c "makepkg -sfc --noconfirm"
           
       - name: Upload Artifacts (Arch)
