@@ -1,5 +1,4 @@
-##### Version 2.2.0
+##### Version 2.2.1
 
-Added:
-- Selection of files to remove
-- Improved build scripts
+Fixed:
+- AppImage build

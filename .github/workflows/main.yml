@@ -63,7 +63,7 @@ jobs:
       if: matrix.platform == 'linux'
       working-directory: textmerger
       run: |
-        npm run tauri build -- --bundles deb,appimage,rpm
+        NO_STRIP=true npm run tauri build -- --bundles deb,appimage,rpm
     
     - name: Build Tauri app (Windows)
       if: matrix.platform == 'windows'
