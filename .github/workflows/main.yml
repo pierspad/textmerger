@@ -106,8 +106,6 @@ jobs:
         run: |
           # Create builder user (makepkg cannot run as root)
           useradd -m builder
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          
           # Fix permissions
           chown -R builder:builder .
           
