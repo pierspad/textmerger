@@ -112,20 +112,20 @@ TextMerger is available on the AUR. Install it using your favorite AUR helper:
 
 ```bash
 # Using yay
-yay -S textmerger
+yay -S textmerger-bin
 
 # Using paru
-paru -S textmerger
+paru -S textmerger-bin
 
 # Using pamac (Manjaro)
-pamac build textmerger
+pamac build textmerger-bin
 ```
 
 Or manually:
 
 ```bash
-git clone https://aur.archlinux.org/textmerger.git
-cd textmerger
+git clone https://aur.archlinux.org/textmerger-bin.git
+cd textmerger-bin
 makepkg -si
 ```
 
