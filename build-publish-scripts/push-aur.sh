@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-AUR_REPO_DIR="${AUR_REPO_DIR:-./textmerger}"
 PROJECT_NAME="${PROJECT_NAME:-$(grep -Po '^pkgname=\K.*' PKGBUILD)}"
+AUR_REPO_DIR="${AUR_REPO_DIR:-./$PROJECT_NAME}"
 ICON_DIR="${ICON_DIR:-${PROJECT_NAME}/assets/logo}"
 
 RED='\033[0;31m'
@@ -12,44 +12,30 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+if [[ -z "$PROJECT_NAME" ]]; then
+    echo -e "${RED}❌ Errore: Impossibile estrarre pkgname dal PKGBUILD${NC}"
+    exit 1
+fi
+
+if [[ ! -d "$AUR_REPO_DIR" ]]; then
+    echo -e "${YELLOW}⚠️  Directory $AUR_REPO_DIR non trovata. Clonazione repository AUR...${NC}"
+    if ! git clone "ssh://aur@aur.archlinux.org/${PROJECT_NAME}.git" "$AUR_REPO_DIR"; then
+        echo -e "${RED}❌ Errore nella clonazione SSH. Assicurati di avere una chiave SSH configurata per AUR.${NC}"
+        exit 1
+    fi
+fi
+
 echo -e "${BLUE}🔄 Aggiornamento repository AUR per ${PROJECT_NAME}${NC}"
 
 rm -rf pkg/ src/ ./*.pkg.*
 
-echo -e "${YELLOW}🔍 Verifica del checksum SHA256...${NC}"
+echo -e "${YELLOW}🔍 Verifica e aggiornamento checksum SHA256 con updpkgsums...${NC}"
 
-PKGVER=$(grep -Po '^pkgver=\K.*' PKGBUILD)
-if [[ -z "$PKGVER" ]]; then
-    echo -e "${RED}❌ Errore: Impossibile estrarre pkgver dal PKGBUILD${NC}"
+if ! updpkgsums; then
+    echo -e "${RED}❌ Errore durante l'aggiornamento dei checksum${NC}"
     exit 1
 fi
-
-TARBALL_URL="https://github.com/pierspad/textmerger/archive/refs/tags/v${PKGVER}.tar.gz"
-TEMP_DIR=$(mktemp -d)
-TARBALL_FILE="$TEMP_DIR/${PROJECT_NAME}-${PKGVER}.tar.gz"
-
-echo -e "${YELLOW}⬇️  Scaricamento tarball da GitHub...${NC}"
-if ! wget -q -O "$TARBALL_FILE" "$TARBALL_URL"; then
-    echo -e "${RED}❌ Errore nel download del tarball da $TARBALL_URL${NC}"
-    rm -rf "$TEMP_DIR"
-    exit 1
-fi
-
-CORRECT_SHA256=$(sha256sum "$TARBALL_FILE" | cut -d' ' -f1)
-CURRENT_SHA256=$(grep -Po "^sha256sums=\\('\K[^']*" PKGBUILD)
-
-echo -e "${BLUE}📋 Checksum corrente: $CURRENT_SHA256${NC}"
-echo -e "${BLUE}📋 Checksum corretto:  $CORRECT_SHA256${NC}"
-
-if [[ "$CURRENT_SHA256" != "$CORRECT_SHA256" ]]; then
-    echo -e "${YELLOW}🔧 Aggiornamento checksum SHA256...${NC}"
-    sed -i "s/^sha256sums=.*$/sha256sums=('$CORRECT_SHA256')/" PKGBUILD
-    echo -e "${GREEN}✅ Checksum aggiornato${NC}"
-else
-    echo -e "${GREEN}✅ Checksum già corretto${NC}"
-fi
-
-rm -rf "$TEMP_DIR"
+echo -e "${GREEN}✅ Checksum aggiornati${NC}"
 
 echo -e "${YELLOW}📄 Generazione .SRCINFO...${NC}"
 makepkg --printsrcinfo > .SRCINFO
