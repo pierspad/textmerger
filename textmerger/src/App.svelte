@@ -435,6 +435,14 @@
       event.preventDefault();
       updateContent();
       showSnackbar($t("messages.refreshed"));
+    } else if (combo === $shortcuts.newTab) {
+      event.preventDefault();
+      handleAddTab();
+    } else if (combo === $shortcuts.closeTab) {
+      event.preventDefault();
+      if ($tabs.activeTabId) {
+          tabs.closeTab($tabs.activeTabId);
+      }
     }
   }
 
@@ -837,6 +845,20 @@
             </div>
           {/each}
           </div>
+
+            <!-- New Tab Button -->
+            <div class="h-full flex items-center border-b border-[var(--border-color)] px-1 relative z-20 shrink-0">
+                <button 
+                   class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--text-muted)]"
+                   on:click={handleAddTab}
+                   title="New Tab"
+                   aria-label="New Tab"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
           
             {#if showScrollButtons}
               <button 
@@ -850,18 +872,7 @@
               </button>
             {/if}
 
-          <div class="h-full flex items-center border-b border-[var(--border-color)] px-1 relative z-20">
-            <button 
-               class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--text-muted)]"
-               on:click={handleAddTab}
-               title="New Tab"
-               aria-label="New Tab"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-            </button>
-          </div>
+
          </div>
 
       </div>
