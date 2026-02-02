@@ -92,6 +92,7 @@ jobs:
 
   build-arch:
     name: Build Arch Package
+    needs: build
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
@@ -100,42 +101,72 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm
-          # Installa tutto ciò che serve per compilare Rust e GTK
+          # Install dependencies for building and PKGBUILD usage
           pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3
+      
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages-linux
+          path: linux-packages
 
       - name: Get Version
         run: |
           VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Prepare Source Tarball
+      - name: Prepare Source and PKGBUILD
         run: |
-          # Crea la cartella con il nome esatto che il PKGBUILD si aspetta
-          mkdir -p "textmerger-${VERSION}"
-          # Copia tutto il contenuto dentro
-          cp -r textmerger "textmerger-${VERSION}/"
+          # Find the .deb file in the downloaded artifacts
+          DEB_FILE=$(find linux-packages -name "*.deb" | head -n 1)
+          if [ -z "$DEB_FILE" ]; then
+            echo "Error: No .deb file found in artifacts"
+            exit 1
+          fi
+          echo "Found deb file: $DEB_FILE"
           
-          # Crea l'archivio sorgente
-          tar -czf "build-publish-scripts/textmerger-${VERSION}.tar.gz" "textmerger-${VERSION}"
+          # Calculate SHA256
+          SHA256=$(sha256sum "$DEB_FILE" | awk '{print $1}')
+          echo "SHA256: $SHA256"
           
-          # Modifica il PKGBUILD per aggiornare la versione dinamicamente
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" build-publish-scripts/PKGBUILD
+          # Copy .deb to the build directory with the expected name
+          # The PKGBUILD expects textmerger-${pkgver}.deb as the source filename (before ::)
+          # We'll stick to a simple name for our local copy to make the file:// URI clean
+          cp "$DEB_FILE" "build-publish-scripts/textmerger-${VERSION}.deb"
+          
+          cd build-publish-scripts
+          
+          # Update pkgver in PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          
+          # Update source to use local file
+          # We use regex to match the first source line that contains the deb URL
+          LOCAL_URI="file://$(pwd)/textmerger-${VERSION}.deb"
+          echo "Setting source to: $LOCAL_URI"
+          sed -i "s|textmerger-\${pkgver}.deb::https://[^ \"]*|textmerger-\${pkgver}.deb::${LOCAL_URI}|" PKGBUILD
+          
+          # Update checksum
+          # We replace the first occurrence of a 64-character hash which typically corresponds to the first source
+          sed -i "0,/[a-f0-9]\{64\}/s//${SHA256}/" PKGBUILD
+          
+          echo "Updated PKGBUILD:"
+          cat PKGBUILD
 
       - name: Build Package
         run: |
-          # Crea utente builder
+          # Create builder user
           useradd -m builder
           chown -R builder:builder .
           
-          # Permetti a builder di usare pacman/sudo senza password (a volte serve a makepkg per installare dipendenze al volo)
+          # Allow builder to use sudo (sometimes needed)
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           
           cd build-publish-scripts
           
-          # Esegue makepkg
-          # -s: installa dipendenze mancanti
-          # -f: forza sovrascrittura
-          # -c: pulisce dopo la build
+          # Run makepkg
+          # -s: install dependencies
+          # -f: force overwrite
+          # -c: clean up
           su builder -c "makepkg -sfc --noconfirm"
           
       - name: Upload Artifacts (Arch)
