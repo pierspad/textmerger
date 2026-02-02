@@ -26,7 +26,7 @@ content_inspector = "0.2.4"
 tauri-plugin-fs = "2.0.0"
 html-escape = "0.2"
 walkdir = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-dialog = "2.6"
 glob = "0.3"
 nom-exif = "2.0.2"
 image = { version = "0.24", default-features = false, features = [

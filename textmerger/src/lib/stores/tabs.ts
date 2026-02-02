@@ -35,9 +35,19 @@ function createTabsStore() {
         addTab: () => update(s => {
             const id = generateId();
             const num = s.tabs.length + 1;
+            const activeIndex = s.tabs.findIndex(t => t.id === s.activeTabId);
+            const newTab = { id, name: `Tab ${num}`, files: [] };
+
+            const newTabs = [...s.tabs];
+            if (activeIndex !== -1) {
+                newTabs.splice(activeIndex + 1, 0, newTab);
+            } else {
+                newTabs.push(newTab);
+            }
+
             return {
                 ...s,
-                tabs: [...s.tabs, { id, name: `Tab ${num}`, files: [] }],
+                tabs: newTabs,
                 activeTabId: id
             };
         }),
