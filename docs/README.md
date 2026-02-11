@@ -3,7 +3,7 @@
 ![alt text](image.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GitHub release](https://img.shields.io/github/v/release/pierspad/textmerger)](https://github.com/pierspad/textmerger/releases)
+[![GitHub release](https://img.shields.io/github/v/release/pierspad/textmerger?style=flat&logo=github&color=blue)](https://github.com/pierspad/textmerger/releases/latest)
 
 TextMerger is a cross-platform desktop application built with Rust/Tauri that lets you easily merge content from multiple files into one.
 
