@@ -38,6 +38,8 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 mime_guess = "2.0"
 pdf-extract = "0.7"
+
+[target.'cfg(target_os = "linux")'.dependencies]
 glib = "0.21"
 
 [profile.dev]
