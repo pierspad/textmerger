@@ -10,3 +10,4 @@ build-publish-scripts/src
 build-publish-scripts/pkg
 build-publish-scripts/textmerger-debug-*-x86_64.pkg.tar.zst
 build-publish-scripts/textmerger-*-x86_64.pkg.tar.zst
+build-publish-scripts/textmerger-bin
