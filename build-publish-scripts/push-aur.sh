@@ -5,6 +5,7 @@ set -euo pipefail
 PROJECT_NAME="${PROJECT_NAME:-$(grep -Po '^pkgname=\K.*' PKGBUILD)}"
 AUR_REPO_DIR="${AUR_REPO_DIR:-./$PROJECT_NAME}"
 ICON_DIR="${ICON_DIR:-${PROJECT_NAME}/assets/logo}"
+AUR_REMOTE_URL="ssh://aur@aur.archlinux.org/${PROJECT_NAME}.git"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,9 +18,26 @@ if [[ -z "$PROJECT_NAME" ]]; then
     exit 1
 fi
 
-if [[ ! -d "$AUR_REPO_DIR" ]]; then
-    echo -e "${YELLOW}⚠️  Directory $AUR_REPO_DIR non trovata. Clonazione repository AUR...${NC}"
-    if ! git clone "ssh://aur@aur.archlinux.org/${PROJECT_NAME}.git" "$AUR_REPO_DIR"; then
+if [[ -d "$AUR_REPO_DIR/.git" ]] && git -C "$AUR_REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    CURRENT_REMOTE_URL="$(git -C "$AUR_REPO_DIR" remote get-url origin 2>/dev/null || true)"
+    if [[ "$CURRENT_REMOTE_URL" != "$AUR_REMOTE_URL" ]]; then
+        echo -e "${RED}❌ Errore: $AUR_REPO_DIR punta a un remote diverso da AUR.${NC}"
+        echo -e "${RED}   Remote attuale: ${CURRENT_REMOTE_URL:-<nessuno>}${NC}"
+        echo -e "${RED}   Remote atteso:  $AUR_REMOTE_URL${NC}"
+        exit 1
+    fi
+else
+    if [[ -e "$AUR_REPO_DIR" ]]; then
+        BACKUP_DIR="${AUR_REPO_DIR}.backup.$(date +%s)"
+        echo -e "${YELLOW}⚠️  $AUR_REPO_DIR esiste ma non è un repository git AUR valido.${NC}"
+        echo -e "${YELLOW}📦 Backup in $BACKUP_DIR${NC}"
+        mv "$AUR_REPO_DIR" "$BACKUP_DIR"
+    else
+        echo -e "${YELLOW}⚠️  Directory $AUR_REPO_DIR non trovata.${NC}"
+    fi
+
+    echo -e "${YELLOW}⬇️  Clonazione repository AUR...${NC}"
+    if ! git clone "$AUR_REMOTE_URL" "$AUR_REPO_DIR"; then
         echo -e "${RED}❌ Errore nella clonazione SSH. Assicurati di avere una chiave SSH configurata per AUR.${NC}"
         exit 1
     fi
