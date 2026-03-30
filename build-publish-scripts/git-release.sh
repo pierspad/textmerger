@@ -74,14 +74,7 @@ bash "$UPDATE_SCRIPT"
 echo -e "${YELLOW}Verifico coerenza versioni...${NC}"
 bash "$CHECK_SCRIPT"
 
-for file in \
-    "$PROJECT_ROOT/textmerger/src-tauri/tauri.conf.json" \
-    "$PROJECT_ROOT/textmerger/src-tauri/Cargo.toml" \
-    "$PROJECT_ROOT/textmerger/package.json" \
-    "$PROJECT_ROOT/packaging/textmerger.desktop" \
-    "$RELEASE_NOTES_FILE"; do
-    open_file_blocking "$file" "$(basename "$file")"
-done
+open_file_blocking "$RELEASE_NOTES_FILE" "$(basename "$RELEASE_NOTES_FILE")"
 
 if ! grep -q "$VERSION" "$RELEASE_NOTES_FILE"; then
     echo -e "${YELLOW}Attenzione: la versione ${VERSION} non compare nelle release notes.${NC}"
