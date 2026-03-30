@@ -1,26 +1,51 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -euo pipefail
+export LC_ALL=C
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")/textmerger"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-echo "Structure check:"
-echo "Script dir: $SCRIPT_DIR"
-echo "Project root: $PROJECT_ROOT"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APP_DIR="$PROJECT_ROOT/textmerger"
 
-if [ ! -d "$PROJECT_ROOT" ]; then
-    echo "Error: Could not find project root at $PROJECT_ROOT"
+PKGBUILD="$SCRIPT_DIR/PKGBUILD"
+UPDATE_SCRIPT="$SCRIPT_DIR/update_project_info.sh"
+CHECK_SCRIPT="$SCRIPT_DIR/check_version_consistency.sh"
+
+if [ ! -f "$PKGBUILD" ]; then
+    echo -e "${RED}Error: PKGBUILD non trovato${NC}"
     exit 1
 fi
 
-cd "$PROJECT_ROOT"
+VERSION="$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' "$PKGBUILD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+if [ -z "$VERSION" ]; then
+    echo -e "${RED}Error: impossibile leggere pkgver da PKGBUILD${NC}"
+    exit 1
+fi
 
-echo "Installing frontend dependencies..."
-npm install
+echo -e "${BLUE}textmerger - Build AppImage v${VERSION}${NC}"
+echo "=================================="
 
-echo "Building AppImage..."
+echo -e "${YELLOW}Allineo metadati progetto...${NC}"
+bash "$UPDATE_SCRIPT"
+
+echo -e "${YELLOW}Verifico coerenza versioni...${NC}"
+bash "$CHECK_SCRIPT"
+
+cd "$APP_DIR"
+
+if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}Installazione dipendenze frontend...${NC}"
+    npm install
+fi
+
+echo -e "${YELLOW}Build AppImage...${NC}"
 NO_STRIP=true npm run tauri build -- --bundles appimage
 
-echo "Build complete."
-echo "AppImage should be in: $PROJECT_ROOT/src-tauri/target/release/bundle/appimage/"
+echo -e "${GREEN}Build completato${NC}"
+echo -e "${GREEN}AppImage path: $APP_DIR/src-tauri/target/release/bundle/appimage/${NC}"

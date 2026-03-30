@@ -39,9 +39,14 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+        VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        TAURI_VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+        if [ "$VERSION" != "$TAURI_VERSION" ]; then
+          echo "Version mismatch: PKGBUILD=$VERSION tauri.conf.json=$TAURI_VERSION"
+          exit 1
+        fi
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "Detected version: $VERSION"
+        echo "Detected version from PKGBUILD: $VERSION"
     
     - name: Install system dependencies (Linux)
       if: matrix.platform == 'linux'
@@ -112,7 +117,12 @@ jobs:
 
       - name: Get Version
         run: |
-          VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+          VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          TAURI_VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
+          if [ "$VERSION" != "$TAURI_VERSION" ]; then
+            echo "Version mismatch: PKGBUILD=$VERSION tauri.conf.json=$TAURI_VERSION"
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Prepare Source and PKGBUILD

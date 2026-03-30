@@ -1,10 +1,10 @@
 [package]
 name = "textmerger"
 version = "2.2.4"
-description = "A Tauri App"
+description = "A Rust/Tauri GTK3 application for merging text files"
 authors = ["you"]
-license = ""
-repository = ""
+license = "GPL-3.0-only"
+repository = "https://github.com/pierspad/textmerger"
 edition = "2021"
 rust-version = "1.77.2"
 

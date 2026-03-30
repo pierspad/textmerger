@@ -21,6 +21,7 @@ TextMerger is a cross-platform desktop application built with Rust/Tauri that le
     - [Arch Linux (AUR)](#arch-linux-aur)
     - [AppImage (Universal)](#appimage-universal)
 - [Building from Source](#building-from-source)
+  - [Local Scripts](#local-scripts)
   - [Prerequisites](#prerequisites)
   - [Build Steps](#build-steps)
 - [Contributing](#contributing)
@@ -149,6 +150,30 @@ chmod +x textmerger_x.x.x_amd64.AppImage
 ---
 
 ## Building from Source
+
+### Local Scripts
+
+From the project root, you can use the helper scripts for a more reliable workflow:
+
+```bash
+# Run GUI quickly in dev mode
+sh run_gui.sh
+
+# Sync versions/metadata from build-publish-scripts/PKGBUILD
+sh build-publish-scripts/update_project_info.sh
+
+# Verify version consistency across project files
+sh build-publish-scripts/check_version_consistency.sh
+
+# Build local Arch package from freshly built .deb
+sh build-publish-scripts/build-aur.sh
+
+# Build AppImage bundle
+sh build-publish-scripts/build-appimage.sh
+
+# Guided release flow (opens files one-by-one, incl. release notes)
+sh build-publish-scripts/git-release.sh
+```
 
 ### Prerequisites
 

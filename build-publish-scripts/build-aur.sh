@@ -1,67 +1,93 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
 export LC_ALL=C
 
-cd "$(dirname "$0")"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# 1. Get version from PKGBUILD
-if [ ! -f "PKGBUILD" ]; then
-    echo "Error: PKGBUILD not found"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APP_DIR="$PROJECT_ROOT/textmerger"
+
+PKGBUILD="$SCRIPT_DIR/PKGBUILD"
+UPDATE_SCRIPT="$SCRIPT_DIR/update_project_info.sh"
+CHECK_SCRIPT="$SCRIPT_DIR/check_version_consistency.sh"
+
+if [ ! -f "$PKGBUILD" ]; then
+    echo -e "${RED}Error: PKGBUILD non trovato${NC}"
     exit 1
 fi
-VERSION=$(grep -Po '^pkgver=\K.*' PKGBUILD)
-echo "Building TextMerger v$VERSION locally..."
 
-# 2. Build the .deb using Tauri
-PROJECT_ROOT="../textmerger"
-echo "Building Tauri project..."
-cd "$PROJECT_ROOT"
-# Ensure dependencies are installed
+VERSION="$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' "$PKGBUILD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+PKGNAME="$(awk -F'=' '/^pkgname[[:space:]]*=/{print $2; exit}' "$PKGBUILD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+if [ -z "$VERSION" ] || [ -z "$PKGNAME" ]; then
+    echo -e "${RED}Error: impossibile leggere pkgver/pkgname da PKGBUILD${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}textmerger - Build Arch Package v${VERSION}${NC}"
+echo "=================================="
+
+echo -e "${YELLOW}Allineo metadati progetto...${NC}"
+bash "$UPDATE_SCRIPT"
+
+echo -e "${YELLOW}Verifico coerenza versioni...${NC}"
+bash "$CHECK_SCRIPT"
+
+echo -e "${YELLOW}Build Tauri (.deb)...${NC}"
+cd "$APP_DIR"
+
 if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}Installazione dipendenze frontend...${NC}"
     npm install
 fi
-# Build .deb package
+
 npm run tauri build -- --bundles deb
 
-# 3. Copy the .deb to the build script directory
-cd - > /dev/null
-DEB_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/deb/textmerger_${VERSION}_amd64.deb"
-
+DEB_PATH="$APP_DIR/src-tauri/target/release/bundle/deb/textmerger_${VERSION}_amd64.deb"
 if [ ! -f "$DEB_PATH" ]; then
-    echo "Error: .deb package not found at $DEB_PATH"
+    DEB_PATH="$(find "$APP_DIR/src-tauri/target/release/bundle/deb" -name "*.deb" | head -n 1 || true)"
+fi
+
+if [ -z "$DEB_PATH" ] || [ ! -f "$DEB_PATH" ]; then
+    echo -e "${RED}Error: .deb non trovato dopo la build${NC}"
     exit 1
 fi
 
-echo "Copying .deb package..."
+echo -e "${GREEN}Deb trovato: $(basename "$DEB_PATH")${NC}"
+
+cd "$SCRIPT_DIR"
 cp "$DEB_PATH" "textmerger_${VERSION}_amd64.deb"
 
-# 4. Build the Arch package using PKGBUILD.local
-echo "Packaging for Arch with PKGBUILD.local..."
-rm -f *.pkg.tar.zst
+echo -e "${YELLOW}Packaging Arch con PKGBUILD.local...${NC}"
+rm -f ./*.pkg.tar.zst
 makepkg -p PKGBUILD.local -sfc --noconfirm
 
-# 5. Output result
-PKG_FILE=$(ls textmerger-*.pkg.tar.zst 2>/dev/null | head -n 1)
-if [ ! -f "$PKG_FILE" ]; then
-    echo "Error: Arch package creation failed."
+PKG_FILE="$(ls "${PKGNAME}"-*.pkg.tar.zst 2>/dev/null | head -n 1 || true)"
+if [ -z "$PKG_FILE" ] || [ ! -f "$PKG_FILE" ]; then
+    echo -e "${RED}Error: creazione pacchetto Arch fallita${NC}"
     exit 1
 fi
 
-echo "------------------------------------------------"
-echo "Build success!"
-echo "Arch Package: $PWD/$PKG_FILE"
-echo "------------------------------------------------"
+echo ""
+echo -e "${GREEN}Build completato${NC}"
+echo -e "${GREEN}Pacchetto: $SCRIPT_DIR/$PKG_FILE${NC}"
 
-# 6. Install (optional, but requested implicitly for testing)
-read -p "Do you want to install this package now? [y/N] " -n 1 -r
+read -rp "Vuoi installare il pacchetto ora? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if pacman -Qi textmerger &> /dev/null; then
-        echo "Removing previous version..."
-        sudo pacman -Rns textmerger --noconfirm
+    if pacman -Qi "$PKGNAME" >/dev/null 2>&1; then
+        echo -e "${YELLOW}Rimozione versione precedente...${NC}"
+        sudo pacman -Rns "$PKGNAME" --noconfirm
     fi
-    echo "Installing..."
+    echo -e "${YELLOW}Installazione...${NC}"
     sudo pacman -U "$PKG_FILE" --noconfirm
+    echo -e "${GREEN}Installato${NC}"
 else
-    echo "Skipping installation."
+    echo -e "${YELLOW}Installazione saltata${NC}"
 fi

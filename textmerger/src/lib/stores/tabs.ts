@@ -19,20 +19,111 @@ export interface TabsState {
     activeTabId: string;
 }
 
+const TABS_STORAGE_KEY = 'textmerger_tabs_state_v1';
+
 function generateId() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-function createTabsStore() {
+function createDefaultState(): TabsState {
     const defaultTabId = generateId();
-    const { subscribe, set, update } = writable<TabsState>({
+    return {
         tabs: [{ id: defaultTabId, name: 'Tab 1', files: [] }],
         activeTabId: defaultTabId
-    });
+    };
+}
+
+function isValidFileNode(file: unknown): file is FileNode {
+    if (!file || typeof file !== 'object') return false;
+    const maybeFile = file as Partial<FileNode>;
+
+    return (
+        typeof maybeFile.path === 'string' &&
+        typeof maybeFile.name === 'string' &&
+        typeof maybeFile.char_count === 'number' &&
+        typeof maybeFile.size_bytes === 'number' &&
+        typeof maybeFile.extension === 'string'
+    );
+}
+
+function loadTabsState(): TabsState {
+    const fallback = createDefaultState();
+
+    if (typeof localStorage === 'undefined') {
+        return fallback;
+    }
+
+    const raw = localStorage.getItem(TABS_STORAGE_KEY);
+    if (!raw) {
+        return fallback;
+    }
+
+    try {
+        const parsed = JSON.parse(raw) as Partial<TabsState>;
+        if (!parsed || !Array.isArray(parsed.tabs)) {
+            return fallback;
+        }
+
+        const safeTabs = parsed.tabs
+            .filter((tab): tab is Tab => {
+                if (!tab || typeof tab !== 'object') return false;
+                return (
+                    typeof tab.id === 'string' &&
+                    tab.id.length > 0 &&
+                    typeof tab.name === 'string' &&
+                    Array.isArray(tab.files)
+                );
+            })
+            .map(tab => ({
+                id: tab.id,
+                name: tab.name,
+                files: tab.files.filter(isValidFileNode)
+            }));
+
+        if (safeTabs.length === 0) {
+            return fallback;
+        }
+
+        const activeTabId =
+            typeof parsed.activeTabId === 'string' && safeTabs.some(t => t.id === parsed.activeTabId)
+                ? parsed.activeTabId
+                : safeTabs[0].id;
+
+        return {
+            tabs: safeTabs,
+            activeTabId
+        };
+    } catch {
+        return fallback;
+    }
+}
+
+function persistTabsState(state: TabsState) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
+    try {
+        localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(state));
+    } catch {
+        // Ignore storage write errors and keep app functional.
+    }
+}
+
+function createTabsStore() {
+    const { subscribe, update } = writable<TabsState>(loadTabsState());
+
+    const withPersistence = (updater: (state: TabsState) => TabsState) => {
+        update(state => {
+            const next = updater(state);
+            persistTabsState(next);
+            return next;
+        });
+    };
 
     return {
         subscribe,
-        addTab: () => update(s => {
+        addTab: () => withPersistence(s => {
             const id = generateId();
             const num = s.tabs.length + 1;
             const activeIndex = s.tabs.findIndex(t => t.id === s.activeTabId);
@@ -51,7 +142,7 @@ function createTabsStore() {
                 activeTabId: id
             };
         }),
-        closeTab: (id: string) => update(s => {
+        closeTab: (id: string) => withPersistence(s => {
             if (s.tabs.length <= 1) return s;
             const index = s.tabs.findIndex(t => t.id === id);
             const newTabs = s.tabs.filter(t => t.id !== id);
@@ -64,10 +155,10 @@ function createTabsStore() {
             }
             return { tabs: newTabs, activeTabId: newActiveId };
         }),
-        setActiveTab: (id: string) => update(s => ({ ...s, activeTabId: id })),
+        setActiveTab: (id: string) => withPersistence(s => ({ ...s, activeTabId: id })),
 
         // Updates files for the ACTIVE tab (common use case) or specific tab
-        addFilesToTab: (id: string, newFiles: FileNode[]) => update(s => {
+        addFilesToTab: (id: string, newFiles: FileNode[]) => withPersistence(s => {
             return {
                 ...s,
                 tabs: s.tabs.map(t => {
@@ -118,23 +209,23 @@ function createTabsStore() {
             };
         }),
 
-        removeFileFromTab: (id: string, path: string) => update(s => ({
+        removeFileFromTab: (id: string, path: string) => withPersistence(s => ({
             ...s,
             tabs: s.tabs.map(t => t.id === id ? { ...t, files: t.files.filter(f => f.path !== path) } : t)
         })),
 
-        setFilesForTab: (id: string, files: FileNode[]) => update(s => ({
+        setFilesForTab: (id: string, files: FileNode[]) => withPersistence(s => ({
             ...s,
             tabs: s.tabs.map(t => t.id === id ? { ...t, files } : t)
         })),
 
-        renameTab: (id: string, name: string) => update(s => ({
+        renameTab: (id: string, name: string) => withPersistence(s => ({
             ...s,
             tabs: s.tabs.map(t => t.id === id ? { ...t, name } : t)
         })),
 
         // Move the active tab left or right
-        moveTab: (id: string, direction: 'left' | 'right') => update(s => {
+        moveTab: (id: string, direction: 'left' | 'right') => withPersistence(s => {
             const index = s.tabs.findIndex(t => t.id === id);
             if (index === -1) return s;
 
@@ -148,7 +239,7 @@ function createTabsStore() {
         }),
 
         // Merge contents of sourceId into targetId
-        uniteTabs: (targetId: string, sourceId: string) => update(s => {
+        uniteTabs: (targetId: string, sourceId: string) => withPersistence(s => {
             const sourceTab = s.tabs.find(t => t.id === sourceId);
             if (!sourceTab) return s;
 
@@ -165,7 +256,7 @@ function createTabsStore() {
             };
         }),
 
-        reorderTabs: (fromId: string, toId: string) => update(s => {
+        reorderTabs: (fromId: string, toId: string) => withPersistence(s => {
             const fromIndex = s.tabs.findIndex(t => t.id === fromId);
             const toIndex = s.tabs.findIndex(t => t.id === toId);
             if (fromIndex === -1 || toIndex === -1) return s;

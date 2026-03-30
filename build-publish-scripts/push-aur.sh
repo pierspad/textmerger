@@ -2,8 +2,12 @@
 
 set -euo pipefail
 
-PROJECT_NAME="${PROJECT_NAME:-$(grep -Po '^pkgname=\K.*' PKGBUILD)}"
-AUR_REPO_DIR="${AUR_REPO_DIR:-./$PROJECT_NAME}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$SCRIPT_DIR"
+
+PROJECT_NAME="${PROJECT_NAME:-$(awk -F'=' '/^pkgname[[:space:]]*=/{print $2; exit}' "$SCRIPT_DIR/PKGBUILD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')}"
+AUR_REPO_DIR="${AUR_REPO_DIR:-$SCRIPT_DIR/$PROJECT_NAME}"
 ICON_DIR="${ICON_DIR:-${PROJECT_NAME}/assets/logo}"
 AUR_REMOTE_URL="ssh://aur@aur.archlinux.org/${PROJECT_NAME}.git"
 
@@ -17,6 +21,17 @@ if [[ -z "$PROJECT_NAME" ]]; then
     echo -e "${RED}❌ Errore: Impossibile estrarre pkgname dal PKGBUILD${NC}"
     exit 1
 fi
+
+if [ ! -f "$SCRIPT_DIR/update_project_info.sh" ] || [ ! -f "$SCRIPT_DIR/check_version_consistency.sh" ]; then
+    echo -e "${RED}❌ Errore: script update/check mancanti in $SCRIPT_DIR${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}🔄 Allineamento metadati dal PKGBUILD...${NC}"
+bash "$SCRIPT_DIR/update_project_info.sh"
+
+echo -e "${YELLOW}🔎 Verifica coerenza versioni...${NC}"
+bash "$SCRIPT_DIR/check_version_consistency.sh"
 
 if [[ -d "$AUR_REPO_DIR/.git" ]] && git -C "$AUR_REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     CURRENT_REMOTE_URL="$(git -C "$AUR_REPO_DIR" remote get-url origin 2>/dev/null || true)"
@@ -62,14 +77,17 @@ cp PKGBUILD .SRCINFO "$AUR_REPO_DIR/"
 for f in "$PROJECT_NAME".{install,desktop}; do
   [[ -f $f ]] && cp "$f" "$AUR_REPO_DIR/"
 done
-[[ -d $ICON_DIR ]] && cp "$ICON_DIR"/*.png "$AUR_REPO_DIR/" || true
+if [[ -d "$ICON_DIR" ]]; then
+    cp "$ICON_DIR"/*.png "$AUR_REPO_DIR/" 2>/dev/null || true
+fi
 
 echo -e "${YELLOW}🚀 Commit e push su AUR...${NC}"
 cd "$AUR_REPO_DIR"
 git add -A
 
 if ! git diff --staged --quiet; then
-    git commit -m "update $(date --iso-8601=seconds)"
+    VERSION="$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' PKGBUILD | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    git commit -m "Update to v${VERSION}"
 fi
 
 git push

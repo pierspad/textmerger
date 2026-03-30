@@ -30,7 +30,7 @@ package() {
 
     cat <<EOF > "${srcdir}/textmerger.desktop.custom"
 [Desktop Entry]
-Version=2.2.3
+Version=${pkgver}
 Type=Application
 Name=TextMerger
 Comment=A Rust/Tauri GTK3 application for merging text files

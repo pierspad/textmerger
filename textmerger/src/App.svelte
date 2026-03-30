@@ -94,6 +94,10 @@
       updateContent();
   }
 
+  onMount(() => {
+    void restoreFilesForSession();
+  });
+
   function showSnackbar(msg: string) {
     snackbarMessage = msg;
     if (snackbarTimeout) clearTimeout(snackbarTimeout);
@@ -117,6 +121,45 @@
     } catch (e) {
       console.error(e);
       mergedContent = `<div class='error'>Error: ${e}</div>`;
+    }
+  }
+
+  async function restoreFilesForSession() {
+    const tabsToRestore = $tabs.tabs.map((tab) => ({
+      id: tab.id,
+      paths: tab.files.map((file) => file.path),
+    }));
+
+    if (tabsToRestore.every((tab) => tab.paths.length === 0)) {
+      return;
+    }
+
+    isLoading = true;
+    await tick();
+
+    try {
+      await Promise.all(
+        tabsToRestore.map(async ({ id, paths }) => {
+          if (paths.length === 0) {
+            tabs.setFilesForTab(id, []);
+            return;
+          }
+
+          try {
+            const result = await invoke("add_files", {
+              paths,
+              excludedPatterns: [],
+            });
+
+            const { files: validFiles } = result as AddFilesResult;
+            tabs.setFilesForTab(id, validFiles);
+          } catch {
+            tabs.setFilesForTab(id, []);
+          }
+        }),
+      );
+    } finally {
+      isLoading = false;
     }
   }
 
