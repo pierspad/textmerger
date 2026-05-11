@@ -71,29 +71,6 @@ function createShortcutsStore() {
 
 export const shortcuts = createShortcutsStore();
 
-export const ACTION_LABELS: Record<keyof Shortcuts, string> = {
-    open: 'Open',
-    save: 'Save',
-    exit: 'Exit',
-    remove: 'Remove',
-    removeAll: 'Remove All',
-    copyText: 'Copy Text',
-    refresh: 'Refresh',
-    closeTab: 'Close Tab',
-    newTab: 'New Tab',
-    previousTab: 'Previous Tab',
-    nextTab: 'Next Tab',
-    tab1: 'Go to Tab 1',
-    tab2: 'Go to Tab 2',
-    tab3: 'Go to Tab 3',
-    tab4: 'Go to Tab 4',
-    tab5: 'Go to Tab 5',
-    tab6: 'Go to Tab 6',
-    tab7: 'Go to Tab 7',
-    tab8: 'Go to Tab 8',
-    tab9: 'Go to Tab 9',
-};
-
 export const ACTION_ICONS: Record<keyof Shortcuts, string> = {
     open: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>',
     save: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" /></svg>',

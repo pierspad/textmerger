@@ -37,7 +37,35 @@
         "patternPlaceholder": "es. *.log o node_modules",
         "exclusionDescription": "File e cartelle che corrispondono a questi pattern verranno ignorati durante l'aggiunta di directory.",
         "resetPatterns": "Ripristina Pattern",
-        "repository": "Repository"
+        "repository": "Repository",
+        "release": "Release",
+        "recordingKeys": "Registrazione tasti",
+        "recordingHint": "Premi la combinazione per salvare il keybind. Premi Esc per annullare la registrazione.",
+        "duplicateShortcut": "Scorciatoia già assegnata a",
+        "exclusionExampleGlob": "Corrisponde a tutti i file PNG",
+        "exclusionExampleExact": "Corrisponde al nome esatto della cartella o del file"
+    },
+    "shortcuts": {
+        "open": "Apri",
+        "save": "Salva",
+        "exit": "Esci",
+        "remove": "Rimuovi",
+        "removeAll": "Rimuovi tutto",
+        "copyText": "Copia testo",
+        "refresh": "Aggiorna",
+        "closeTab": "Chiudi tab",
+        "newTab": "Nuovo tab",
+        "previousTab": "Tab precedente",
+        "nextTab": "Tab successivo",
+        "tab1": "Vai al tab 1",
+        "tab2": "Vai al tab 2",
+        "tab3": "Vai al tab 3",
+        "tab4": "Vai al tab 4",
+        "tab5": "Vai al tab 5",
+        "tab6": "Vai al tab 6",
+        "tab7": "Vai al tab 7",
+        "tab8": "Vai al tab 8",
+        "tab9": "Vai al tab 9"
     },
     "contextMenu": {
         "copyPath": "Copia percorso assoluto",
@@ -57,6 +85,7 @@
         "refreshed": "Aggiornato",
         "pathCopied": "Percorso copiato",
         "filenameCopied": "Nome file copiato",
-        "scrolledTo": "Scorso a"
+        "scrolledTo": "Scorso a",
+        "openLinkFailed": "Impossibile aprire il link"
     }
 }

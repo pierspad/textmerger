@@ -37,7 +37,35 @@
         "patternPlaceholder": "z. B. *.log oder node_modules",
         "exclusionDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden beim Hinzufügen von Ordnern ignoriert.",
         "resetPatterns": "Muster Zurücksetzen",
-        "repository": "Repository"
+        "repository": "Repository",
+        "release": "Release",
+        "recordingKeys": "Tasten werden erfasst",
+        "recordingHint": "Drücken Sie die Tastenkombination, um das Kürzel zu speichern. Drücken Sie Esc, um die Aufnahme abzubrechen.",
+        "duplicateShortcut": "Tastenkürzel ist bereits zugewiesen zu",
+        "exclusionExampleGlob": "Entspricht allen PNG-Dateien",
+        "exclusionExampleExact": "Entspricht dem exakten Ordner- oder Dateinamen"
+    },
+    "shortcuts": {
+        "open": "Öffnen",
+        "save": "Speichern",
+        "exit": "Beenden",
+        "remove": "Entfernen",
+        "removeAll": "Alle entfernen",
+        "copyText": "Text kopieren",
+        "refresh": "Aktualisieren",
+        "closeTab": "Tab schließen",
+        "newTab": "Neuer Tab",
+        "previousTab": "Vorheriger Tab",
+        "nextTab": "Nächster Tab",
+        "tab1": "Zu Tab 1 wechseln",
+        "tab2": "Zu Tab 2 wechseln",
+        "tab3": "Zu Tab 3 wechseln",
+        "tab4": "Zu Tab 4 wechseln",
+        "tab5": "Zu Tab 5 wechseln",
+        "tab6": "Zu Tab 6 wechseln",
+        "tab7": "Zu Tab 7 wechseln",
+        "tab8": "Zu Tab 8 wechseln",
+        "tab9": "Zu Tab 9 wechseln"
     },
     "contextMenu": {
         "copyPath": "Absoluten Pfad kopieren",
@@ -47,6 +75,7 @@
         "showingOutputs": "Ausgaben werden angezeigt",
         "hidingOutputs": "Ausgaben werden ausgeblendet",
         "filesAdded": "Dateien hinzugefügt",
+        "filesAddedWithErrors": "Dateien mit Fehlern hinzugefügt:",
         "selectedRemoved": "Ausgewählte Elemente entfernt",
         "allRemoved": "Alle Dateien entfernt",
         "copied": "In die Zwischenablage kopiert",
@@ -56,6 +85,7 @@
         "refreshed": "Aktualisiert",
         "pathCopied": "Pfad kopiert",
         "filenameCopied": "Dateiname kopiert",
-        "scrolledTo": "Gescrollt zu"
+        "scrolledTo": "Gescrollt zu",
+        "openLinkFailed": "Link konnte nicht geöffnet werden"
     }
 }

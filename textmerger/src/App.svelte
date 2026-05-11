@@ -17,7 +17,8 @@
     errors: string[];
   }
 
-  type SnackbarVariant = "success" | "info" | "warning" | "error";
+  type SnackbarVariant = "success" | "info" | "copy" | "warning" | "error";
+  type SnackbarEventDetail = string | { message: string; variant?: SnackbarVariant };
 
   const snackbarPalette: Record<SnackbarVariant, {
     container: string;
@@ -36,6 +37,12 @@
       icon: "text-blue-300",
       progress: "bg-blue-400",
       path: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    },
+    copy: {
+      container: "bg-purple-950 text-purple-50 border-purple-600/70 shadow-purple-950/30",
+      icon: "text-purple-300",
+      progress: "bg-purple-400",
+      path: "M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25",
     },
     warning: {
       container: "bg-amber-950 text-amber-50 border-amber-600/70 shadow-amber-950/30",
@@ -348,7 +355,7 @@
       const text = temp.textContent || temp.innerText || "";
 
       await navigator.clipboard.writeText(text);
-      showSnackbar($t("messages.copied"));
+      showSnackbar($t("messages.copied"), "copy");
     } catch (e) {
       console.error("Failed to copy", e);
       showSnackbar($t("messages.copyFailed"), "error");
@@ -589,7 +596,7 @@
     } else if (combo === $shortcuts.refresh) {
       event.preventDefault();
       updateContent();
-      showSnackbar($t("messages.refreshed"), "info");
+      showSnackbar($t("messages.refreshed"));
     } else if (combo === $shortcuts.newTab) {
       event.preventDefault();
       handleAddTab();
@@ -624,8 +631,13 @@
     }
   }
 
-  function handleSnackbarEvent(e: CustomEvent<string>) {
-    showSnackbar(e.detail);
+  function handleSnackbarEvent(e: CustomEvent<SnackbarEventDetail>) {
+    if (typeof e.detail === "string") {
+      showSnackbar(e.detail);
+      return;
+    }
+
+    showSnackbar(e.detail.message, e.detail.variant || "success");
   }
 
   function handleContextMenu(e: CustomEvent) {
@@ -971,6 +983,7 @@
           class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] mb-1"
           on:click={toggleSidebar}
           aria-label="Toggle Sidebar"
+          title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -980,11 +993,19 @@
             stroke="currentColor"
             class="w-5 h-5"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-            />
+            {#if isSidebarExpanded}
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+              />
+            {:else}
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+              />
+            {/if}
           </svg>
         </button>
         
@@ -1157,7 +1178,7 @@
           class="px-4 py-2 bg-[#10b981] hover:bg-[#059669] text-white rounded font-bold text-sm flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20"
           on:click={() => {
             updateContent();
-            showSnackbar($t("messages.refreshed"), "info");
+            showSnackbar($t("messages.refreshed"));
           }}
           title="Reload content from files"
         >
@@ -1270,17 +1291,5 @@
 {/if}
 
 <style>
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translate(-50%, 20px);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
-  }
-  .animate-fade-in-up {
-    animation: fade-in-up 0.3s ease-out;
-  }
+  /* Workaround for vite-plugin-svelte crash on stale CSS requests */
 </style>

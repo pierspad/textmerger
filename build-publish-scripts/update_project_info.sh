@@ -15,6 +15,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 PKGBUILD="$SCRIPT_DIR/PKGBUILD"
 TAURI_CONF="$PROJECT_ROOT/textmerger/src-tauri/tauri.conf.json"
 TAURI_CARGO="$PROJECT_ROOT/textmerger/src-tauri/Cargo.toml"
+TAURI_LOCK="$PROJECT_ROOT/textmerger/src-tauri/Cargo.lock"
 FRONTEND_PKG="$PROJECT_ROOT/textmerger/package.json"
 DESKTOP_FILE="$PROJECT_ROOT/packaging/textmerger.desktop"
 
@@ -119,6 +120,20 @@ if [ -f "$FRONTEND_PKG" ]; then
 else
     echo -e "  ${RED}ERR${NC} textmerger/package.json non trovato"
     ERRORS=$((ERRORS + 1))
+fi
+
+if [ -f "$TAURI_LOCK" ]; then
+    if command -v cargo >/dev/null 2>&1; then
+        (
+            cd "$PROJECT_ROOT/textmerger/src-tauri"
+            cargo update -p textmerger
+        )
+        echo -e "  ${GREEN}OK${NC} textmerger/src-tauri/Cargo.lock - package version sincronizzata"
+    else
+        echo -e "  ${YELLOW}WARN${NC} cargo non disponibile, skip Cargo.lock"
+    fi
+else
+    echo -e "  ${YELLOW}WARN${NC} textmerger/src-tauri/Cargo.lock non trovato, skip"
 fi
 
 if [ -f "$DESKTOP_FILE" ]; then

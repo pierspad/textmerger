@@ -9,6 +9,7 @@
     "core:default",
     "fs:default",
     "dialog:default",
+    "shell:allow-open",
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [{ "path": "$HOME/**" }]

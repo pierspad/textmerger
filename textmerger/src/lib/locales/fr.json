@@ -37,7 +37,35 @@
         "patternPlaceholder": "ex. *.log ou node_modules",
         "exclusionDescription": "Les fichiers et dossiers correspondant à ces motifs seront ignorés lors de l'ajout de dossiers.",
         "resetPatterns": "Réinitialiser les Motifs",
-        "repository": "Dépôt"
+        "repository": "Dépôt",
+        "release": "Version",
+        "recordingKeys": "Enregistrement des touches",
+        "recordingHint": "Appuyez sur le raccourci pour enregistrer la combinaison. Appuyez sur Échap pour annuler l'enregistrement.",
+        "duplicateShortcut": "Raccourci déjà attribué à",
+        "exclusionExampleGlob": "Correspond à tous les fichiers PNG",
+        "exclusionExampleExact": "Correspond au nom exact du dossier ou du fichier"
+    },
+    "shortcuts": {
+        "open": "Ouvrir",
+        "save": "Enregistrer",
+        "exit": "Quitter",
+        "remove": "Supprimer",
+        "removeAll": "Tout supprimer",
+        "copyText": "Copier le texte",
+        "refresh": "Actualiser",
+        "closeTab": "Fermer l'onglet",
+        "newTab": "Nouvel onglet",
+        "previousTab": "Onglet précédent",
+        "nextTab": "Onglet suivant",
+        "tab1": "Aller à l'onglet 1",
+        "tab2": "Aller à l'onglet 2",
+        "tab3": "Aller à l'onglet 3",
+        "tab4": "Aller à l'onglet 4",
+        "tab5": "Aller à l'onglet 5",
+        "tab6": "Aller à l'onglet 6",
+        "tab7": "Aller à l'onglet 7",
+        "tab8": "Aller à l'onglet 8",
+        "tab9": "Aller à l'onglet 9"
     },
     "contextMenu": {
         "copyPath": "Copier le chemin absolu",
@@ -47,6 +75,7 @@
         "showingOutputs": "Affichage des sorties",
         "hidingOutputs": "Masquage des sorties",
         "filesAdded": "Fichiers ajoutés",
+        "filesAddedWithErrors": "Fichiers ajoutés avec des erreurs :",
         "selectedRemoved": "Éléments sélectionnés supprimés",
         "allRemoved": "Tous les fichiers supprimés",
         "copied": "Copié dans le presse-papiers",
@@ -56,6 +85,7 @@
         "refreshed": "Actualisé",
         "pathCopied": "Chemin copié",
         "filenameCopied": "Nom de fichier copié",
-        "scrolledTo": "Défilé vers"
+        "scrolledTo": "Défilé vers",
+        "openLinkFailed": "Impossible d'ouvrir le lien"
     }
 }

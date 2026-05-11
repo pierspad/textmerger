@@ -54,4 +54,5 @@ Prima di pubblicare:
 - controlla `docs/list_of_things_changed.md`;
 - aggiorna `docs/release-notes.md` nel formato `## Release Notes`;
 - verifica la sezione con `build-publish-scripts/extract-release-notes.sh vX.Y.Z`;
+- verifica la coerenza versioni con `build-publish-scripts/check_version_consistency.sh` (include anche `Cargo.lock`);
 - usa `build-publish-scripts/git-release.sh` per commit, tag e push.

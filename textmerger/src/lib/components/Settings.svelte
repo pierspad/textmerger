@@ -1,12 +1,15 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
   import { getName, getVersion } from "@tauri-apps/api/app";
-  import { shortcuts, ACTION_LABELS, ACTION_ICONS, type Shortcuts } from "../stores/shortcuts";
+  import { open as openExternal } from "@tauri-apps/plugin-shell";
+  import { shortcuts, ACTION_ICONS, type Shortcuts } from "../stores/shortcuts";
   import { settings } from "../stores/settings";
   import { theme } from "../stores/theme";
-  import { t, locale } from "../stores/i18n";
+  import { availableUILanguages, t, locale } from "../stores/i18n";
   import KeybindRecorder from "./KeybindRecorder.svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
+
+  type SnackbarVariant = "success" | "info" | "warning" | "error";
 
   const dispatch = createEventDispatcher();
 
@@ -17,14 +20,16 @@
   let appVersion = "2.3.1";
 
   const repoUrl = "https://github.com/pierspad/textmerger";
+  const authorUrl = "https://pierspad.com";
   const licenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html";
 
   $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
+  $: releaseUrl = `${repoUrl}/releases/tag/v${appVersion}`;
 
   onMount(async () => {
     try {
       const [name, version] = await Promise.all([getName(), getVersion()]);
-      appName = name || appName;
+      appName = name === "textmerger" ? "TextMerger" : name || appName;
       appVersion = version || appVersion;
     } catch (e) {
       console.warn("Could not read Tauri app metadata", e);
@@ -42,6 +47,19 @@
     dispatch("close");
   }
 
+  function notify(message: string, variant: SnackbarVariant = "success") {
+    dispatch("snackbar", { message, variant });
+  }
+
+  async function openExternalLink(url: string) {
+    try {
+      await openExternal(url);
+    } catch (e) {
+      console.error("Failed to open external link", e);
+      notify($t('messages.openLinkFailed'), "error");
+    }
+  }
+
   async function handleResetDefaults() {
     try {
       let confirmed = false;
@@ -57,16 +75,27 @@
 
       if (confirmed) {
         shortcuts.resetDefaults();
-        dispatch("snackbar", $t('settings.resetSuccess'));
+        notify($t('settings.resetSuccess'));
       }
     } catch (e) {
       console.error("Failed to reset defaults:", e);
-      dispatch("snackbar", $t('settings.resetError'));
+      notify($t('settings.resetError'), "error");
     }
   }
 
   function handleShortcutChange(action: string, newBind: string) {
+    const duplicate = shortcutEntries.find(([key, keybind]) => {
+      return key !== action && normalizeShortcut(keybind) === normalizeShortcut(newBind);
+    });
+
+    if (duplicate) {
+      notify(`${$t('settings.duplicateShortcut')} ${getLabel(duplicate[0])}.`, "warning");
+      recordingAction = null;
+      return;
+    }
+
     shortcuts.updateShortcut(action as keyof Shortcuts, newBind);
+    recordingAction = null;
   }
 
   function getIcon(action: string) {
@@ -74,7 +103,20 @@
   }
 
   function getLabel(action: string) {
-    return ACTION_LABELS[action as keyof Shortcuts];
+    return $t(`shortcuts.${action}`);
+  }
+
+  function normalizeShortcut(shortcut: string) {
+    return shortcut.trim().toUpperCase();
+  }
+
+  function getRecordingHintParts() {
+    const hint = $t('settings.recordingHint');
+    const parts = hint.match(/^(.+?[.。])\s*(.*)$/s);
+    return {
+      first: parts?.[1] || hint,
+      second: parts?.[2] || "",
+    };
   }
 
   function toggleTheme() {
@@ -136,29 +178,43 @@
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-[var(--text-primary)]">{appName}</p>
-            <p class="text-xs text-[var(--text-muted)]">v{appVersion} - Tauri + Svelte</p>
+            <p class="text-xs text-[var(--text-muted)]">
+              <button
+                type="button"
+                class="hover:text-[var(--text-primary)] transition-colors"
+                title={$t('settings.release')}
+                on:click={() => openExternalLink(releaseUrl)}
+              >
+                v{appVersion}
+              </button>
+              <span class="mx-1">-</span>
+              Tauri + Svelte
+            </p>
           </div>
-          <a
-            href={repoUrl}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
             class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             aria-label={$t('settings.repository')}
             title={$t('settings.repository')}
+            on:click={() => openExternalLink(repoUrl)}
           >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path fill-rule="evenodd" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.42 9.42 0 0112 6.96c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.54 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.1 10.1 0 0022 12.26C22 6.58 17.52 2 12 2z" clip-rule="evenodd" />
             </svg>
-          </a>
+          </button>
         </div>
         <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
-          <a href={repoUrl} target="_blank" rel="noreferrer" class="hover:text-[var(--text-primary)] transition-colors">
-            {$t('settings.repository')}
-          </a>
+          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(authorUrl)}>
+            pierspad
+          </button>
           <span>•</span>
-          <a href={licenseUrl} target="_blank" rel="noreferrer" class="hover:text-[var(--text-primary)] transition-colors">
+          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(repoUrl)}>
+            {$t('settings.repository')}
+          </button>
+          <span>•</span>
+          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(licenseUrl)}>
             GPL-3.0
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -198,14 +254,19 @@
               <span class="font-medium text-[var(--text-primary)]">{$t('settings.language')}</span>
             </div>
             
-            <div class="grid grid-cols-5 gap-2">
-                {#each ['en', 'it', 'es', 'fr', 'de'] as lang}
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {#each availableUILanguages as lang}
                     <button 
-                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)]
-                        {$locale === lang ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'}"
-                        on:click={() => locale.set(lang)}
+                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)] flex items-center gap-2 min-w-0
+                        {$locale === lang.code ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'}"
+                        on:click={() => locale.set(lang.code)}
+                        title={`${lang.name} / ${lang.nativeName}`}
                     >
-                        {lang.toUpperCase()}
+                        <span class="text-lg leading-none">{lang.flag}</span>
+                        <span class="min-w-0 text-left leading-tight">
+                          <span class="block truncate">{lang.name}</span>
+                          <span class="block truncate text-[11px] font-medium opacity-80">{lang.nativeName}</span>
+                        </span>
                     </button>
                 {/each}
             </div>
@@ -214,9 +275,19 @@
       </div>
     {:else if activeTab === 'shortcuts'}
       <div class="max-w-6xl">
-        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">{$t('settings.keyboardShortcuts')}</h3>
+        <div class="mb-6 flex items-start justify-between gap-4">
+          <h3 class="text-xl font-bold text-[var(--text-primary)]">{$t('settings.keyboardShortcuts')}</h3>
+          {#if recordingAction}
+            <div class="max-w-md rounded border border-red-500/50 bg-red-950/70 px-3 py-2 text-right text-xs font-medium text-red-100 shadow-lg shadow-red-950/20">
+              <span class="block">{getRecordingHintParts().first}</span>
+              {#if getRecordingHintParts().second}
+                <span class="block">{getRecordingHintParts().second}</span>
+              {/if}
+            </div>
+          {/if}
+        </div>
         
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
           {#each shortcutEntries as [key, keybind]}
               <!-- svelte-ignore indent -->
               {@const action = key}
@@ -231,8 +302,10 @@
                   <KeybindRecorder 
                     value={keybind} 
                     recording={recordingAction === action}
+                    recordingLabel={$t('settings.recordingKeys')}
                     on:start={() => recordingAction = action}
                     on:stop={() => recordingAction = null}
+                    on:cancel={() => recordingAction = null}
                     on:change={(e) => handleShortcutChange(action, e.detail)}
                   />
                 </div>
@@ -256,9 +329,9 @@
         <div class="mb-4 text-sm text-[var(--text-muted)]">
             <p class="mb-2">{$t('settings.exclusionDescription')}</p>
             <ul class="list-disc list-inside space-y-1 ml-2">
-                <li><code>*.png</code> - Matches all PNG files</li>
-                <li><code>node_modules</code> - Matches exact folder/file name</li>
-                <li><code>.git</code> - Matches exact folder/file name</li>
+                <li><code>*.png</code> - {$t('settings.exclusionExampleGlob')}</li>
+                <li><code>node_modules</code> - {$t('settings.exclusionExampleExact')}</li>
+                <li><code>.git</code> - {$t('settings.exclusionExampleExact')}</li>
             </ul>
         </div>
 

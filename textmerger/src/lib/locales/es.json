@@ -37,7 +37,35 @@
         "patternPlaceholder": "p. ej. *.log o node_modules",
         "exclusionDescription": "Los archivos y carpetas que coincidan con estos patrones se ignorarán al añadir directorios.",
         "resetPatterns": "Restablecer Patrones",
-        "repository": "Repositorio"
+        "repository": "Repositorio",
+        "release": "Versión",
+        "recordingKeys": "Grabando teclas",
+        "recordingHint": "Pulsa la combinación para guardar el atajo. Pulsa Esc para cancelar la grabación.",
+        "duplicateShortcut": "Atajo ya asignado a",
+        "exclusionExampleGlob": "Coincide con todos los archivos PNG",
+        "exclusionExampleExact": "Coincide con el nombre exacto de carpeta o archivo"
+    },
+    "shortcuts": {
+        "open": "Abrir",
+        "save": "Guardar",
+        "exit": "Salir",
+        "remove": "Eliminar",
+        "removeAll": "Eliminar todo",
+        "copyText": "Copiar texto",
+        "refresh": "Actualizar",
+        "closeTab": "Cerrar pestaña",
+        "newTab": "Nueva pestaña",
+        "previousTab": "Pestaña anterior",
+        "nextTab": "Pestaña siguiente",
+        "tab1": "Ir a la pestaña 1",
+        "tab2": "Ir a la pestaña 2",
+        "tab3": "Ir a la pestaña 3",
+        "tab4": "Ir a la pestaña 4",
+        "tab5": "Ir a la pestaña 5",
+        "tab6": "Ir a la pestaña 6",
+        "tab7": "Ir a la pestaña 7",
+        "tab8": "Ir a la pestaña 8",
+        "tab9": "Ir a la pestaña 9"
     },
     "contextMenu": {
         "copyPath": "Copiar ruta absoluta",
@@ -47,6 +75,7 @@
         "showingOutputs": "Mostrando salidas",
         "hidingOutputs": "Ocultando salidas",
         "filesAdded": "Archivos añadidos",
+        "filesAddedWithErrors": "Archivos añadidos con errores:",
         "selectedRemoved": "Elementos seleccionados eliminados",
         "allRemoved": "Todos los archivos eliminados",
         "copied": "Copiado al portapapeles",
@@ -56,6 +85,7 @@
         "refreshed": "Actualizado",
         "pathCopied": "Ruta copiada",
         "filenameCopied": "Nombre de archivo copiado",
-        "scrolledTo": "Desplazado a"
+        "scrolledTo": "Desplazado a",
+        "openLinkFailed": "No se pudo abrir el enlace"
     }
 }

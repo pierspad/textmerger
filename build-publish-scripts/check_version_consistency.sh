@@ -14,6 +14,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 PKGBUILD="$SCRIPT_DIR/PKGBUILD"
 TAURI_CONF="$PROJECT_ROOT/textmerger/src-tauri/tauri.conf.json"
 TAURI_CARGO="$PROJECT_ROOT/textmerger/src-tauri/Cargo.toml"
+TAURI_LOCK="$PROJECT_ROOT/textmerger/src-tauri/Cargo.lock"
 FRONTEND_PKG="$PROJECT_ROOT/textmerger/package.json"
 DESKTOP_FILE="$PROJECT_ROOT/packaging/textmerger.desktop"
 
@@ -73,6 +74,23 @@ if [ -f "$TAURI_CARGO" ]; then
     check_equals "textmerger/src-tauri/Cargo.toml" "$TAURI_CARGO" "$CARGO_VERSION"
 else
     echo -e "  ${RED}ERR${NC} textmerger/src-tauri/Cargo.toml non trovato"
+    ERRORS=$((ERRORS + 1))
+fi
+
+if [ -f "$TAURI_LOCK" ]; then
+    LOCK_VERSION="$(awk '
+        /^\[\[package\]\]$/ { in_pkg=0; seen_pkg=1; next }
+        seen_pkg && /^name = "textmerger"$/ { in_pkg=1; next }
+        in_pkg && /^version = / {
+            value=$3
+            gsub(/"/, "", value)
+            print value
+            exit
+        }
+    ' "$TAURI_LOCK" | tr -d '\r')"
+    check_equals "textmerger/src-tauri/Cargo.lock" "$TAURI_LOCK" "$LOCK_VERSION"
+else
+    echo -e "  ${RED}ERR${NC} textmerger/src-tauri/Cargo.lock non trovato"
     ERRORS=$((ERRORS + 1))
 fi
 

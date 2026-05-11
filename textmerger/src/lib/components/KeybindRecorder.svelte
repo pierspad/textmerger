@@ -3,6 +3,7 @@
 
   export let value = "";
   export let recording = false;
+  export let recordingLabel = "Recording keys";
 
   const dispatch = createEventDispatcher();
 
@@ -10,6 +11,13 @@
     if (!recording) return;
     e.preventDefault();
     e.stopPropagation();
+
+    if (e.key === "Escape") {
+      recording = false;
+      dispatch("cancel");
+      dispatch("stop");
+      return;
+    }
 
     const keys = [];
     if (e.ctrlKey) keys.push("Ctrl");
@@ -30,17 +38,13 @@
       const shortcut = keys.join("+");
       dispatch("change", shortcut);
       recording = false;
+      dispatch("stop");
     }
   }
 
   function startRecording() {
     recording = true;
     dispatch("start");
-  }
-
-  function stopRecording() {
-    recording = false;
-    dispatch("stop");
   }
 
   // Global listener when recording
@@ -60,15 +64,16 @@
 <div class="flex items-center gap-2">
   {#if recording}
     <button
-      class="px-3 py-1 bg-red-600 text-white rounded text-sm font-medium animate-pulse border border-red-400"
-      on:click={stopRecording}
+      class="px-3 py-1 bg-red-600 text-white rounded text-sm font-medium animate-pulse border border-red-400 min-w-[118px]"
+      type="button"
     >
-      Recording keys... (Click again to stop recording)
+      {recordingLabel}
     </button>
   {:else}
     <button
       class="px-3 py-1 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-gray-200 rounded text-sm font-mono border border-[#555] min-w-[100px] text-center transition-colors"
       on:click={startRecording}
+      type="button"
     >
       {value}
     </button>
