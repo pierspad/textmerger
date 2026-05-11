@@ -768,6 +768,7 @@
   <!-- Settings Overlay -->
   {#if showSettings}
     <Settings
+      {sidebarWidth}
       on:close={() => (showSettings = false)}
       on:snackbar={handleSnackbarEvent}
     />

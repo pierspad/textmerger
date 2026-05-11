@@ -18,6 +18,8 @@
     name?: string;
   }
 
+  export let sidebarWidth = 300;
+
   const dispatch = createEventDispatcher();
 
   let activeTab = "general";
@@ -227,7 +229,10 @@
 
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
   <!-- Settings Sidebar -->
-  <aside class="w-64 bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col">
+  <aside
+    class="bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col"
+    style="width: {sidebarWidth}px; min-width: 250px;"
+  >
     <div class="h-12 px-4 border-b border-[var(--border-color)] flex items-center gap-2">
       <button 
         class="p-2 bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)] transition-colors"
