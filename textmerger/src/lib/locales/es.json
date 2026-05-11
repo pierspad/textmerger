@@ -31,7 +31,13 @@
         "resetDefaults": "Restablecer Predeterminados",
         "resetConfirm": "¿Estás seguro de que quieres restablecer todos los atajos a los valores predeterminados?",
         "resetSuccess": "Atajos restablecidos a los valores predeterminados",
-        "resetError": "Error al restablecer los atajos"
+        "resetError": "Error al restablecer los atajos",
+        "exclusions": "Archivos Excluidos",
+        "addPattern": "Añadir Patrón",
+        "patternPlaceholder": "p. ej. *.log o node_modules",
+        "exclusionDescription": "Los archivos y carpetas que coincidan con estos patrones se ignorarán al añadir directorios.",
+        "resetPatterns": "Restablecer Patrones",
+        "repository": "Repositorio"
     },
     "contextMenu": {
         "copyPath": "Copiar ruta absoluta",

@@ -17,6 +17,40 @@
     errors: string[];
   }
 
+  type SnackbarVariant = "success" | "info" | "warning" | "error";
+
+  const snackbarPalette: Record<SnackbarVariant, {
+    container: string;
+    icon: string;
+    progress: string;
+    path: string;
+  }> = {
+    success: {
+      container: "bg-emerald-950 text-emerald-50 border-emerald-600/70 shadow-emerald-950/30",
+      icon: "text-emerald-300",
+      progress: "bg-emerald-400",
+      path: "M5 13l4 4L19 7",
+    },
+    info: {
+      container: "bg-blue-950 text-blue-50 border-blue-600/70 shadow-blue-950/30",
+      icon: "text-blue-300",
+      progress: "bg-blue-400",
+      path: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    },
+    warning: {
+      container: "bg-amber-950 text-amber-50 border-amber-600/70 shadow-amber-950/30",
+      icon: "text-amber-300",
+      progress: "bg-amber-400",
+      path: "M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    },
+    error: {
+      container: "bg-red-950 text-red-50 border-red-600/70 shadow-red-950/30",
+      icon: "text-red-300",
+      progress: "bg-red-400",
+      path: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+    },
+  };
+
   // Action to focus element on mount
   function focusElement(node: HTMLElement) {
       node.focus();
@@ -32,6 +66,7 @@
   let showOutputs = false;
   let hasIpynb = false;
   let snackbarMessage = "";
+  let snackbarVariant: SnackbarVariant = "success";
   let snackbarTimeout: any;
   let snackbarAnimationKey = 0;
   const snackbarDuration = 2200;
@@ -90,6 +125,7 @@
   let dragOverTabId: string | null = null;
 
   $: hasIpynb = files.some((f) => f.path.toLowerCase().endsWith(".ipynb"));
+  $: snackbarStyle = snackbarPalette[snackbarVariant];
   
   // Auto-update content when files change
   $: if (files) {
@@ -100,8 +136,9 @@
     void restoreFilesForSession();
   });
 
-  function showSnackbar(msg: string) {
+  function showSnackbar(msg: string, variant: SnackbarVariant = "success") {
     snackbarMessage = msg;
+    snackbarVariant = variant;
     snackbarAnimationKey += 1;
     if (snackbarTimeout) clearTimeout(snackbarTimeout);
     snackbarTimeout = setTimeout(() => {
@@ -206,6 +243,7 @@
                 (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
               showSnackbar(
                 $t("messages.filesAddedWithErrors") + " " + errorMsg,
+                "warning",
               );
             } else {
               showSnackbar($t("messages.filesAdded"));
@@ -250,7 +288,7 @@
           const errorMsg =
             errors.slice(0, 3).join("\n") +
             (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
-          showSnackbar($t("messages.filesAddedWithErrors") + " " + errorMsg);
+          showSnackbar($t("messages.filesAddedWithErrors") + " " + errorMsg, "warning");
         } else {
           showSnackbar($t("messages.filesAdded"));
         }
@@ -313,7 +351,7 @@
       showSnackbar($t("messages.copied"));
     } catch (e) {
       console.error("Failed to copy", e);
-      showSnackbar($t("messages.copyFailed"));
+      showSnackbar($t("messages.copyFailed"), "error");
     }
   }
 
@@ -341,7 +379,7 @@
       }
     } catch (e) {
       console.error(e);
-      showSnackbar($t("messages.saveFailed"));
+      showSnackbar($t("messages.saveFailed"), "error");
     }
   }
 
@@ -380,6 +418,39 @@
           tabId: id
       };
   }
+
+  function getTabIndex(tabId: string) {
+      return $tabs.tabs.findIndex(t => t.id === tabId);
+  }
+
+  function getTabsToRightCount(tabId: string) {
+      const index = getTabIndex(tabId);
+      return index === -1 ? 0 : Math.max(0, $tabs.tabs.length - index - 1);
+  }
+
+  function formatNumber(value: number) {
+      return new Intl.NumberFormat().format(value);
+  }
+
+  function getTabTooltip(tab: { name: string; files: FileNode[] }) {
+      const fileCount = tab.files.length;
+      const charCount = tab.files.reduce((total, file) => total + file.char_count, 0);
+      const paths = tab.files.map(file => file.path);
+      const visiblePaths = paths.slice(0, 5);
+      const hiddenCount = Math.max(0, paths.length - visiblePaths.length);
+      const pathLines = visiblePaths.length > 0
+          ? visiblePaths.map(path => `- ${path}`).join("\n")
+          : "- No files";
+      const moreLine = hiddenCount > 0 ? `\n- +${hiddenCount} more` : "";
+
+      return [
+          tab.name,
+          `${formatNumber(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
+          `${formatNumber(charCount)} characters`,
+          "Paths:",
+          `${pathLines}${moreLine}`
+      ].join("\n");
+  }
   
   function openRenameModal() {
       const tab = $tabs.tabs.find(t => t.id === tabContextMenu.tabId);
@@ -387,6 +458,30 @@
           newTabName = tab.name;
           showRenameModal = true;
       }
+      closeContextMenu();
+  }
+
+  function duplicateContextTab() {
+      const tab = $tabs.tabs.find(t => t.id === tabContextMenu.tabId);
+      if (!tab) {
+          closeContextMenu();
+          return;
+      }
+
+      tabs.duplicateTab(tab.id);
+      showSnackbar(`Duplicated ${tab.name}`);
+      closeContextMenu();
+  }
+
+  function closeTabsToRight() {
+      const count = getTabsToRightCount(tabContextMenu.tabId);
+      if (count === 0) {
+          closeContextMenu();
+          return;
+      }
+
+      tabs.closeTabsToRight(tabContextMenu.tabId);
+      showSnackbar(`Closed ${count} ${count === 1 ? "tab" : "tabs"} to the right`, "warning");
       closeContextMenu();
   }
   
@@ -494,7 +589,7 @@
     } else if (combo === $shortcuts.refresh) {
       event.preventDefault();
       updateContent();
-      showSnackbar($t("messages.refreshed"));
+      showSnackbar($t("messages.refreshed"), "info");
     } else if (combo === $shortcuts.newTab) {
       event.preventDefault();
       handleAddTab();
@@ -582,6 +677,7 @@
          el.scrollIntoView({ behavior: "smooth", block: "start" });
          showSnackbar(
            `${$t("messages.scrolledTo")} ${path.split(/[/\\]/).pop()}`,
+           "info",
          );
        }
      }
@@ -615,24 +711,24 @@
   {#if snackbarMessage}
     {#key snackbarAnimationKey}
       <div
-        class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-emerald-950 text-emerald-50 rounded-lg shadow-xl shadow-emerald-950/30 z-50 border border-emerald-600/70 animate-fade-in-up min-w-[240px] max-w-[min(92vw,420px)] overflow-hidden"
+        class={`fixed bottom-20 left-1/2 -translate-x-1/2 ${snackbarStyle.container} rounded-lg shadow-xl z-50 border animate-fade-in-up min-w-[240px] max-w-[min(92vw,420px)] overflow-hidden`}
         role="status"
         aria-live="polite"
       >
         <div class="px-5 py-3 flex items-center gap-3">
           <svg
-            class="w-5 h-5 text-emerald-300 flex-shrink-0"
+            class={`w-5 h-5 ${snackbarStyle.icon} flex-shrink-0`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
             aria-hidden="true"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={snackbarStyle.path} />
           </svg>
           <span class="flex-1 text-sm font-medium leading-snug">{snackbarMessage}</span>
         </div>
         <div
-          class="h-1 bg-emerald-400"
+          class={`h-1 ${snackbarStyle.progress}`}
           style="animation: textmerger-snackbar-shrink {snackbarDuration}ms linear forwards;"
         ></div>
       </div>
@@ -914,7 +1010,7 @@
 
           {#each $tabs.tabs as tab (tab.id)}
             <div 
-               class="group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent transition-all duration-200 select-none
+               class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent transition-all duration-200 select-none
                {tab.id === $tabs.activeTabId 
                   ? 'bg-[var(--tab-bg-active)] text-[var(--text-primary)] z-10 border-[var(--border-color)] border-b-0 shadow-sm' 
                   : 'bg-[var(--tab-bg-inactive)] text-[var(--text-muted)] hover:bg-[var(--tab-bg-hover)] border-b border-[var(--border-color)] opacity-80 hover:opacity-100'}"
@@ -930,6 +1026,7 @@
                on:drop={(e) => handleTabDrop(e, tab.id)}
                class:brightness-110={dragOverTabId === tab.id}
                aria-label={`Tab: ${tab.name}`}
+               title={getTabTooltip(tab)}
             >
                 <!-- Separator (visual trick for inactive tabs, strictly optional, relying on spacing for now) -->
                 
@@ -1060,7 +1157,7 @@
           class="px-4 py-2 bg-[#10b981] hover:bg-[#059669] text-white rounded font-bold text-sm flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20"
           on:click={() => {
             updateContent();
-            showSnackbar($t("messages.refreshed"));
+            showSnackbar($t("messages.refreshed"), "info");
           }}
           title="Reload content from files"
         >
@@ -1149,6 +1246,19 @@
       on:click={openRenameModal}
     >
       Rename Tab
+    </button>
+    <button
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      on:click={duplicateContextTab}
+    >
+      Duplicate Tab
+    </button>
+    <button
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      on:click={closeTabsToRight}
+      disabled={getTabsToRightCount(tabContextMenu.tabId) === 0}
+    >
+      Close Tabs to the Right
     </button>
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"

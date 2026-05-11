@@ -1,10 +1,15 @@
-##### Unreleased
+## Release Notes
 
-- Improved snackbar styling with green status feedback and a quick expiry bar.
-- Added tab switching shortcuts: Ctrl+PageUp, Ctrl+PageDown, and Ctrl+1 through Ctrl+9.
-- Added Copilot/LLM workspace instructions and an operational change log for release preparation.
-- Updated the release workflow so GitHub Releases publish only the matching version section from `docs/release-notes.md`.
+### Fixes
 
-##### Version 2.3.1
+* **Release Publishing**: GitHub Releases now use curated notes from `docs/release-notes.md` instead of generated notes
+* **Release Harness**: LLM/Copilot instructions now require every meaningful change to be documented before publishing
+* **Package Metadata**: Fixed package version alignment from the previous release cycle
 
-Fixed some package versions
+### Improvements
+
+* **Snackbars**: Added success, info, warning, and error variants with dedicated colors, icons, and expiry bars
+* **Tab Navigation**: Added keyboard shortcuts for previous/next tab and direct tab selection with `Ctrl+1` through `Ctrl+9`
+* **Tab Management**: Added tab tooltips, tab duplication, and close-tabs-to-the-right actions
+* **Settings Menu**: Reworked keyboard shortcuts into a two-column layout on wide screens
+* **App Info**: Added a settings sidebar panel with app version, stack, license, and repository links

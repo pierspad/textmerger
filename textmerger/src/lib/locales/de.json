@@ -31,7 +31,13 @@
         "resetDefaults": "Standardwerte Wiederherstellen",
         "resetConfirm": "Sind Sie sicher, dass Sie alle Tastenkürzel auf die Standardwerte zurücksetzen möchten?",
         "resetSuccess": "Tastenkürzel auf Standardwerte zurückgesetzt",
-        "resetError": "Fehler beim Zurücksetzen der Tastenkürzel"
+        "resetError": "Fehler beim Zurücksetzen der Tastenkürzel",
+        "exclusions": "Ausgeschlossene Dateien",
+        "addPattern": "Muster Hinzufügen",
+        "patternPlaceholder": "z. B. *.log oder node_modules",
+        "exclusionDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden beim Hinzufügen von Ordnern ignoriert.",
+        "resetPatterns": "Muster Zurücksetzen",
+        "repository": "Repository"
     },
     "contextMenu": {
         "copyPath": "Absoluten Pfad kopieren",

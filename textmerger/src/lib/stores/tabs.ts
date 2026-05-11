@@ -25,6 +25,19 @@ function generateId() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
+function createDuplicateName(tabs: Tab[], baseName: string) {
+    const existingNames = new Set(tabs.map(tab => tab.name));
+    let name = `${baseName} copy`;
+    let count = 2;
+
+    while (existingNames.has(name)) {
+        name = `${baseName} copy ${count}`;
+        count++;
+    }
+
+    return name;
+}
+
 function createDefaultState(): TabsState {
     const defaultTabId = generateId();
     return {
@@ -145,6 +158,7 @@ function createTabsStore() {
         closeTab: (id: string) => withPersistence(s => {
             if (s.tabs.length <= 1) return s;
             const index = s.tabs.findIndex(t => t.id === id);
+            if (index === -1) return s;
             const newTabs = s.tabs.filter(t => t.id !== id);
             let newActiveId = s.activeTabId;
 
@@ -154,6 +168,40 @@ function createTabsStore() {
                 newActiveId = newTabs[newIndex].id;
             }
             return { tabs: newTabs, activeTabId: newActiveId };
+        }),
+        duplicateTab: (id: string) => withPersistence(s => {
+            const index = s.tabs.findIndex(t => t.id === id);
+            if (index === -1) return s;
+
+            const source = s.tabs[index];
+            const duplicate = {
+                ...source,
+                id: generateId(),
+                name: createDuplicateName(s.tabs, source.name),
+                files: source.files.map(file => ({ ...file }))
+            };
+            const newTabs = [...s.tabs];
+            newTabs.splice(index + 1, 0, duplicate);
+
+            return {
+                ...s,
+                tabs: newTabs,
+                activeTabId: duplicate.id
+            };
+        }),
+        closeTabsToRight: (id: string) => withPersistence(s => {
+            const index = s.tabs.findIndex(t => t.id === id);
+            if (index === -1 || index === s.tabs.length - 1) return s;
+
+            const newTabs = s.tabs.slice(0, index + 1);
+            const activeTabId = newTabs.some(tab => tab.id === s.activeTabId)
+                ? s.activeTabId
+                : id;
+
+            return {
+                tabs: newTabs,
+                activeTabId
+            };
         }),
         setActiveTab: (id: string) => withPersistence(s => ({ ...s, activeTabId: id })),
 

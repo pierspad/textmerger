@@ -36,7 +36,8 @@
         "addPattern": "Add Pattern",
         "patternPlaceholder": "e.g. *.log or node_modules",
         "exclusionDescription": "Files and folders matching these patterns will be ignored when adding directories.",
-        "resetPatterns": "Reset Patterns"
+        "resetPatterns": "Reset Patterns",
+        "repository": "Repository"
     },
     "contextMenu": {
         "copyPath": "Copy absolute path",

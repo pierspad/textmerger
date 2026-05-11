@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
+  import { getName, getVersion } from "@tauri-apps/api/app";
   import { shortcuts, ACTION_LABELS, ACTION_ICONS, type Shortcuts } from "../stores/shortcuts";
   import { settings } from "../stores/settings";
   import { theme } from "../stores/theme";
@@ -12,6 +13,23 @@
   let activeTab = "shortcuts";
   let recordingAction: string | null = null;
   let newPattern = "";
+  let appName = "TextMerger";
+  let appVersion = "2.3.1";
+
+  const repoUrl = "https://github.com/pierspad/textmerger";
+  const licenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html";
+
+  $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
+
+  onMount(async () => {
+    try {
+      const [name, version] = await Promise.all([getName(), getVersion()]);
+      appName = name || appName;
+      appVersion = version || appVersion;
+    } catch (e) {
+      console.warn("Could not read Tauri app metadata", e);
+    }
+  });
 
   function addPattern() {
     if (newPattern.trim()) {
@@ -80,7 +98,7 @@
       <h2 class="font-bold text-[var(--text-primary)]">{$t('settings.title')}</h2>
     </div>
     
-    <nav class="flex-1 p-2 space-y-1">
+    <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
       <button
         class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
         {activeTab === 'general' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
@@ -112,6 +130,38 @@
         {$t('settings.exclusions')}
       </button>
     </nav>
+
+    <div class="p-4 border-t border-[var(--border-color)]">
+      <div class="rounded border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-semibold text-[var(--text-primary)]">{appName}</p>
+            <p class="text-xs text-[var(--text-muted)]">v{appVersion} - Tauri + Svelte</p>
+          </div>
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noreferrer"
+            class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            aria-label={$t('settings.repository')}
+            title={$t('settings.repository')}
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.42 9.42 0 0112 6.96c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.54 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.1 10.1 0 0022 12.26C22 6.58 17.52 2 12 2z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </div>
+        <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
+          <a href={repoUrl} target="_blank" rel="noreferrer" class="hover:text-[var(--text-primary)] transition-colors">
+            {$t('settings.repository')}
+          </a>
+          <span>•</span>
+          <a href={licenseUrl} target="_blank" rel="noreferrer" class="hover:text-[var(--text-primary)] transition-colors">
+            GPL-3.0
+          </a>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- Settings Content -->
@@ -163,28 +213,21 @@
         </div>
       </div>
     {:else if activeTab === 'shortcuts'}
-      <div class="max-w-3xl">
+      <div class="max-w-6xl">
         <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">{$t('settings.keyboardShortcuts')}</h3>
         
-        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden">
-          <div class="grid grid-cols-12 gap-4 p-3 bg-[var(--bg-tertiary)] border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            <div class="col-span-1 text-center">{$t('settings.icon')}</div>
-            <div class="col-span-6">{$t('settings.action')}</div>
-            <div class="col-span-5 text-center">{$t('settings.shortcut')}</div>
-          </div>
-          
-          <div class="divide-y divide-[var(--border-color)]">
-            {#each Object.entries($shortcuts) as [key, keybind]}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+          {#each shortcutEntries as [key, keybind]}
               <!-- svelte-ignore indent -->
               {@const action = key}
-              <div class="grid grid-cols-12 gap-4 p-3 items-center hover:bg-[var(--bg-hover)] transition-colors">
-                <div class="col-span-1 flex justify-center text-[var(--text-muted)]">
+              <div class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[56px]">
+                <div class="flex justify-center text-[var(--text-muted)]">
                   {@html getIcon(action)}
                 </div>
-                <div class="col-span-6 font-medium text-[var(--text-secondary)]">
+                <div class="min-w-0 font-medium text-[var(--text-secondary)] truncate">
                   {getLabel(action)}
                 </div>
-                <div class="col-span-5 flex justify-center">
+                <div class="flex justify-end">
                   <KeybindRecorder 
                     value={keybind} 
                     recording={recordingAction === action}
@@ -194,8 +237,7 @@
                   />
                 </div>
               </div>
-            {/each}
-          </div>
+          {/each}
         </div>
 
         <div class="mt-8 flex justify-center">

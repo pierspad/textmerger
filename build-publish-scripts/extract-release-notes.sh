@@ -22,7 +22,7 @@ VERSION="${VERSION#v}"
 TMP_OUTPUT="$(mktemp)"
 trap 'rm -f "$TMP_OUTPUT"' EXIT
 
-if ! awk -v version="$VERSION" '
+if awk -v version="$VERSION" '
     function heading_level(line, i, c) {
         for (i = 1; i <= length(line); i++) {
             c = substr(line, i, 1)
@@ -63,12 +63,18 @@ if ! awk -v version="$VERSION" '
         if (!found) exit 42
     }
 ' "$NOTES_FILE" > "$TMP_OUTPUT"; then
-    echo "No release notes section found for version v${VERSION} in $NOTES_FILE" >&2
-    exit 1
+    :
+else
+    if grep -q '^## Release Notes[[:space:]]*$' "$NOTES_FILE"; then
+        cp "$NOTES_FILE" "$TMP_OUTPUT"
+    else
+        echo "No release notes section found for version v${VERSION} and no '## Release Notes' fallback in $NOTES_FILE" >&2
+        exit 1
+    fi
 fi
 
 if ! grep -q '[^[:space:]]' "$TMP_OUTPUT"; then
-    echo "Release notes section for v${VERSION} is empty in $NOTES_FILE" >&2
+    echo "Release notes output for v${VERSION} is empty in $NOTES_FILE" >&2
     exit 1
 fi
 

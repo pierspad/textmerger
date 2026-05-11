@@ -85,10 +85,6 @@ fi
 
 open_file_blocking "$RELEASE_NOTES_FILE" "$(basename "$RELEASE_NOTES_FILE")"
 
-if ! grep -q "$VERSION" "$RELEASE_NOTES_FILE"; then
-    echo -e "${YELLOW}Attenzione: la versione ${VERSION} non compare nelle release notes.${NC}"
-fi
-
 if ! grep -q '[^[:space:]]' "$RELEASE_NOTES_FILE"; then
     echo -e "${RED}Error: release notes vuote. Compilale prima di pubblicare.${NC}"
     exit 1
@@ -99,7 +95,7 @@ trap 'rm -f "$RELEASE_BODY_PREVIEW"' EXIT
 
 echo -e "${YELLOW}Verifico la sezione release notes per ${TAG_VERSION}...${NC}"
 bash "$EXTRACT_NOTES_SCRIPT" "$TAG_VERSION" "$RELEASE_NOTES_FILE" "$RELEASE_BODY_PREVIEW"
-echo -e "${GREEN}Sezione release notes trovata; verra pubblicata solo quella.${NC}"
+echo -e "${GREEN}Release notes valide; verra pubblicata la sezione del tag o il blocco 'Release Notes'.${NC}"
 
 if command -v makepkg >/dev/null 2>&1; then
     echo -e "${YELLOW}Genero .SRCINFO...${NC}"

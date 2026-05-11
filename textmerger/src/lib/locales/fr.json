@@ -31,7 +31,13 @@
         "resetDefaults": "Rétablir les Défauts",
         "resetConfirm": "Êtes-vous sûr de vouloir rétablir tous les raccourcis par défaut ?",
         "resetSuccess": "Raccourcis rétablis par défaut",
-        "resetError": "Erreur lors de la réinitialisation des raccourcis"
+        "resetError": "Erreur lors de la réinitialisation des raccourcis",
+        "exclusions": "Fichiers Exclus",
+        "addPattern": "Ajouter un Motif",
+        "patternPlaceholder": "ex. *.log ou node_modules",
+        "exclusionDescription": "Les fichiers et dossiers correspondant à ces motifs seront ignorés lors de l'ajout de dossiers.",
+        "resetPatterns": "Réinitialiser les Motifs",
+        "repository": "Dépôt"
     },
     "contextMenu": {
         "copyPath": "Copier le chemin absolu",

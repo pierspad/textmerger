@@ -36,7 +36,8 @@
         "addPattern": "Aggiungi Pattern",
         "patternPlaceholder": "es. *.log o node_modules",
         "exclusionDescription": "File e cartelle che corrispondono a questi pattern verranno ignorati durante l'aggiunta di directory.",
-        "resetPatterns": "Ripristina Pattern"
+        "resetPatterns": "Ripristina Pattern",
+        "repository": "Repository"
     },
     "contextMenu": {
         "copyPath": "Copia percorso assoluto",
