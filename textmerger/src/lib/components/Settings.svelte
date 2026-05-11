@@ -10,6 +10,13 @@
   import { ask } from "@tauri-apps/plugin-dialog";
 
   type SnackbarVariant = "success" | "info" | "warning" | "error";
+  type UpdateStatus = "idle" | "checking" | "available" | "current" | "error" | "disabled";
+
+  interface GitHubRelease {
+    tag_name?: string;
+    html_url?: string;
+    name?: string;
+  }
 
   const dispatch = createEventDispatcher();
 
@@ -17,14 +24,22 @@
   let recordingAction: string | null = null;
   let newPattern = "";
   let appName = "TextMerger";
-  let appVersion = "2.3.1";
+  let appVersion = "";
+  let updateStatus: UpdateStatus = "idle";
+  let latestVersion = "";
+  let latestReleaseUrl = "";
+  let updateError = "";
 
   const repoUrl = "https://github.com/pierspad/textmerger";
+  const latestReleaseApiUrl = "https://api.github.com/repos/pierspad/textmerger/releases/latest";
   const authorUrl = "https://pierspad.com";
   const licenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html";
 
   $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
-  $: releaseUrl = `${repoUrl}/releases/tag/v${appVersion}`;
+  $: releaseUrl = appVersion ? `${repoUrl}/releases/tag/v${appVersion}` : `${repoUrl}/releases`;
+  $: formattedAppVersion = appVersion ? formatVersion(appVersion) : $t('settings.versionUnavailable');
+  $: formattedLatestVersion = latestVersion ? formatVersion(latestVersion) : "";
+  $: statusText = getUpdateStatusText();
 
   onMount(async () => {
     try {
@@ -33,6 +48,13 @@
       appVersion = version || appVersion;
     } catch (e) {
       console.warn("Could not read Tauri app metadata", e);
+    } finally {
+      latestReleaseUrl = `${repoUrl}/releases`;
+      if ($settings.automaticUpdateChecks) {
+        void checkForUpdates("auto");
+      } else {
+        updateStatus = "disabled";
+      }
     }
   });
 
@@ -122,6 +144,101 @@
   function toggleTheme() {
     theme.toggle();
   }
+
+  function formatVersion(version: string) {
+    if (!version) return "";
+    return version.startsWith("v") ? version : `v${version}`;
+  }
+
+  function normalizeVersion(version: string) {
+    return version.trim().replace(/^v/i, "");
+  }
+
+  function compareVersions(candidate: string, current: string) {
+    const left = normalizeVersion(candidate).split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0);
+    const right = normalizeVersion(current).split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0);
+    const length = Math.max(left.length, right.length, 3);
+
+    for (let index = 0; index < length; index += 1) {
+      const diff = (left[index] || 0) - (right[index] || 0);
+      if (diff !== 0) return diff > 0 ? 1 : -1;
+    }
+
+    return 0;
+  }
+
+  function getUpdateStatusText() {
+    if (updateStatus === "disabled") return $t('settings.updateCheckDisabled');
+    if (updateStatus === "checking") return $t('settings.updateChecking');
+    if (updateStatus === "available") {
+      return $t('settings.updateAvailable').replace('{version}', formattedLatestVersion);
+    }
+    if (updateStatus === "current") return $t('settings.updateCurrent');
+    if (updateStatus === "error") return updateError || $t('settings.updateError');
+    return $t('settings.updateIdle');
+  }
+
+  async function checkForUpdates(source: "auto" | "manual" = "manual") {
+    if (source === "auto" && !$settings.automaticUpdateChecks) {
+      updateStatus = "disabled";
+      return;
+    }
+
+    if (!appVersion) {
+      updateStatus = "error";
+      updateError = $t('settings.currentVersionUnavailable');
+      if (source === "manual") notify(updateError, "error");
+      return;
+    }
+
+    updateStatus = "checking";
+    updateError = "";
+
+    try {
+      const response = await fetch(latestReleaseApiUrl, {
+        headers: {
+          Accept: "application/vnd.github+json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`GitHub API returned ${response.status}`);
+      }
+
+      const release = (await response.json()) as GitHubRelease;
+      latestVersion = normalizeVersion(release.tag_name || release.name || "");
+      latestReleaseUrl = release.html_url || (release.tag_name ? `${repoUrl}/releases/tag/${release.tag_name}` : `${repoUrl}/releases`);
+
+      if (!latestVersion) {
+        throw new Error("Latest release version missing");
+      }
+
+      if (compareVersions(latestVersion, appVersion) > 0) {
+        updateStatus = "available";
+        notify($t('settings.updateAvailable').replace('{version}', formatVersion(latestVersion)), "info");
+      } else {
+        updateStatus = "current";
+        if (source === "manual") notify($t('settings.updateCurrent'), "success");
+      }
+    } catch (e) {
+      console.error("Failed to check for updates", e);
+      updateStatus = "error";
+      updateError = $t('settings.updateError');
+      if (source === "manual") notify(updateError, "error");
+    }
+  }
+
+  function toggleAutomaticUpdateChecks() {
+    const enabled = !$settings.automaticUpdateChecks;
+    settings.setAutomaticUpdateChecks(enabled);
+
+    if (enabled) {
+      void checkForUpdates("manual");
+    } else {
+      updateStatus = "disabled";
+      updateError = "";
+    }
+  }
 </script>
 
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
@@ -185,7 +302,7 @@
                 title={$t('settings.release')}
                 on:click={() => openExternalLink(releaseUrl)}
               >
-                v{appVersion}
+                {formattedAppVersion}
               </button>
               <span class="mx-1">-</span>
               Tauri + Svelte
@@ -223,10 +340,10 @@
   <!-- Settings Content -->
   <main class="flex-1 p-8 overflow-y-auto">
     {#if activeTab === 'general'}
-      <div class="max-w-2xl">
+      <div class="w-full max-w-6xl">
         <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">{$t('settings.generalSettings')}</h3>
         
-        <div class="space-y-4">
+        <div class="grid gap-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
           <button 
             class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex justify-between items-center hover:bg-[var(--bg-hover-strong)] transition-colors"
             on:click={toggleTheme}
@@ -244,7 +361,77 @@
             </div>
           </button>
 
-          <div class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3">
+          <div class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="p-2 bg-emerald-600 rounded text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p class="font-medium text-[var(--text-primary)]">{$t('settings.updates')}</p>
+                  <p class="text-xs text-[var(--text-muted)]">{$t('settings.currentVersion').replace('{version}', formattedAppVersion)}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="shrink-0 rounded border border-[var(--border-light)] bg-[var(--bg-primary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-60"
+                on:click={() => checkForUpdates("manual")}
+                disabled={updateStatus === 'checking'}
+              >
+                <span class="inline-flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
+                  </svg>
+                  {$t('settings.checkNow')}
+                </span>
+              </button>
+            </div>
+
+            <div class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-[var(--text-primary)]">{statusText}</p>
+                  {#if updateStatus === 'available'}
+                    <p class="text-xs text-[var(--text-muted)]">{$t('settings.openReleaseHint')}</p>
+                  {/if}
+                </div>
+
+                {#if updateStatus === 'available'}
+                  <button
+                    type="button"
+                    class="rounded bg-[#0e639c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1177bb] transition-colors"
+                    on:click={() => openExternalLink(latestReleaseUrl)}
+                  >
+                    <span class="inline-flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                      {$t('settings.openRelease')}
+                    </span>
+                  </button>
+                {/if}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="w-full rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-3 flex items-center justify-between gap-3 hover:bg-[var(--bg-hover)] transition-colors"
+              on:click={toggleAutomaticUpdateChecks}
+            >
+              <span class="text-left">
+                <span class="block text-sm font-medium text-[var(--text-primary)]">{$t('settings.automaticUpdateChecks')}</span>
+                <span class="block text-xs text-[var(--text-muted)]">{$t('settings.automaticUpdateChecksHint')}</span>
+              </span>
+              <span class="relative inline-block w-10 h-6 transition duration-200 ease-in-out rounded-full {$settings.automaticUpdateChecks ? 'bg-green-500' : 'bg-gray-600'}">
+                <span class="absolute left-0 inline-block w-6 h-6 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$settings.automaticUpdateChecks ? 'translate-x-4' : 'translate-x-0'}"></span>
+              </span>
+            </button>
+          </div>
+
+          <div class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3 xl:col-span-2">
             <div class="flex items-center gap-3 mb-2">
               <div class="p-2 bg-blue-600 rounded text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -254,7 +441,7 @@
               <span class="font-medium text-[var(--text-primary)]">{$t('settings.language')}</span>
             </div>
             
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
                 {#each availableUILanguages as lang}
                     <button 
                         class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)] flex items-center gap-2 min-w-0
@@ -287,15 +474,15 @@
           {/if}
         </div>
         
-        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))]">
           {#each shortcutEntries as [key, keybind]}
               <!-- svelte-ignore indent -->
               {@const action = key}
-              <div class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[56px]">
+              <div class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[60px]">
                 <div class="flex justify-center text-[var(--text-muted)]">
                   {@html getIcon(action)}
                 </div>
-                <div class="min-w-0 font-medium text-[var(--text-secondary)] truncate">
+                <div class="min-w-0 font-medium leading-snug text-[var(--text-secondary)]">
                   {getLabel(action)}
                 </div>
                 <div class="flex justify-end">
@@ -315,9 +502,12 @@
 
         <div class="mt-8 flex justify-center">
           <button
-            class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20"
+            class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20 inline-flex items-center gap-2"
             on:click={handleResetDefaults}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+            </svg>
             {$t('settings.resetDefaults')}
           </button>
         </div>

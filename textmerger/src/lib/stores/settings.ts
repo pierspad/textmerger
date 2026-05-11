@@ -1,5 +1,10 @@
 import { writable } from 'svelte/store';
 
+interface SettingsState {
+    excludedPatterns: string[];
+    automaticUpdateChecks: boolean;
+}
+
 const defaultExcludedPatterns = [
     '.git',
     '.svn',
@@ -36,13 +41,24 @@ const defaultExcludedPatterns = [
     '*.dmg'
 ];
 
+const DEFAULT_SETTINGS: SettingsState = {
+    excludedPatterns: defaultExcludedPatterns,
+    automaticUpdateChecks: true
+};
+
 function createSettingsStore() {
     // Load from localStorage
     const savedPatterns = localStorage.getItem('excludedPatterns');
     const initialPatterns = savedPatterns ? JSON.parse(savedPatterns) : defaultExcludedPatterns;
+    const savedAutomaticUpdateChecks = localStorage.getItem('automaticUpdateChecks');
+    const initialAutomaticUpdateChecks = savedAutomaticUpdateChecks === null
+        ? true
+        : savedAutomaticUpdateChecks === 'true';
 
-    const { subscribe, set, update } = writable({
-        excludedPatterns: initialPatterns
+    const { subscribe, set, update } = writable<SettingsState>({
+        ...DEFAULT_SETTINGS,
+        excludedPatterns: initialPatterns,
+        automaticUpdateChecks: initialAutomaticUpdateChecks
     });
 
     return {
@@ -59,7 +75,11 @@ function createSettingsStore() {
         }),
         resetPatterns: () => {
             localStorage.setItem('excludedPatterns', JSON.stringify(defaultExcludedPatterns));
-            set({ excludedPatterns: defaultExcludedPatterns });
+            update(s => ({ ...s, excludedPatterns: defaultExcludedPatterns }));
+        },
+        setAutomaticUpdateChecks: (enabled: boolean) => {
+            localStorage.setItem('automaticUpdateChecks', String(enabled));
+            update(s => ({ ...s, automaticUpdateChecks: enabled }));
         }
     };
 }
