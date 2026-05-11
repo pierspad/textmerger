@@ -27,7 +27,6 @@
   let appVersion = "";
   let updateStatus: UpdateStatus = "idle";
   let latestVersion = "";
-  let latestReleaseUrl = "";
   let updateError = "";
 
   const repoUrl = "https://github.com/pierspad/textmerger";
@@ -38,8 +37,6 @@
   $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
   $: releaseUrl = appVersion ? `${repoUrl}/releases/tag/v${appVersion}` : `${repoUrl}/releases`;
   $: formattedAppVersion = appVersion ? formatVersion(appVersion) : $t('settings.versionUnavailable');
-  $: formattedLatestVersion = latestVersion ? formatVersion(latestVersion) : "";
-  $: statusText = getUpdateStatusText();
 
   onMount(async () => {
     try {
@@ -49,7 +46,6 @@
     } catch (e) {
       console.warn("Could not read Tauri app metadata", e);
     } finally {
-      latestReleaseUrl = `${repoUrl}/releases`;
       if ($settings.automaticUpdateChecks) {
         void checkForUpdates("auto");
       } else {
@@ -167,17 +163,6 @@
     return 0;
   }
 
-  function getUpdateStatusText() {
-    if (updateStatus === "disabled") return $t('settings.updateCheckDisabled');
-    if (updateStatus === "checking") return $t('settings.updateChecking');
-    if (updateStatus === "available") {
-      return $t('settings.updateAvailable').replace('{version}', formattedLatestVersion);
-    }
-    if (updateStatus === "current") return $t('settings.updateCurrent');
-    if (updateStatus === "error") return updateError || $t('settings.updateError');
-    return $t('settings.updateIdle');
-  }
-
   async function checkForUpdates(source: "auto" | "manual" = "manual") {
     if (source === "auto" && !$settings.automaticUpdateChecks) {
       updateStatus = "disabled";
@@ -207,7 +192,6 @@
 
       const release = (await response.json()) as GitHubRelease;
       latestVersion = normalizeVersion(release.tag_name || release.name || "");
-      latestReleaseUrl = release.html_url || (release.tag_name ? `${repoUrl}/releases/tag/${release.tag_name}` : `${repoUrl}/releases`);
 
       if (!latestVersion) {
         throw new Error("Latest release version missing");
@@ -388,32 +372,6 @@
                   {$t('settings.checkNow')}
                 </span>
               </button>
-            </div>
-
-            <div class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-3">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-[var(--text-primary)]">{statusText}</p>
-                  {#if updateStatus === 'available'}
-                    <p class="text-xs text-[var(--text-muted)]">{$t('settings.openReleaseHint')}</p>
-                  {/if}
-                </div>
-
-                {#if updateStatus === 'available'}
-                  <button
-                    type="button"
-                    class="rounded bg-[#0e639c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1177bb] transition-colors"
-                    on:click={() => openExternalLink(latestReleaseUrl)}
-                  >
-                    <span class="inline-flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                      </svg>
-                      {$t('settings.openRelease')}
-                    </span>
-                  </button>
-                {/if}
-              </div>
             </div>
 
             <button
