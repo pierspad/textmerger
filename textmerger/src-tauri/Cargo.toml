@@ -1,6 +1,6 @@
 [package]
 name = "textmerger"
-version = "2.3.1"
+version = "2.4.0"
 description = "A Rust/Tauri GTK3 application for merging text files"
 authors = ["you"]
 license = "GPL-3.0-only"
