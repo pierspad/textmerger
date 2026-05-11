@@ -2,15 +2,23 @@
 
 ### Fixes
 
-* **Release Publishing**: GitHub Releases now use curated notes from `docs/release-notes.md` instead of generated notes
-* **Release Harness**: LLM/Copilot instructions now require every meaningful change to be documented before publishing
-* **Version Consistency**: Release checks now validate the Rust package version stored in `Cargo.lock`
-* **Package Metadata**: Fixed package version alignment from the previous release cycle
+* **Settings Icon**: Fixed alignment issues and incorrect hover styling
 
 ### Improvements
 
-* **Snackbars**: Added success, info, warning, and error variants with dedicated colors, icons, and expiry bars
-* **Tab Navigation**: Added keyboard shortcuts for previous/next tab and direct tab selection with `Ctrl+1` through `Ctrl+9`
-* **Tab Management**: Added tab tooltips, tab duplication, and close-tabs-to-the-right actions
-* **Settings Menu**: Reworked keyboard shortcuts into a two-column layout to reduce scrolling
-* **App Info**: Added a settings sidebar panel with release, repository, license, and author links
+* **Snackbars**: Added feedback notifications when removing excluded files
+* **Keyboard Shortcuts**: Improved shortcut support across the application
+* **Shortcut Categories**: Added support for filtering shortcuts by category
+* **User Interface**: Simplified interactions and improved overall usability
+* **Visual Consistency**: Improved continuity and alignment across UI elements
+* **File Icons**: Added dedicated icons for different file types
+* **Excluded Files List**: Added additional columns and improved list visualization
+* **Notebook Handling**: Improved notebook rendering and aligned behavior with content truncation options
+* **Accessibility**: Improved keyboard-only navigation throughout the application
+
+### New Features
+
+* **File Truncation**: Added configurable content truncation with custom character limits
+* **Content Visibility**: Added actions to expand truncated content or completely hide/show file contents
+* **File Filtering**: Updated file filtering behavior to preserve file headers and paths while hiding filtered content
+* **Automatic File Refresh**: Added support for automatically refreshing file contents at configurable time intervals

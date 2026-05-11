@@ -1,0 +1,41 @@
+{
+  "locales_dir": "/home/ribben/Desktop/Various_Projects/textmerger/textmerger/src/lib/locales",
+  "expected_locales": [
+    "ar",
+    "de",
+    "en",
+    "es",
+    "fr",
+    "hi",
+    "it",
+    "ja",
+    "ko",
+    "nl",
+    "pl",
+    "pt",
+    "ru",
+    "tr",
+    "zh"
+  ],
+  "total_english_keys": 94,
+  "missing_counts_by_locale": {
+    "ar": 0,
+    "de": 0,
+    "es": 0,
+    "fr": 0,
+    "hi": 0,
+    "it": 0,
+    "ja": 0,
+    "ko": 0,
+    "nl": 0,
+    "pl": 0,
+    "pt": 0,
+    "ru": 0,
+    "tr": 0,
+    "zh": 0
+  },
+  "total_keys_with_issues": 0,
+  "orphan_keys_count": 0,
+  "orphan_keys": [],
+  "missing_keys": {}
+}

@@ -20,10 +20,10 @@ jobs:
             os: 'windows-latest'
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '20'
     
@@ -78,7 +78,7 @@ jobs:
     
     - name: Upload Artifacts (Linux)
       if: matrix.platform == 'linux'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: packages-linux
         path: |
@@ -88,7 +88,7 @@ jobs:
     
     - name: Upload Artifacts (Windows)
       if: matrix.platform == 'windows'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: packages-windows
         path: |
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install dependencies
         run: |
@@ -110,7 +110,7 @@ jobs:
           pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3
       
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: packages-linux
           path: linux-packages
@@ -180,7 +180,7 @@ jobs:
           su builder -c "makepkg -sfc --noconfirm"
           
       - name: Upload Artifacts (Arch)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: packages-arch
           path: build-publish-scripts/*.pkg.tar.zst
@@ -193,10 +193,10 @@ jobs:
       contents: write
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         path: artifacts
     
@@ -214,7 +214,7 @@ jobs:
         build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md
     
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         files: release/*
         body_path: release-notes-for-tag.md

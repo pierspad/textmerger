@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { tShortcut } from "../stores/i18n";
 
   export let value = "";
   export let recording = false;
@@ -75,7 +76,7 @@
       on:click={startRecording}
       type="button"
     >
-      {value}
+      {$tShortcut(value)}
     </button>
   {/if}
 </div>

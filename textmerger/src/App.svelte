@@ -3,11 +3,11 @@
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { writeTextFile } from "@tauri-apps/plugin-fs";
-  import { onMount, tick } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import FileTree from "./lib/FileTree.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import Modal from "./lib/components/Modal.svelte";
-  import { t } from "./lib/stores/i18n";
+  import { t, tShortcut } from "./lib/stores/i18n";
   import { settings } from "./lib/stores/settings";
   import { shortcuts } from "./lib/stores/shortcuts";
   import { tabs, type FileNode } from "./lib/stores/tabs";
@@ -68,9 +68,12 @@
 
   let mergedContent = "";
   let selectedFiles: Set<string> = new Set();
+  let focusedFilePath: string | null = null;
+  let fileTreeRef: any;
+  let forceFullLoadPaths: Set<string> = new Set();
   let isSidebarExpanded = true;
   let sidebarWidth = 300;
-  let showOutputs = false;
+  let ipynbOutputMode: "none" | "reduced" | "full" = "none";
   let hasIpynb = false;
   let snackbarMessage = "";
   let snackbarVariant: SnackbarVariant = "success";
@@ -78,7 +81,9 @@
   let snackbarAnimationKey = 0;
   const snackbarDuration = 2200;
   let showSettings = false;
-  let contextMenu = { show: false, x: 0, y: 0, path: "", name: "" };
+  let contextMenu = { show: false, x: 0, y: 0, path: "", name: "", isFile: true };
+  $: contextMenuFile = files.find(f => f.path === contextMenu.path);
+  $: showTruncateOption = contextMenu.isFile && contextMenuFile && $settings.largeFileThreshold > 0 && contextMenuFile.char_count > $settings.largeFileThreshold;
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
   
@@ -86,6 +91,23 @@
   let showRenameModal = false;
   let showMergeModal = false;
   let newTabName = "";
+  
+  // Sort States
+  const savedSortType = localStorage.getItem('textmerger_sort_type');
+  let sortType: 'original' | 'alphabetical' | 'size' = 
+    (savedSortType === 'original' || savedSortType === 'alphabetical' || savedSortType === 'size') 
+      ? savedSortType 
+      : 'original';
+      
+  const savedSortAscending = localStorage.getItem('textmerger_sort_ascending');
+  let sortAscending = savedSortAscending === null ? true : savedSortAscending === 'true';
+
+  $: {
+    localStorage.setItem('textmerger_sort_type', sortType);
+  }
+  $: {
+    localStorage.setItem('textmerger_sort_ascending', String(sortAscending));
+  }
   
   // Tab Scrolling
   let tabContainer: HTMLElement;
@@ -131,13 +153,39 @@
   let draggedTabId: string | null = null;
   let dragOverTabId: string | null = null;
 
-  $: hasIpynb = files.some((f) => f.path.toLowerCase().endsWith(".ipynb"));
+  $: hasIpynb = files.some((f) => {
+    if (!f.path.toLowerCase().endsWith(".ipynb")) return false;
+    const isTruncated = $settings.largeFileThreshold > 0 && f.char_count > $settings.largeFileThreshold && !forceFullLoadPaths.has(f.path);
+    return !isTruncated;
+  });
   $: snackbarStyle = snackbarPalette[snackbarVariant];
   
   // Auto-update content when files change
   $: if (files) {
       updateContent();
   }
+
+  let liveSyncIntervalId: ReturnType<typeof setInterval> | undefined;
+
+  $: {
+    if (liveSyncIntervalId) {
+      clearInterval(liveSyncIntervalId);
+      liveSyncIntervalId = undefined;
+    }
+    if ($settings.liveSyncInterval > 0) {
+      liveSyncIntervalId = setInterval(() => {
+        if (!isLoading) {
+          updateContent();
+        }
+      }, $settings.liveSyncInterval * 1000);
+    }
+  }
+
+  onDestroy(() => {
+    if (liveSyncIntervalId) {
+      clearInterval(liveSyncIntervalId);
+    }
+  });
 
   onMount(() => {
     void restoreFilesForSession();
@@ -161,9 +209,14 @@
       }
       // Pass paths to backend
       const paths = files.map((f) => f.path);
+      const hiddenPaths = files.filter(f => f.hidden).map(f => f.path);
       mergedContent = await invoke("get_merged_content", {
         paths,
-        showOutputs,
+        hiddenPaths,
+        ipynbOutputMode,
+        loadFullLargeFiles: $settings.largeFileThreshold === 0,
+        forceFullLoadPaths: Array.from(forceFullLoadPaths),
+        largeFileThreshold: $settings.largeFileThreshold
       });
     } catch (e) {
       console.error(e);
@@ -195,7 +248,8 @@
           try {
             const result = await invoke("add_files", {
               paths,
-              excludedPatterns: [],
+              excludedPatterns: $settings.excludedPatterns,
+              hiddenPatterns: $settings.hiddenPatterns,
             });
 
             const { files: validFiles } = result as AddFilesResult;
@@ -211,13 +265,21 @@
   }
 
   function toggleOutputs() {
-    showOutputs = !showOutputs;
+    if (ipynbOutputMode === "none") ipynbOutputMode = "reduced";
+    else if (ipynbOutputMode === "reduced") ipynbOutputMode = "full";
+    else ipynbOutputMode = "none";
     updateContent();
-    showSnackbar(
-      showOutputs
-        ? $t("messages.showingOutputs")
-        : $t("messages.hidingOutputs"),
-    );
+  }
+
+  $: {
+    if (
+      $settings ||
+      sortType ||
+      sortAscending ||
+      ipynbOutputMode
+    ) {
+      updateContent();
+    }
   }
 
   async function handleDrop(event: DragEvent) {
@@ -238,6 +300,7 @@
             const result = await invoke("add_files", {
               paths: event.payload.paths,
               excludedPatterns: $settings.excludedPatterns,
+              hiddenPatterns: $settings.hiddenPatterns,
             });
 
             const { files: newFiles, errors } = result as AddFilesResult;
@@ -287,6 +350,7 @@
         const result = await invoke("add_files", {
           paths,
           excludedPatterns: $settings.excludedPatterns,
+          hiddenPatterns: $settings.hiddenPatterns,
         });
         const { files: newFiles, errors } = result as AddFilesResult;
         tabs.addFilesToTab($tabs.activeTabId, newFiles);
@@ -555,9 +619,32 @@
     activateTabByIndex(nextIndex);
   }
 
+  function getAllTreePaths(): string[] {
+    const paths = new Set<string>();
+    files.forEach(f => {
+      const parts = f.path.split(/[/\\]/);
+      let currentPath = "";
+      parts.forEach((part, i) => {
+        if (!part && i === 0) {
+          currentPath = "/";
+          paths.add(currentPath);
+          return;
+        }
+        if (!part) return;
+        const sep = currentPath === "/" || currentPath === "" ? "" : "/";
+        currentPath = (currentPath ? currentPath : "") + sep + part;
+        paths.add(currentPath);
+      });
+    });
+    return Array.from(paths);
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     // If modal is open, let modal handle keys or check specific conditions
     if (showRenameModal || showMergeModal) return;
+
+    const target = event.target as HTMLElement;
+    const isEditing = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
     const keys = [];
     if (event.ctrlKey) keys.push("Ctrl");
@@ -573,44 +660,108 @@
       return;
     }
 
-    const combo = keys.join("+");
+    const combo = keys.join("+").toUpperCase();
+    const isShortcut = (s: string) => combo === s.toUpperCase();
 
-    if (combo === $shortcuts.open) {
+    if (isShortcut($shortcuts.open)) {
       event.preventDefault();
       openFiles();
-    } else if (combo === $shortcuts.save) {
+    } else if (isShortcut($shortcuts.save)) {
       event.preventDefault();
       saveFile();
-    } else if (combo === $shortcuts.exit) {
+    } else if (isShortcut($shortcuts.exit)) {
       event.preventDefault();
       exitApp();
-    } else if (combo === $shortcuts.remove) {
+    } else if (isShortcut($shortcuts.remove)) {
       event.preventDefault();
       removeSelected();
-    } else if (combo === $shortcuts.removeAll) {
+    } else if (isShortcut($shortcuts.removeAll)) {
       event.preventDefault();
       removeAll();
-    } else if (combo === $shortcuts.copyText) {
+    } else if (isShortcut($shortcuts.copyText)) {
       event.preventDefault();
       copyToClipboard();
-    } else if (combo === $shortcuts.refresh) {
+    } else if (isShortcut($shortcuts.refresh)) {
       event.preventDefault();
       updateContent();
       showSnackbar($t("messages.refreshed"));
-    } else if (combo === $shortcuts.newTab) {
+    } else if (isShortcut($shortcuts.newTab)) {
       event.preventDefault();
       handleAddTab();
-    } else if (combo === $shortcuts.closeTab) {
+    } else if (isShortcut($shortcuts.closeTab)) {
       event.preventDefault();
       if ($tabs.activeTabId) {
           tabs.closeTab($tabs.activeTabId);
       }
-    } else if (combo === $shortcuts.previousTab) {
+    } else if (isShortcut($shortcuts.previousTab)) {
       event.preventDefault();
       activateRelativeTab(-1);
-    } else if (combo === $shortcuts.nextTab) {
+    } else if (isShortcut($shortcuts.nextTab)) {
       event.preventDefault();
       activateRelativeTab(1);
+    } else if (isShortcut($shortcuts.copyPath)) {
+      event.preventDefault();
+      copyPath();
+    } else if (isShortcut($shortcuts.copyFilename)) {
+      event.preventDefault();
+      copyFilename();
+    } else if (isShortcut($shortcuts.copyFileContent)) {
+      event.preventDefault();
+      copyFileContent();
+    } else if (isShortcut($shortcuts.toggleVisibility)) {
+      event.preventDefault();
+      toggleFileVisibility();
+    } else if (isShortcut($shortcuts.refreshFolder)) {
+      event.preventDefault();
+      refreshDirectory(false);
+    } else if (isShortcut($shortcuts.refreshFolderRecursive)) {
+      event.preventDefault();
+      refreshDirectory(true);
+    } else if (isShortcut($shortcuts.revealFullContent)) {
+      event.preventDefault();
+      revealFullContent();
+    } else if (isShortcut($shortcuts.hideDirContent)) {
+      event.preventDefault();
+      hideDirectoryContent();
+    } else if (isShortcut($shortcuts.showDirContent)) {
+      event.preventDefault();
+      showDirectoryContentNonRecursive();
+    } else if (isShortcut($shortcuts.showDirRecursive)) {
+      event.preventDefault();
+      showDirectoryContentRecursive();
+    } else if (isShortcut($shortcuts.revealDirRecursive)) {
+      event.preventDefault();
+      revealFullContentRecursive();
+    } else if (combo === "CTRL+ARROWDOWN") {
+      if (!isEditing) {
+        event.preventDefault();
+        navigateFileTree(1);
+      }
+    } else if (combo === "CTRL+ARROWUP") {
+      if (!isEditing) {
+        event.preventDefault();
+        navigateFileTree(-1);
+      }
+    } else if (combo === "CTRL+A") {
+      if (!isEditing) {
+        event.preventDefault();
+        selectedFiles = new Set(getAllTreePaths());
+      }
+    } else if (combo === "ENTER") {
+      if (!isEditing) {
+        const targetPath = focusedFilePath || (selectedFiles.size === 1 ? Array.from(selectedFiles)[0] : null);
+        if (targetPath) {
+          event.preventDefault();
+          const isFile = files.some(f => f.path === targetPath);
+          if (isFile) {
+            scrollToFile(targetPath);
+          } else {
+            if (fileTreeRef && typeof fileTreeRef.toggleNode === 'function') {
+              fileTreeRef.toggleNode(targetPath);
+            }
+          }
+        }
+      }
     } else {
       const targetTabIndex = [
         $shortcuts.tab1,
@@ -622,7 +773,7 @@
         $shortcuts.tab7,
         $shortcuts.tab8,
         $shortcuts.tab9,
-      ].findIndex((shortcut) => combo === shortcut);
+      ].findIndex((shortcut) => isShortcut(shortcut));
 
       if (targetTabIndex !== -1) {
         event.preventDefault();
@@ -641,7 +792,7 @@
   }
 
   function handleContextMenu(e: CustomEvent) {
-    const { event, path, name } = e.detail;
+    const { event, path, name, isFile } = e.detail;
     event.preventDefault();
     contextMenu = {
       show: true,
@@ -649,8 +800,172 @@
       y: event.clientY,
       path,
       name,
+      isFile: isFile !== false,
     };
   }
+
+  async function refreshDirectory(recursive: boolean) {
+    const dirPath = contextMenu.path;
+    if (!dirPath) return;
+
+    isLoading = true;
+    await tick();
+    closeContextMenu();
+
+    try {
+      const result = await invoke("scan_directory", {
+        path: dirPath,
+        recursive,
+        excludedPatterns: $settings.excludedPatterns,
+        hiddenPatterns: $settings.hiddenPatterns,
+      });
+
+      const { files: newFiles, errors } = result as AddFilesResult;
+
+      const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+      if (activeTab) {
+          const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+          const normFolder = normalize(dirPath);
+
+          const unchangedFiles = activeTab.files.filter(f => {
+              const normPath = normalize(f.path);
+              return !(normPath === normFolder || normPath.startsWith(normFolder + '/'));
+          });
+
+          const updatedFiles = [...unchangedFiles, ...newFiles];
+          tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
+
+          if (errors.length > 0) {
+            const errorMsg =
+              errors.slice(0, 3).join("\n") +
+              (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
+            showSnackbar($t("messages.filesAddedWithErrors") + " " + errorMsg, "warning");
+          } else {
+            showSnackbar($t("messages.refreshed"));
+          }
+      }
+    } catch (e) {
+      console.error("Failed to refresh directory", e);
+      showSnackbar("Errore nel refresh: " + e, "error");
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function toggleFileVisibility() {
+    const targetPath = contextMenu.path;
+    if (!targetPath) return;
+
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      const updatedFiles = activeTab.files.map(f => {
+        if (f.path === targetPath) {
+          return { ...f, hidden: !f.hidden };
+        }
+        return f;
+      });
+      tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
+      updateContent();
+    }
+    closeContextMenu();
+  }
+
+  function hideDirectoryContent() {
+    const dirPath = contextMenu.path;
+    if (!dirPath) return;
+
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+      const normFolder = normalize(dirPath);
+
+      const updatedFiles = activeTab.files.map(f => {
+        const normPath = normalize(f.path);
+        if (normPath === normFolder || normPath.startsWith(normFolder + '/')) {
+          return { ...f, hidden: true };
+        }
+        return f;
+      });
+      tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
+      updateContent();
+      showSnackbar($t("messages.refreshed"));
+    }
+    closeContextMenu();
+  }
+
+  function showDirectoryContentNonRecursive() {
+    const dirPath = contextMenu.path;
+    if (!dirPath) return;
+
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+      const normFolder = normalize(dirPath);
+
+      const updatedFiles = activeTab.files.map(f => {
+        const normPath = normalize(f.path);
+        const isChild = normPath.startsWith(normFolder + '/');
+        const relativePart = isChild ? normPath.substring(normFolder.length + 1) : "";
+        const isDirectChild = isChild && !relativePart.includes('/');
+
+        if (isDirectChild) {
+          return { ...f, hidden: false };
+        }
+        return f;
+      });
+      tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
+      updateContent();
+    }
+    closeContextMenu();
+  }
+
+  function showDirectoryContentRecursive() {
+    const dirPath = contextMenu.path;
+    if (!dirPath) return;
+
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+      const normFolder = normalize(dirPath);
+
+      const updatedFiles = activeTab.files.map(f => {
+        const normPath = normalize(f.path);
+        if (normPath === normFolder || normPath.startsWith(normFolder + '/')) {
+          return { ...f, hidden: false };
+        }
+        return f;
+      });
+      tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
+      updateContent();
+    }
+    closeContextMenu();
+  }
+
+  function revealFullContentRecursive() {
+    const targetPath = contextMenu.path || focusedFilePath;
+    if (!targetPath) return;
+
+    const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+    const normTarget = normalize(targetPath);
+    
+    // Add all files under this path (or the file itself)
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      activeTab.files.forEach(f => {
+        const normPath = normalize(f.path);
+        if (normPath === normTarget || normPath.startsWith(normTarget + '/')) {
+          forceFullLoadPaths.add(f.path);
+        }
+      });
+    } else {
+      forceFullLoadPaths.add(targetPath);
+    }
+    forceFullLoadPaths = forceFullLoadPaths;
+    updateContent();
+    closeContextMenu();
+  }
+
+  $: isCurrentFileHidden = files.find(f => f.path === contextMenu.path)?.hidden || false;
 
   function closeContextMenu() {
     contextMenu.show = false;
@@ -659,7 +974,9 @@
 
   async function copyPath() {
     try {
-      await navigator.clipboard.writeText(contextMenu.path);
+      const target = contextMenu.path || focusedFilePath;
+      if (!target) return;
+      await navigator.clipboard.writeText(target);
       showSnackbar($t("messages.pathCopied"));
     } catch (e) {
       console.error(e);
@@ -669,8 +986,9 @@
 
   async function copyFilename() {
     try {
-      const basename =
-        contextMenu.path.split(/[/\\]/).pop() || contextMenu.name;
+      const target = contextMenu.path || focusedFilePath;
+      if (!target) return;
+      const basename = target.split(/[/\\]/).pop() || contextMenu.name;
       await navigator.clipboard.writeText(basename);
       showSnackbar($t("messages.filenameCopied"));
     } catch (e) {
@@ -693,6 +1011,46 @@
          );
        }
      }
+  }
+
+  function navigateFileTree(direction: 1 | -1) {
+      if (fileTreeRef && typeof fileTreeRef.navigate === 'function') {
+          fileTreeRef.navigate(direction);
+      }
+  }
+
+  function revealFullContent() {
+    const targetPath = contextMenu.path || focusedFilePath;
+    if (!targetPath) return;
+    
+    if (forceFullLoadPaths.has(targetPath)) {
+        forceFullLoadPaths.delete(targetPath);
+    } else {
+        forceFullLoadPaths.add(targetPath);
+    }
+    forceFullLoadPaths = forceFullLoadPaths;
+    updateContent();
+    closeContextMenu();
+  }
+
+  async function copyFileContent() {
+      const targetPath = contextMenu.path || focusedFilePath;
+      if (!targetPath) return;
+
+      try {
+          const el = document.querySelector(`div[data-path="${CSS.escape(targetPath)}"]`);
+          if (el && el.nextElementSibling) {
+              const codeEl = el.nextElementSibling.querySelector('code');
+              if (codeEl) {
+                  await navigator.clipboard.writeText(codeEl.textContent || "");
+                  showSnackbar($t("messages.copied"), "copy");
+              }
+          }
+      } catch (e) {
+          console.error(e);
+          showSnackbar($t("messages.copyFailed"), "error");
+      }
+      closeContextMenu();
   }
 
   function handleFileDblClick(e: CustomEvent) {
@@ -768,6 +1126,7 @@
   <!-- Settings Overlay -->
   {#if showSettings}
     <Settings
+      {sidebarWidth}
       on:close={() => (showSettings = false)}
       on:snackbar={handleSnackbarEvent}
     />
@@ -839,7 +1198,7 @@
         class="h-12 px-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
       >
         <button
-          class="p-2 bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)] transition-colors"
+          class="p-2 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-secondary)] transition-colors"
           on:click={() => (showSettings = true)}
           title="Settings"
           aria-label="Settings"
@@ -889,9 +1248,37 @@
       
 
       <div
-        class="px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-secondary)]"
+        class="px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-secondary)] flex items-center justify-between"
       >
-        {$t("app.addedFiles")} {files.length ? `(${files.length})` : ''}
+        <span>{$t("app.addedFiles")} {files.length ? `(${files.length})` : ''}</span>
+        
+        <div class="flex items-center gap-1">
+          <button
+            class="bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded px-2 py-1 text-xs cursor-pointer hover:bg-[var(--bg-hover)] transition-colors select-none font-medium min-w-[80px] text-center"
+            on:click={() => {
+              const options = ['original', 'alphabetical', 'size'] as const;
+              const idx = options.indexOf(sortType);
+              sortType = options[(idx + 1) % options.length];
+            }}
+          >
+            {sortType === 'original' ? $t('app.sortOriginal') : sortType === 'alphabetical' ? $t('app.sortAlphabetical') : $t('app.sortCharacters')}
+          </button>
+          <button 
+            class="p-1 hover:bg-[var(--bg-hover-strong)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] transition-colors"
+            on:click={() => sortAscending = !sortAscending}
+            title={sortAscending ? "Crescente" : "Decrescente"}
+          >
+            {#if sortAscending}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-4.5L16.5 5.25m0 0L20.25 9m-3.75-3.75v13.5" />
+              </svg>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25 4.5L16.5 21m0 0L20.25 17.25m-3.75 3.75V5.25" />
+              </svg>
+            {/if}
+          </button>
+        </div>
       </div>
 
       <div
@@ -922,8 +1309,14 @@
           </div>
         {:else}
           <FileTree
+            bind:this={fileTreeRef}
             {files}
             bind:selectedFiles
+            bind:focusedFilePath
+            {sortType}
+            {sortAscending}
+            {forceFullLoadPaths}
+            largeFileThreshold={$settings.largeFileThreshold}
             on:contextmenu={handleContextMenu}
             on:dblclick={handleFileDblClick}
           />
@@ -931,7 +1324,7 @@
       </div>
 
       <div
-        class="h-16 px-3 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
+        class="h-[76px] px-3 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
       >
         <button
           class="flex-1 px-3 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-bold text-xs flex items-center justify-center gap-1 transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1098,66 +1491,58 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-auto p-6 relative">
-      <div
-        class="prose prose-invert max-w-none prose-pre:bg-[var(--bg-tertiary)] prose-pre:border prose-pre:border-[var(--border-light)] pb-16"
-      >
-        {@html mergedContent ||
-          `<div class="flex flex-col items-center justify-center h-64 text-[var(--text-muted)] italic"><span>${$t("app.noContent")}</span><span class="text-sm mt-2">${$t("app.addFilesHint")}</span></div>`}
+    <div class="flex-1 relative min-h-0 flex flex-col">
+      {#if hasIpynb}
+        <button
+          class="absolute top-6 right-6 w-[150px] h-[52px] px-2 {ipynbOutputMode === 'none' ? 'bg-[#0ea5e9]/80 hover:bg-[#0ea5e9]/90' : (ipynbOutputMode === 'reduced' ? 'bg-[#f59e0b]/80 hover:bg-[#f59e0b]/90' : 'bg-[#10b981]/80 hover:bg-[#10b981]/90')} backdrop-blur-sm text-white rounded font-bold text-xs flex flex-col items-center justify-center gap-0.5 transition-colors shadow-lg z-20"
+          on:click={toggleOutputs}
+          title="Toggle Jupyter Notebook Outputs"
+        >
+          {#if ipynbOutputMode === 'none'}
+            <div class="flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
+                <path d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.676 12.553a11.249 11.249 0 01-2.631 4.31l-3.099-3.099a5.25 5.25 0 00-6.71-6.71L7.759 4.577a11.217 11.217 0 014.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113z" />
+                <path d="M5.574 12.553A11.217 11.217 0 011.41 9.645a.75.75 0 011.061-1.06 9.716 9.716 0 002.181 1.802l.926-.926a.75.75 0 011.06 1.06l-.926.926c.441.374.904.72 1.387 1.034a.75.75 0 01-.83 1.26A12.72 12.72 0 015.574 12.553z" />
+                <path d="M10.5 14.25a3.75 3.75 0 005.25-5.25l-5.25 5.25z" />
+              </svg>
+            </div>
+            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsHidden")}</span>
+          {:else if ipynbOutputMode === 'reduced'}
+            <div class="flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsReduced")}</span>
+          {:else}
+            <div class="flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsFull")}</span>
+          {/if}
+        </button>
+      {/if}
+      <div class="flex-1 overflow-auto p-6 bg-[var(--bg-primary)] relative">
+        <div
+          class="prose prose-invert max-w-none prose-pre:bg-[var(--bg-tertiary)] prose-pre:border prose-pre:border-[var(--border-light)] pb-16"
+        >
+          {@html mergedContent ||
+            `<div class="flex flex-col items-center justify-center h-64 text-[var(--text-muted)] italic"><span>${$t("app.noContent")}</span><span class="text-sm mt-2">${$t("app.addFilesHint")}</span></div>`}
+        </div>
       </div>
     </div>
 
     <!-- Bottom Action Bar -->
     <div
-      class="h-16 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
+      class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
     >
       <div class="text-xs text-[var(--text-muted)]">
         {$t("app.characters")}: {mergedContent.length.toLocaleString()}
       </div>
       <div class="flex gap-3">
-        {#if hasIpynb}
-          <button
-            class="px-4 py-2 {showOutputs
-              ? 'bg-[#4b5563] hover:bg-[#374151]'
-              : 'bg-[#059669] hover:bg-[#047857]'} text-white rounded font-bold text-sm flex items-center gap-2 transition-colors shadow-lg"
-            on:click={toggleOutputs}
-          >
-            {#if showOutputs}
-              <!-- Eye Slash (Hide) -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-4 h-4"
-              >
-                <path
-                  d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.676 12.553a11.249 11.249 0 01-2.631 4.31l-3.099-3.099a5.25 5.25 0 00-6.71-6.71L7.759 4.577a11.217 11.217 0 014.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113z"
-                />
-                <path
-                  d="M5.574 12.553A11.217 11.217 0 011.41 9.645a.75.75 0 011.061-1.06 9.716 9.716 0 002.181 1.802l.926-.926a.75.75 0 011.06 1.06l-.926.926c.441.374.904.72 1.387 1.034a.75.75 0 01-.83 1.26A12.72 12.72 0 015.574 12.553z"
-                />
-                <path d="M10.5 14.25a3.75 3.75 0 005.25-5.25l-5.25 5.25z" />
-              </svg>
-            {:else}
-              <!-- Eye (Show) -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-4 h-4"
-              >
-                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                <path
-                  fill-rule="evenodd"
-                  d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-            {/if}
-            {showOutputs ? $t("app.hideOutputs") : $t("app.showOutputs")}
-          </button>
-        {/if}
-
         <button
           class="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded font-bold text-sm flex items-center gap-2 transition-colors shadow-lg shadow-purple-900/20"
           on:click={copyToClipboard}
@@ -1238,21 +1623,146 @@
 <!-- Context Menu for Files -->
 {#if contextMenu.show}
   <div
-    class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"
+    class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[180px]"
     style="top: {contextMenu.y}px; left: {contextMenu.x}px"
   >
+    <div class="px-4 py-2 text-xs font-bold text-[var(--text-muted)] border-b border-[var(--border-light)] mb-1 select-text truncate max-w-[280px]" title={contextMenu.name}>
+      {contextMenu.name}
+    </div>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
       on:click={copyPath}
     >
-      {$t("contextMenu.copyPath")}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+      </svg>
+      <span class="flex-1">{$t("contextMenu.copyPath")}</span>
+      <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyPath)}</span>
     </button>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
       on:click={copyFilename}
     >
-      {$t("contextMenu.copyFilename")}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      </svg>
+      <span class="flex-1">{$t("contextMenu.copyFilename")}</span>
+      <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyFilename)}</span>
     </button>
+    
+    <div class="border-t border-[var(--border-light)] my-1"></div>
+    
+    {#if contextMenu.isFile}
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={copyFileContent}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.copyFileContent")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyFileContent)}</span>
+      </button>
+      {#if showTruncateOption}
+        <button
+          class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+          on:click={revealFullContent}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+          </svg>
+          <span class="flex-1">{forceFullLoadPaths.has(contextMenu.path) ? $t("contextMenu.truncateFile") : $t("contextMenu.revealFullContent")}</span>
+          <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.revealFullContent)}</span>
+        </button>
+      {/if}
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={toggleFileVisibility}
+      >
+        {#if isCurrentFileHidden}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+          </svg>
+        {/if}
+        <span class="flex-1">{isCurrentFileHidden ? $t("contextMenu.showContent") : $t("contextMenu.hideContent")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.toggleVisibility)}</span>
+      </button>
+    {:else}
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={() => refreshDirectory(false)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.refreshFolderOnly")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolder)}</span>
+      </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={() => refreshDirectory(true)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)] relative">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v6m-3-3h6" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.refreshFolderRecursive")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolderRecursive)}</span>
+      </button>
+      
+      <div class="border-t border-[var(--border-light)] my-1"></div>
+      
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={hideDirectoryContent}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.hideContent")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.hideDirContent)}</span>
+      </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={showDirectoryContentNonRecursive}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.showContent")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.showDirContent)}</span>
+      </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={showDirectoryContentRecursive}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 17v4m-2-2h4" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.showRecursive")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.showDirRecursive)}</span>
+      </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={revealFullContentRecursive}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 9v4m-2-2h4" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.revealFullContentRecursive")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.revealDirRecursive)}</span>
+      </button>
+    {/if}
   </div>
 {/if}
 
@@ -1290,6 +1800,4 @@
   </div>
 {/if}
 
-<style>
-  /* Workaround for vite-plugin-svelte crash on stale CSS requests */
-</style>
+

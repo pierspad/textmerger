@@ -5,7 +5,12 @@
 
   export let files: FileNode[] = [];
   export let selectedFiles: Set<string> = new Set();
+  export let focusedFilePath: string | null = null;
   export let maxCharCount = 0; // Exported to be bindable if needed, but primarily read-only
+  export let sortType: 'original' | 'alphabetical' | 'size' = 'original';
+  export let sortAscending = true;
+  export let forceFullLoadPaths: Set<string> = new Set();
+  export let largeFileThreshold = 20000;
   
   const dispatch = createEventDispatcher();
   
@@ -18,22 +23,22 @@
     charCount?: number;
     sizeBytes?: number;
     extension?: string;
+    hidden?: boolean;
   }
 
   // Build tree from flat list of files
   // Also calculate maxCharCount for relative coloring
   let tree: Record<string, TreeNode> = {};
   let rootNodes: string[] = [];
+  let nodeMap: Record<string, TreeNode> = {};
 
   $: {
-    updateTree(files);
+    updateTree(files, sortType, sortAscending);
   }
 
-  function updateTree(currentFiles: FileNode[]) {
-    // Map of path -> Node
-    const nodeMap: Record<string, TreeNode> = {};
-    
+  function updateTree(currentFiles: FileNode[], currentSortType: string, currentSortAsc: boolean) {
     // Reset
+    nodeMap = {};
     tree = {};
     rootNodes = [];
     maxCharCount = 0;
@@ -102,6 +107,7 @@
                     leaf.sizeBytes = file.size_bytes;
                     leaf.extension = file.extension;
                     leaf.path = file.path; // Preserve original exact path string
+                    leaf.hidden = file.hidden;
                 }
             }
             
@@ -158,7 +164,17 @@
          // Safe check if nodes exist (should exist)
          if (!a || !b) return 0;
          
-         if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+         if (a.isFile === b.isFile) {
+             if (currentSortType === 'alphabetical') {
+                 return currentSortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+             } else if (currentSortType === 'size') {
+                 const aSize = a.sizeBytes || a.charCount || 0;
+                 const bSize = b.sizeBytes || b.charCount || 0;
+                 return currentSortAsc ? aSize - bSize : bSize - aSize;
+             }
+             // Original
+             return a.name.localeCompare(b.name);
+         }
          return a.isFile ? 1 : -1;
     });
   }
@@ -182,7 +198,16 @@
       const traverse = (nodes: any[]) => {
           // Sort nodes to match visual display
           const sortedNodes = [...nodes].sort((a, b) => {
-             if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+             if (a.isFile === b.isFile) {
+                 if (sortType === 'alphabetical') {
+                     return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+                 } else if (sortType === 'size') {
+                     const aSize = a.sizeBytes || a.charCount || 0;
+                     const bSize = b.sizeBytes || b.charCount || 0;
+                     return sortAscending ? aSize - bSize : bSize - aSize;
+                 }
+                 return a.name.localeCompare(b.name);
+             }
              return a.isFile ? 1 : -1;
           });
 
@@ -204,6 +229,8 @@
   function handleSelect(event: CustomEvent) {
       const { path, event: originalEvent } = event.detail;
       const e = originalEvent as MouseEvent;
+      
+      focusedFilePath = path;
       
       // Prevent text selection
       if (e.shiftKey) {
@@ -255,6 +282,58 @@
       
       selectedFiles = selectedFiles; // Trigger reactivity
   }
+
+  export function navigate(direction: 1 | -1) {
+      const visiblePaths = getVisiblePaths();
+      if (visiblePaths.length === 0) return;
+      
+      let nextPath = visiblePaths[0];
+      if (focusedFilePath) {
+          const currentIndex = visiblePaths.indexOf(focusedFilePath);
+          if (currentIndex !== -1) {
+              let nextIndex = currentIndex + direction;
+              if (nextIndex < 0) nextIndex = 0;
+              if (nextIndex >= visiblePaths.length) nextIndex = visiblePaths.length - 1;
+              nextPath = visiblePaths[nextIndex];
+          }
+      } else if (selectedFiles.size === 1) {
+          const currentSelected = Array.from(selectedFiles)[0];
+          const currentIndex = visiblePaths.indexOf(currentSelected);
+          if (currentIndex !== -1) {
+              let nextIndex = currentIndex + direction;
+              if (nextIndex < 0) nextIndex = 0;
+              if (nextIndex >= visiblePaths.length) nextIndex = visiblePaths.length - 1;
+              nextPath = visiblePaths[nextIndex];
+          }
+      }
+      
+      focusedFilePath = nextPath;
+      
+      if (selectedFiles.size <= 1) {
+          selectedFiles.clear();
+          selectedFiles.add(nextPath);
+          selectedFiles = selectedFiles;
+      }
+      
+      // Scroll to element
+      setTimeout(() => {
+          const treeNode = document.querySelector(`[data-filepath="${CSS.escape(nextPath)}"]`);
+          if (treeNode) {
+              treeNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+      }, 0);
+  }
+
+  export function toggleNode(path: string) {
+      const node = nodeMap[path];
+      if (node && !node.isFile) {
+          node.isOpen = !node.isOpen;
+          // Force update tree reactivity
+          tree = tree;
+          return true;
+      }
+      return false;
+  }
 </script>
 
 <div class="select-none text-sm overflow-x-hidden">
@@ -263,10 +342,15 @@
        node={tree[nodeId]} 
        tree={tree} 
        bind:selectedFiles 
+       {focusedFilePath}
+       {sortType}
+       {sortAscending}
        on:contextmenu={handleContextMenu}
        on:dblclick={handleDblClick}
        on:select={handleSelect}
        maxCharCount={maxCharCount}
+       forceFullLoadPaths={forceFullLoadPaths}
+       largeFileThreshold={largeFileThreshold}
     />
   {/each}
 </div>

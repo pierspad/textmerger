@@ -6,6 +6,7 @@ export interface FileNode {
     char_count: number;
     size_bytes: number;
     extension: string;
+    hidden?: boolean;
 }
 
 export interface Tab {
@@ -90,7 +91,14 @@ function loadTabsState(): TabsState {
             .map(tab => ({
                 id: tab.id,
                 name: tab.name,
-                files: tab.files.filter(isValidFileNode)
+                files: tab.files.filter(isValidFileNode).map(f => ({
+                    path: f.path,
+                    name: f.name,
+                    char_count: f.char_count,
+                    size_bytes: f.size_bytes,
+                    extension: f.extension,
+                    hidden: (f as any).hidden === true
+                }))
             }));
 
         if (safeTabs.length === 0) {

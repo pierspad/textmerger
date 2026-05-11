@@ -100,3 +100,14 @@ export const t = derived(locale, ($locale) => {
         return value ?? fallback ?? key;
     };
 });
+
+export const tShortcut = derived(locale, ($locale) => {
+    return (keybind: string) => {
+        if (!keybind) return '';
+        let formatted = keybind;
+        if ($locale === 'de') {
+            formatted = formatted.replace(/\bCtrl\b/g, 'Strg');
+        }
+        return formatted;
+    };
+});

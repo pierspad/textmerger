@@ -7,9 +7,104 @@
   import { theme } from "../stores/theme";
   import { availableUILanguages, t, locale } from "../stores/i18n";
   import KeybindRecorder from "./KeybindRecorder.svelte";
+  import FileIcon from "./FileIcon.svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
 
   type SnackbarVariant = "success" | "info" | "warning" | "error";
+
+  function handleWindowKeydown(e: KeyboardEvent) {
+    if (showConfirmModal) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        showConfirmModal = false;
+        onConfirm();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        showConfirmModal = false;
+        return;
+      }
+    }
+
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+      if (e.key === 'PageDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabs = ['general', 'shortcuts', 'exclusions', 'hiddenFiles'];
+        const idx = tabs.indexOf(activeTab);
+        activeTab = tabs[(idx + 1) % tabs.length];
+      } else if (e.key === 'PageUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const tabs = ['general', 'shortcuts', 'exclusions', 'hiddenFiles'];
+        const idx = tabs.indexOf(activeTab);
+        activeTab = tabs[(idx - 1 + tabs.length) % tabs.length];
+      }
+    }
+  }
+
+
+  let liveSyncInput = ''; 
+  $: liveSyncInput = $settings.liveSyncInterval.toString();
+
+  let largeFileInput = '';
+  $: largeFileInput = new Intl.NumberFormat().format($settings.largeFileThreshold);
+
+  function resetGeneralDefaults() {
+    locale.set('en');
+    theme.setTheme('dark');
+    settings.setAutomaticUpdateChecks(true);
+    settings.setLiveSyncInterval(0);
+    settings.setLargeFileThreshold(30000);
+    liveSyncInput = '0';
+    largeFileInput = '30,000';
+  }
+
+  function handleLiveSyncInput(e: Event) {
+    let val = (e.currentTarget as HTMLInputElement).value;
+    val = val.replace(/\D/g, '');
+    if (val === '' || val === '0') {
+      (e.currentTarget as HTMLInputElement).value = '0';
+      liveSyncInput = '0';
+      settings.setLiveSyncInterval(0);
+    } else {
+      const num = parseInt(val, 10);
+      (e.currentTarget as HTMLInputElement).value = num.toString();
+      liveSyncInput = num.toString();
+      settings.setLiveSyncInterval(num);
+    }
+  }
+
+  function handleLargeFileInput(e: Event) {
+    let val = (e.currentTarget as HTMLInputElement).value;
+    val = val.replace(/\D/g, '');
+    if (val === '' || val === '0') {
+      (e.currentTarget as HTMLInputElement).value = '0';
+      largeFileInput = '0';
+      settings.setLargeFileThreshold(0);
+    } else {
+      const num = parseInt(val, 10);
+      const formatted = new Intl.NumberFormat().format(num);
+      (e.currentTarget as HTMLInputElement).value = formatted;
+      largeFileInput = formatted;
+      settings.setLargeFileThreshold(num);
+    }
+  }
+
+  const shortcutCategories = [
+    { id: 'all', key: 'settings.categoryAll', actions: null },
+    { id: 'general', key: 'settings.categoryGeneral', actions: ['open', 'save', 'exit', 'refresh'] },
+    { id: 'clipboard', key: 'settings.categoryClipboard', actions: ['copyText', 'copyPath', 'copyFilename', 'copyFileContent'] },
+    { id: 'tabs', key: 'settings.categoryTabs', actions: ['newTab', 'closeTab', 'previousTab', 'nextTab', 'tab1', 'tab2', 'tab3', 'tab4', 'tab5', 'tab6', 'tab7', 'tab8', 'tab9'] },
+    { id: 'fileActions', key: 'settings.categoryFileActions', actions: ['remove', 'removeAll', 'toggleVisibility', 'refreshFolder', 'refreshFolderRecursive', 'revealFullContent'] }
+  ];
+  let selectedShortcutCategory = 'all';
+  
+  $: filteredShortcuts = shortcutEntries.filter(([actionKey, _]) => {
+      if (selectedShortcutCategory === 'all') return true;
+      const cat = shortcutCategories.find(c => c.id === selectedShortcutCategory);
+      return cat?.actions?.includes(actionKey);
+  });
+
   type UpdateStatus = "idle" | "checking" | "available" | "current" | "error" | "disabled";
 
   interface GitHubRelease {
@@ -18,11 +113,14 @@
     name?: string;
   }
 
+  export let sidebarWidth = 300;
+
   const dispatch = createEventDispatcher();
 
-  let activeTab = "shortcuts";
+  let activeTab = "general";
   let recordingAction: string | null = null;
   let newPattern = "";
+  let newHiddenPattern = "";
   let appName = "TextMerger";
   let appVersion = "";
   let updateStatus: UpdateStatus = "idle";
@@ -61,6 +159,13 @@
     }
   }
 
+  function addHiddenPattern() {
+    if (newHiddenPattern.trim()) {
+        settings.addHiddenPattern(newHiddenPattern.trim());
+        newHiddenPattern = "";
+    }
+  }
+
   function closeSettings() {
     dispatch("close");
   }
@@ -78,26 +183,70 @@
     }
   }
 
-  async function handleResetDefaults() {
-    try {
-      let confirmed = false;
-      try {
-        confirmed = await ask($t('settings.resetConfirm'), {
-          title: $t('settings.resetDefaults'),
-          kind: "warning",
-        });
-      } catch (e) {
-        console.warn("Tauri dialog failed, using native confirm", e);
-        confirmed = window.confirm($t('settings.resetConfirm'));
-      }
+  let showConfirmModal = false;
+  let confirmTitle = "";
+  let confirmMessage = "";
+  let onConfirm: () => void = () => {};
 
-      if (confirmed) {
-        shortcuts.resetDefaults();
-        notify($t('settings.resetSuccess'));
-      }
-    } catch (e) {
-      console.error("Failed to reset defaults:", e);
-      notify($t('settings.resetError'), "error");
+  function triggerResetConfirmation() {
+    if (activeTab === 'shortcuts') {
+      confirmTitle = $t('settings.resetDefaults');
+      confirmMessage = $t('settings.resetConfirm');
+      onConfirm = () => {
+        try {
+          shortcuts.resetDefaults();
+          notify($t('settings.resetSuccess'));
+        } catch (e) {
+          console.error("Failed to reset defaults:", e);
+          notify($t('settings.resetError'), "error");
+        }
+      };
+      showConfirmModal = true;
+    } else if (activeTab === 'exclusions') {
+      confirmTitle = $t('settings.resetPatterns');
+      confirmMessage = $locale === 'it' 
+        ? "Sei sicuro di voler ripristinare tutti i pattern di esclusione ai valori predefiniti?" 
+        : "Are you sure you want to reset all excluded patterns to default?";
+      onConfirm = () => {
+        try {
+          settings.resetPatterns();
+          notify($locale === 'it' ? "Pattern di esclusione ripristinati" : "Excluded patterns reset");
+        } catch (e) {
+          console.error("Failed to reset patterns:", e);
+          notify($locale === 'it' ? "Errore nel ripristino dei pattern" : "Error resetting patterns", "error");
+        }
+      };
+      showConfirmModal = true;
+    } else if (activeTab === 'hiddenFiles') {
+      confirmTitle = $locale === 'it' ? "Ripristina File Nascosti" : "Reset Hidden Files";
+      confirmMessage = $locale === 'it' 
+        ? "Sei sicuro di voler ripristinare tutti i pattern dei file nascosti ai valori predefiniti?" 
+        : "Are you sure you want to reset all hidden file patterns to default?";
+      onConfirm = () => {
+        try {
+          settings.resetHiddenPatterns();
+          notify($locale === 'it' ? "Pattern file nascosti ripristinati" : "Hidden file patterns reset");
+        } catch (e) {
+          console.error("Failed to reset hidden patterns:", e);
+          notify($locale === 'it' ? "Errore nel ripristino dei pattern" : "Error resetting patterns", "error");
+        }
+      };
+      showConfirmModal = true;
+    } else if (activeTab === 'general') {
+      confirmTitle = $t('settings.resetDefaults');
+      confirmMessage = $locale === 'it' 
+        ? "Sei sicuro di voler ripristinare tutte le impostazioni generali ai valori predefiniti?" 
+        : "Are you sure you want to reset all general settings to default?";
+      onConfirm = () => {
+        try {
+          resetGeneralDefaults();
+          notify($locale === 'it' ? "Impostazioni generali ripristinate" : "General settings reset");
+        } catch (e) {
+          console.error("Failed to reset general defaults:", e);
+          notify($locale === 'it' ? "Errore nel ripristino delle impostazioni" : "Error resetting settings", "error");
+        }
+      };
+      showConfirmModal = true;
     }
   }
 
@@ -225,12 +374,17 @@
   }
 </script>
 
+<svelte:window on:keydown={handleWindowKeydown} />
+
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
   <!-- Settings Sidebar -->
-  <aside class="w-64 bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col">
-    <div class="p-4 border-b border-[var(--border-color)] flex items-center gap-2">
+  <aside
+    class="bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col"
+    style="width: {sidebarWidth}px; min-width: 250px;"
+  >
+    <div class="h-12 px-2 border-b border-[var(--border-color)] flex items-center gap-2">
       <button 
-        class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)]"
+        class="p-2 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-secondary)] transition-colors"
         on:click={closeSettings}
         aria-label="Close Settings"
       >
@@ -248,7 +402,8 @@
         on:click={() => activeTab = 'general'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.048 4.025a3 3 0 01-2.4-2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128v-.001zm3.278-5.504a3 3 0 00-5.332-1.582 2.25 2.25 0 01-1.383-1.931 4.5 4.5 0 008.09 2.212c.106.39.158.794.158 1.204.067.036.132.076.196.118l.071.05zm-2.033-4.347a3 3 0 01-2.245-2.4 4.5 4.5 0 008.4 2.245c0 .399.078.78.22 1.128v.001z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         {$t('settings.general')}
       </button>
@@ -272,137 +427,76 @@
         </svg>
         {$t('settings.exclusions')}
       </button>
+      <button
+        class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
+        {activeTab === 'hiddenFiles' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+        on:click={() => activeTab = 'hiddenFiles'}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+        </svg>
+        {$t('settings.hiddenFiles')}
+      </button>
     </nav>
 
-    <div class="p-4 border-t border-[var(--border-color)]">
-      <div class="rounded border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-semibold text-[var(--text-primary)]">{appName}</p>
-            <p class="text-xs text-[var(--text-muted)]">
-              <button
-                type="button"
-                class="hover:text-[var(--text-primary)] transition-colors"
-                title={$t('settings.release')}
-                on:click={() => openExternalLink(releaseUrl)}
-              >
-                {formattedAppVersion}
-              </button>
-              <span class="mx-1">-</span>
-              Tauri + Svelte
-            </p>
+    <div class="h-[76px] px-3 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center justify-between gap-2 shrink-0">
+      <div class="min-w-0 flex flex-col gap-1 justify-center">
+          <div class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1">
+            <button
+              type="button"
+              class="hover:text-[var(--text-secondary)] transition-colors"
+              title={$t('settings.release')}
+              on:click={() => openExternalLink(releaseUrl)}
+            >
+              {formattedAppVersion}
+            </button>
+            <span class="text-xs text-[var(--text-muted)] font-normal">- Tauri + Svelte</span>
           </div>
-          <button
-            type="button"
-            class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-            aria-label={$t('settings.repository')}
-            title={$t('settings.repository')}
-            on:click={() => openExternalLink(repoUrl)}
-          >
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill-rule="evenodd" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.42 9.42 0 0112 6.96c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.54 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.1 10.1 0 0022 12.26C22 6.58 17.52 2 12 2z" clip-rule="evenodd" />
-            </svg>
-          </button>
+          <div class="flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
+            <button
+              type="button"
+              class="hover:text-[var(--text-primary)] hover:underline hover:scale-[1.05] active:scale-[0.98] transition-[transform,color] duration-150 font-medium inline-block"
+              on:click={() => openExternalLink(authorUrl)}
+            >
+              pierspad
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              class="hover:text-[var(--text-primary)] hover:underline hover:scale-[1.05] active:scale-[0.98] transition-[transform,color] duration-150 font-medium inline-block"
+              on:click={() => openExternalLink(licenseUrl)}
+            >
+              GPL-3.0
+            </button>
+          </div>
         </div>
-        <div class="mt-3 flex items-center justify-between gap-2 text-[10px] text-[var(--text-muted)]">
-          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(authorUrl)}>
-            pierspad
-          </button>
-          <span>•</span>
-          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(repoUrl)}>
-            {$t('settings.repository')}
-          </button>
-          <span>•</span>
-          <button type="button" class="hover:text-[var(--text-primary)] transition-colors" on:click={() => openExternalLink(licenseUrl)}>
-            GPL-3.0
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:scale-110 active:scale-90 transition-all duration-150"
+          aria-label={$t('settings.repository')}
+          title={$t('settings.repository')}
+          on:click={() => openExternalLink(repoUrl)}
+        >
+          <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill-rule="evenodd" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.42 9.42 0 0112 6.96c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.54 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.1 10.1 0 0022 12.26C22 6.58 17.52 2 12 2z" clip-rule="evenodd" />
+          </svg>
+        </button>
     </div>
   </aside>
 
   <!-- Settings Content -->
-  <main class="flex-1 p-8 overflow-y-auto">
+  <main class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 p-8 overflow-y-auto flex flex-col">
     {#if activeTab === 'general'}
-      <div class="w-full max-w-6xl">
-        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">{$t('settings.generalSettings')}</h3>
+      <div class="w-full max-w-none">
         
-        <div class="grid gap-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-          <button 
-            class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex justify-between items-center hover:bg-[var(--bg-hover-strong)] transition-colors"
-            on:click={toggleTheme}
-          >
-            <div class="flex items-center gap-3">
-              <div class="p-2 bg-purple-600 rounded text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                </svg>
-              </div>
-              <span class="font-medium text-[var(--text-primary)]">{$t('settings.lightMode')}</span>
-            </div>
-            <div class="relative inline-block w-10 h-6 transition duration-200 ease-in-out rounded-full {$theme === 'light' ? 'bg-green-500' : 'bg-gray-600'}">
-                <span class="absolute left-0 inline-block w-6 h-6 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$theme === 'light' ? 'translate-x-4' : 'translate-x-0'}"></span>
-            </div>
-          </button>
-
-          <div class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="p-2 bg-emerald-600 rounded text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
-                  </svg>
-                </div>
-                <div class="min-w-0">
-                  <p class="font-medium text-[var(--text-primary)]">{$t('settings.updates')}</p>
-                  <p class="text-xs text-[var(--text-muted)]">{$t('settings.currentVersion').replace('{version}', formattedAppVersion)}</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="shrink-0 rounded border border-[var(--border-light)] bg-[var(--bg-primary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-60"
-                on:click={() => checkForUpdates("manual")}
-                disabled={updateStatus === 'checking'}
-              >
-                <span class="inline-flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
-                  </svg>
-                  {$t('settings.checkNow')}
-                </span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              class="w-full rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-3 flex items-center justify-between gap-3 hover:bg-[var(--bg-hover)] transition-colors"
-              on:click={toggleAutomaticUpdateChecks}
-            >
-              <span class="text-left">
-                <span class="block text-sm font-medium text-[var(--text-primary)]">{$t('settings.automaticUpdateChecks')}</span>
-                <span class="block text-xs text-[var(--text-muted)]">{$t('settings.automaticUpdateChecksHint')}</span>
-              </span>
-              <span class="relative inline-block w-10 h-6 transition duration-200 ease-in-out rounded-full {$settings.automaticUpdateChecks ? 'bg-green-500' : 'bg-gray-600'}">
-                <span class="absolute left-0 inline-block w-6 h-6 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$settings.automaticUpdateChecks ? 'translate-x-4' : 'translate-x-0'}"></span>
-              </span>
-            </button>
-          </div>
-
-          <div class="w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3 xl:col-span-2">
-            <div class="flex items-center gap-3 mb-2">
-              <div class="p-2 bg-blue-600 rounded text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
-                </svg>
-              </div>
-              <span class="font-medium text-[var(--text-primary)]">{$t('settings.language')}</span>
-            </div>
-            
-            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+        <div class="grid gap-4 grid-cols-5">
+          <!-- Languages Section (Moved to the top) -->
+          <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3 col-span-5">
+            <div class="relative z-10 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
                 {#each availableUILanguages as lang}
                     <button 
-                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)] flex items-center gap-2 min-w-0
+                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)] flex items-center justify-center gap-2 min-w-0
                         {$locale === lang.code ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'}"
                         on:click={() => locale.set(lang.code)}
                         title={`${lang.name} / ${lang.nativeName}`}
@@ -416,27 +510,133 @@
                 {/each}
             </div>
           </div>
+
+          <!-- Theme Button -->
+          <button 
+            class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex justify-center items-center hover:bg-[var(--bg-hover-strong)] transition-colors col-span-2"
+            on:click={toggleTheme}
+          >
+            <div class="relative z-10 inline-flex items-center w-28 h-14 transition-colors duration-200 ease-in-out rounded-full {$theme === 'light' ? 'bg-sky-400' : 'bg-indigo-900'} shrink-0">
+              <span class="absolute left-1 flex items-center justify-center w-12 h-12 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$theme === 'light' ? 'translate-x-14' : 'translate-x-0'}">
+                {#if $theme === 'light'}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500">
+                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+                  </svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-indigo-900">
+                    <path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clip-rule="evenodd" />
+                  </svg>
+                {/if}
+              </span>
+            </div>
+          </button>
+
+          <!-- Updates Section -->
+          <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-row items-stretch justify-center gap-3 col-span-3">
+            <button
+              type="button"
+              class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover)] transition-colors min-w-0"
+              on:click={toggleAutomaticUpdateChecks}
+              title={$t('settings.automaticUpdateChecksHint')}
+            >
+              <span class="text-sm font-medium text-[var(--text-primary)] leading-tight text-center whitespace-pre-line">{$t('settings.automaticUpdateChecks')}</span>
+              <span class="relative inline-block w-8 h-4 transition duration-200 ease-in-out rounded-full {$settings.automaticUpdateChecks ? 'bg-green-500' : 'bg-gray-600'} shrink-0">
+                <span class="absolute left-0 inline-block w-4 h-4 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$settings.automaticUpdateChecks ? 'translate-x-4' : 'translate-x-0'}"></span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="flex-1 rounded border border-[var(--border-light)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-60 min-w-0"
+              on:click={() => checkForUpdates("manual")}
+              disabled={updateStatus === 'checking'}
+            >
+              <span class="text-sm font-semibold text-[var(--text-secondary)] text-center leading-tight whitespace-pre-line">{$t('settings.checkNow')}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--text-secondary)] shrink-0 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Live Sync Section -->
+          <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+            <div class="cursor-help flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                {$t('settings.liveSyncHint')}
+              </div>
+            </div>
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncPrefix')}</span>
+            <input 
+              type="text" 
+              value={liveSyncInput}
+              on:input={handleLiveSyncInput}
+              class="w-16 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c] text-center font-mono"
+            />
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncSuffix')}</span>
+          </div>
+
+          <!-- Large File Threshold Section -->
+          <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+            <div class="cursor-help flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col items-center text-center w-72">
+                <span class="font-medium">{$locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato.' : 'Select after how many characters a file is truncated.'}</span>
+                <span class="text-[var(--text-muted)] mt-1 font-normal">{$locale === 'it' ? 'Imposta a 0 per disabilitare il limite.' : 'Set to 0 to disable the limit.'}</span>
+              </div>
+            </div>
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.largeFileThreshold')}</span>
+            <input 
+              type="text" 
+              value={largeFileInput}
+              on:input={handleLargeFileInput}
+              class="w-24 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c] text-center font-mono text-sm"
+            />
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">caratteri</span>
+          </div>
+
         </div>
       </div>
     {:else if activeTab === 'shortcuts'}
-      <div class="max-w-6xl">
-        <div class="mb-6 flex items-start justify-between gap-4">
-          <h3 class="text-xl font-bold text-[var(--text-primary)]">{$t('settings.keyboardShortcuts')}</h3>
-          {#if recordingAction}
-            <div class="max-w-md rounded border border-red-500/50 bg-red-950/70 px-3 py-2 text-right text-xs font-medium text-red-100 shadow-lg shadow-red-950/20">
-              <span class="block">{getRecordingHintParts().first}</span>
-              {#if getRecordingHintParts().second}
-                <span class="block">{getRecordingHintParts().second}</span>
-              {/if}
-            </div>
-          {/if}
+      <div class="max-w-none flex flex-col flex-1 min-h-0">
+        <div class="mb-6 flex flex-wrap items-center gap-4">
+          <div class="flex flex-wrap gap-2">
+            {#each shortcutCategories as cat}
+              <button
+                class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategory === cat.id ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}"
+                on:click={() => selectedShortcutCategory = cat.id}
+              >
+                {$t(cat.key)}
+              </button>
+            {/each}
+          </div>
+          <div class="w-px h-6 bg-[var(--border-color)] hidden sm:block"></div>
+          <div class="text-xs font-medium transition-colors duration-200 {recordingAction ? 'text-red-400' : 'text-[var(--text-muted)]'}">
+            {#if recordingAction}
+              <span>{getRecordingHintParts().second || getRecordingHintParts().first}</span>
+            {:else}
+              <span>{$t('settings.clickToCustomize')}</span>
+            {/if}
+          </div>
         </div>
         
-        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))]">
-          {#each shortcutEntries as [key, keybind]}
+        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+          <div class="overflow-y-auto overflow-x-hidden flex-1 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))] content-start">
+          {#each filteredShortcuts as [key, keybind]}
               <!-- svelte-ignore indent -->
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
               {@const action = key}
-              <div class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[60px]">
+              <div 
+                class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[60px] cursor-pointer"
+                on:click={() => recordingAction = action}
+                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') recordingAction = action; }}
+                role="button"
+                tabindex="0"
+              >
                 <div class="flex justify-center text-[var(--text-muted)]">
                   {@html getIcon(action)}
                 </div>
@@ -456,23 +656,11 @@
                 </div>
               </div>
           {/each}
-        </div>
-
-        <div class="mt-8 flex justify-center">
-          <button
-            class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20 inline-flex items-center gap-2"
-            on:click={handleResetDefaults}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-            </svg>
-            {$t('settings.resetDefaults')}
-          </button>
+          </div>
         </div>
       </div>
     {:else if activeTab === 'exclusions'}
-      <div class="h-full flex flex-col">
-        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4">{$t('settings.exclusions')}</h3>
+      <div class="max-w-none flex flex-col h-full">
         
         <div class="mb-4 text-sm text-[var(--text-muted)]">
             <p class="mb-2">{$t('settings.exclusionDescription')}</p>
@@ -499,14 +687,17 @@
             </button>
         </div>
 
-        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col">
-            <div class="overflow-y-auto flex-1 divide-y divide-[var(--border-color)]">
+        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+            <div class="overflow-y-auto overflow-x-hidden flex-1 gap-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 content-start">
                 {#each $settings.excludedPatterns as pattern}
-                    <div class="flex justify-between items-center p-3 hover:bg-[var(--bg-hover)] transition-colors group">
-                        <span class="font-mono text-sm text-[var(--text-primary)]">{pattern}</span>
+                    <div class="flex justify-between items-center p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <FileIcon name={pattern} />
+                            <span class="font-mono text-sm text-[var(--text-primary)] truncate">{pattern}</span>
+                        </div>
                         <button 
-                            class="text-red-500 hover:text-red-400 px-3 py-1 rounded hover:bg-[var(--bg-hover-strong)] opacity-0 group-hover:opacity-100 transition-opacity"
-                            on:click={() => settings.removePattern(pattern)}
+                            class="text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-[var(--bg-hover-strong)] transition-colors shrink-0"
+                            on:click={() => { settings.removePattern(pattern); notify($t('settings.patternRemoved') + ': ' + pattern, 'info'); }}
                             title={$t('app.remove')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
@@ -517,16 +708,112 @@
                 {/each}
             </div>
         </div>
+      </div>
+    {:else if activeTab === 'hiddenFiles'}
+      <div class="max-w-none flex flex-col h-full">
         
-        <div class="mt-8 flex justify-center">
-            <button
-                class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20"
-                on:click={settings.resetPatterns}
+        <div class="mb-4 text-sm text-[var(--text-muted)]">
+            <p class="mb-2">{$t('settings.hiddenFilesDescription')}</p>
+            <ul class="list-disc list-inside space-y-1 ml-2">
+                <li><code>*.txt</code> - {$t('settings.exclusionExampleGlob')}</li>
+                <li><code>.env</code> - {$t('settings.exclusionExampleExact')}</li>
+            </ul>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input 
+                type="text" 
+                bind:value={newHiddenPattern} 
+                placeholder={$t('settings.patternPlaceholder')}
+                class="flex-1 px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c]"
+                on:keydown={(e) => e.key === 'Enter' && addHiddenPattern()}
+            />
+            <button 
+                class="px-4 py-2 bg-[#0e639c] hover:bg-[#1177bb] text-white rounded font-bold text-sm transition-colors"
+                on:click={addHiddenPattern}
             >
-                {$t('settings.resetPatterns')}
+                {$t('settings.addPattern')}
             </button>
+        </div>
+
+        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+            <div class="overflow-y-auto overflow-x-hidden flex-1 gap-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 content-start">
+                {#each $settings.hiddenPatterns as pattern}
+                    <div class="flex justify-between items-center p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <FileIcon name={pattern} />
+                            <span class="font-mono text-sm text-[var(--text-primary)] truncate">{pattern}</span>
+                        </div>
+                        <button 
+                            class="text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-[var(--bg-hover-strong)] transition-colors"
+                            on:click={() => { settings.removeHiddenPattern(pattern); notify($t('settings.patternRemoved') + ': ' + pattern, 'info'); }}
+                            title={$t('app.remove')}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                {/each}
+            </div>
         </div>
       </div>
     {/if}
+    </div>
+
+    <!-- Unified Bottom Bar -->
+      <div class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0">
+        <button
+          class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20 inline-flex items-center gap-2"
+          on:click={triggerResetConfirmation}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          {$t('settings.resetDefaults')}
+        </button>
+      </div>
   </main>
+
+  {#if showConfirmModal}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div 
+      class="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-200"
+      on:click|self={() => showConfirmModal = false}
+    >
+      <div class="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg shadow-2xl max-w-md w-full overflow-hidden p-6 flex flex-col gap-4 transform scale-100 transition-transform duration-200">
+        <div class="flex items-start gap-4">
+          <div class="p-3 bg-red-500/10 text-red-500 rounded-full shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-lg font-bold text-[var(--text-primary)] leading-tight">{confirmTitle}</h3>
+            <p class="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">{confirmMessage}</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-3">
+          <button
+            type="button"
+            class="px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] rounded font-semibold text-sm transition-all duration-150 active:scale-95 cursor-pointer"
+            on:click={() => showConfirmModal = false}
+          >
+            {$locale === 'it' ? 'Annulla' : ($locale === 'de' ? 'Abbrechen' : ($locale === 'es' ? 'Cancelar' : ($locale === 'fr' ? 'Annuler' : 'Cancel')))}
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-semibold text-sm transition-all duration-150 active:scale-95 shadow-md shadow-red-900/10 cursor-pointer"
+            on:click={() => {
+              showConfirmModal = false;
+              onConfirm();
+            }}
+          >
+            {$locale === 'it' ? 'Conferma' : ($locale === 'de' ? 'Bestätigen' : ($locale === 'es' ? 'Confirmar' : ($locale === 'fr' ? 'Confirmer' : 'Confirm')))}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>

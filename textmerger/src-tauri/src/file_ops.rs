@@ -8,7 +8,7 @@ use nom_exif::{MediaParser, MediaSource};
 use mime_guess::from_path;
 use image::io::Reader as ImageReader;
 
-pub fn read_and_check_file(path: &str, show_outputs: bool) -> Result<String, String> {
+pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<String, String> {
     let path_obj = Path::new(path);
     
     if !path_obj.exists() {
@@ -25,7 +25,7 @@ pub fn read_and_check_file(path: &str, show_outputs: bool) -> Result<String, Str
     }
 
     if ext == "ipynb" {
-        return read_ipynb(path, show_outputs);
+        return read_ipynb(path, output_mode);
     }
 
     // Check for media files (video/image)
@@ -102,7 +102,7 @@ fn read_pdf(path: &str) -> Result<String, String> {
     pdf_extract::extract_text(path).map_err(|e| e.to_string())
 }
 
-fn read_ipynb(path: &str, show_outputs: bool) -> Result<String, String> {
+fn read_ipynb(path: &str, output_mode: &str) -> Result<String, String> {
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let json: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     
@@ -127,15 +127,16 @@ fn read_ipynb(path: &str, show_outputs: bool) -> Result<String, String> {
                 }
             }
 
-            if show_outputs {
+            if output_mode != "none" {
                 if let Some(outputs) = cell["outputs"].as_array() {
                     if !outputs.is_empty() {
                         output.push_str("\nCell Outputs:\n");
+                        let mut output_text = String::new();
                         for out in outputs {
                             if let Some(text) = out["text"].as_array() {
                                 for line in text {
                                     if let Some(l) = line.as_str() {
-                                        output.push_str(l);
+                                        output_text.push_str(l);
                                     }
                                 }
                             } else if let Some(data) = out.get("data") {
@@ -143,13 +144,26 @@ fn read_ipynb(path: &str, show_outputs: bool) -> Result<String, String> {
                                     if let Some(lines) = text_plain.as_array() {
                                         for line in lines {
                                             if let Some(l) = line.as_str() {
-                                                output.push_str(l);
+                                                output_text.push_str(l);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                        
+                        if output_mode == "reduced" {
+                            let lines: Vec<&str> = output_text.lines().collect();
+                            if lines.len() > 10 {
+                                output.push_str(&lines[..10].join("\n"));
+                                output.push_str("\n\n... [Output reduced] ...\n");
+                            } else {
+                                output.push_str(&output_text);
+                            }
+                        } else {
+                            output.push_str(&output_text);
+                        }
+                        
                         if !output.ends_with('\n') {
                             output.push('\n');
                         }
