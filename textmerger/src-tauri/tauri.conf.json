@@ -14,9 +14,9 @@
       {
         "title": "TextMerger",
         "width": 1070,
-        "height": 720,
+        "height": 800,
         "minWidth": 1070,
-        "minHeight": 720,
+        "minHeight": 800,
         "resizable": true,
         "fullscreen": false
       }

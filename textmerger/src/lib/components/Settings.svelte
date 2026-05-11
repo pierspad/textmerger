@@ -20,7 +20,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let activeTab = "shortcuts";
+  let activeTab = "general";
   let recordingAction: string | null = null;
   let newPattern = "";
   let appName = "TextMerger";
@@ -228,9 +228,9 @@
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
   <!-- Settings Sidebar -->
   <aside class="w-64 bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col">
-    <div class="p-4 border-b border-[var(--border-color)] flex items-center gap-2">
+    <div class="h-12 px-4 border-b border-[var(--border-color)] flex items-center gap-2">
       <button 
-        class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)]"
+        class="p-2 bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded text-[var(--text-secondary)] transition-colors"
         on:click={closeSettings}
         aria-label="Close Settings"
       >
