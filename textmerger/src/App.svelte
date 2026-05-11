@@ -33,6 +33,8 @@
   let hasIpynb = false;
   let snackbarMessage = "";
   let snackbarTimeout: any;
+  let snackbarAnimationKey = 0;
+  const snackbarDuration = 2200;
   let showSettings = false;
   let contextMenu = { show: false, x: 0, y: 0, path: "", name: "" };
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
@@ -100,10 +102,11 @@
 
   function showSnackbar(msg: string) {
     snackbarMessage = msg;
+    snackbarAnimationKey += 1;
     if (snackbarTimeout) clearTimeout(snackbarTimeout);
     snackbarTimeout = setTimeout(() => {
       snackbarMessage = "";
-    }, 2000);
+    }, snackbarDuration);
   }
 
   async function updateContent() {
@@ -435,6 +438,20 @@
       tabs.reorderTabs(fromId, toId);
   }
 
+  function activateTabByIndex(index: number) {
+    const target = $tabs.tabs[index];
+    if (target) {
+      tabs.setActiveTab(target.id);
+    }
+  }
+
+  function activateRelativeTab(direction: -1 | 1) {
+    const activeIndex = $tabs.tabs.findIndex((tab) => tab.id === $tabs.activeTabId);
+    if (activeIndex === -1 || $tabs.tabs.length === 0) return;
+
+    const nextIndex = (activeIndex + direction + $tabs.tabs.length) % $tabs.tabs.length;
+    activateTabByIndex(nextIndex);
+  }
 
   function handleKeydown(event: KeyboardEvent) {
     // If modal is open, let modal handle keys or check specific conditions
@@ -485,6 +502,29 @@
       event.preventDefault();
       if ($tabs.activeTabId) {
           tabs.closeTab($tabs.activeTabId);
+      }
+    } else if (combo === $shortcuts.previousTab) {
+      event.preventDefault();
+      activateRelativeTab(-1);
+    } else if (combo === $shortcuts.nextTab) {
+      event.preventDefault();
+      activateRelativeTab(1);
+    } else {
+      const targetTabIndex = [
+        $shortcuts.tab1,
+        $shortcuts.tab2,
+        $shortcuts.tab3,
+        $shortcuts.tab4,
+        $shortcuts.tab5,
+        $shortcuts.tab6,
+        $shortcuts.tab7,
+        $shortcuts.tab8,
+        $shortcuts.tab9,
+      ].findIndex((shortcut) => combo === shortcut);
+
+      if (targetTabIndex !== -1) {
+        event.preventDefault();
+        activateTabByIndex(targetTabIndex);
       }
     }
   }
@@ -573,11 +613,30 @@
 >
   <!-- Snackbar -->
   {#if snackbarMessage}
-    <div
-      class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[var(--bg-hover-strong)] text-white px-4 py-2 rounded shadow-lg z-50 border border-[var(--border-light)] animate-fade-in-up"
-    >
-      {snackbarMessage}
-    </div>
+    {#key snackbarAnimationKey}
+      <div
+        class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-emerald-950 text-emerald-50 rounded-lg shadow-xl shadow-emerald-950/30 z-50 border border-emerald-600/70 animate-fade-in-up min-w-[240px] max-w-[min(92vw,420px)] overflow-hidden"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="px-5 py-3 flex items-center gap-3">
+          <svg
+            class="w-5 h-5 text-emerald-300 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="flex-1 text-sm font-medium leading-snug">{snackbarMessage}</span>
+        </div>
+        <div
+          class="h-1 bg-emerald-400"
+          style="animation: textmerger-snackbar-shrink {snackbarDuration}ms linear forwards;"
+        ></div>
+      </div>
+    {/key}
   {/if}
 
   <!-- Loading Overlay -->

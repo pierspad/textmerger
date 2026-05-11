@@ -171,8 +171,11 @@ sh build-publish-scripts/build-aur.sh
 # Build AppImage bundle
 sh build-publish-scripts/build-appimage.sh
 
-# Guided release flow (opens files one-by-one, incl. release notes)
+# Guided release flow (opens LLM change log and release notes before tagging)
 sh build-publish-scripts/git-release.sh
+
+# Preview the release notes section that will be published for a tag
+sh build-publish-scripts/extract-release-notes.sh v2.3.1
 ```
 
 ### Prerequisites

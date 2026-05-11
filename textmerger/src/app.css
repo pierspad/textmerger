@@ -100,3 +100,12 @@ h1 {
   scrollbar-width: none;
   /* Firefox */
 }
+
+@keyframes textmerger-snackbar-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

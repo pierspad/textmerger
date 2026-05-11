@@ -15,7 +15,9 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 PKGBUILD="$SCRIPT_DIR/PKGBUILD"
 UPDATE_SCRIPT="$SCRIPT_DIR/update_project_info.sh"
 CHECK_SCRIPT="$SCRIPT_DIR/check_version_consistency.sh"
+EXTRACT_NOTES_SCRIPT="$SCRIPT_DIR/extract-release-notes.sh"
 RELEASE_NOTES_FILE="$PROJECT_ROOT/docs/release-notes.md"
+CHANGES_FILE="$PROJECT_ROOT/docs/list_of_things_changed.md"
 
 read_pkgver() {
     awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' "$PKGBUILD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//'
@@ -39,8 +41,8 @@ if [ ! -f "$PKGBUILD" ]; then
     exit 1
 fi
 
-if [ ! -f "$UPDATE_SCRIPT" ] || [ ! -f "$CHECK_SCRIPT" ]; then
-    echo -e "${RED}Error: script di supporto mancanti (update/check)${NC}"
+if [ ! -f "$UPDATE_SCRIPT" ] || [ ! -f "$CHECK_SCRIPT" ] || [ ! -f "$EXTRACT_NOTES_SCRIPT" ]; then
+    echo -e "${RED}Error: script di supporto mancanti (update/check/extract release notes)${NC}"
     exit 1
 fi
 
@@ -74,32 +76,30 @@ bash "$UPDATE_SCRIPT"
 echo -e "${YELLOW}Verifico coerenza versioni...${NC}"
 bash "$CHECK_SCRIPT"
 
+if [ -f "$CHANGES_FILE" ]; then
+    echo -e "${BLUE}Apro il changelog operativo LLM prima delle release notes: $(basename "$CHANGES_FILE")${NC}"
+    open_file_blocking "$CHANGES_FILE" "$(basename "$CHANGES_FILE")"
+else
+    echo -e "${YELLOW}Nota: $CHANGES_FILE non esiste ancora. Lo useranno gli LLM per annotare le modifiche.${NC}"
+fi
+
 open_file_blocking "$RELEASE_NOTES_FILE" "$(basename "$RELEASE_NOTES_FILE")"
 
 if ! grep -q "$VERSION" "$RELEASE_NOTES_FILE"; then
     echo -e "${YELLOW}Attenzione: la versione ${VERSION} non compare nelle release notes.${NC}"
 fi
 
-read -rp "Procedere con la release ${TAG_VERSION}? [s/N] " confirm_release
-if [[ ! "$confirm_release" =~ ^[sS]$ ]]; then
-    echo -e "${YELLOW}Release annullata.${NC}"
-    exit 0
-fi
-
-if ! command -v gh >/dev/null 2>&1; then
-    echo -e "${RED}Error: GitHub CLI (gh) non installato${NC}"
-    echo "Installa con: sudo pacman -S github-cli"
+if ! grep -q '[^[:space:]]' "$RELEASE_NOTES_FILE"; then
+    echo -e "${RED}Error: release notes vuote. Compilale prima di pubblicare.${NC}"
     exit 1
 fi
 
-echo -e "${YELLOW}Verifica autenticazione GitHub...${NC}"
-if ! gh auth status >/dev/null 2>&1; then
-    echo -e "${RED}Error: non autenticato con GitHub CLI${NC}"
-    echo "Esegui: gh auth login"
-    exit 1
-fi
+RELEASE_BODY_PREVIEW="$(mktemp)"
+trap 'rm -f "$RELEASE_BODY_PREVIEW"' EXIT
 
-echo -e "${GREEN}Autenticazione OK${NC}"
+echo -e "${YELLOW}Verifico la sezione release notes per ${TAG_VERSION}...${NC}"
+bash "$EXTRACT_NOTES_SCRIPT" "$TAG_VERSION" "$RELEASE_NOTES_FILE" "$RELEASE_BODY_PREVIEW"
+echo -e "${GREEN}Sezione release notes trovata; verra pubblicata solo quella.${NC}"
 
 if command -v makepkg >/dev/null 2>&1; then
     echo -e "${YELLOW}Genero .SRCINFO...${NC}"
@@ -110,6 +110,16 @@ if command -v makepkg >/dev/null 2>&1; then
     echo -e "${GREEN}.SRCINFO aggiornato${NC}"
 else
     echo -e "${YELLOW}makepkg non disponibile, skip .SRCINFO${NC}"
+fi
+
+echo -e "${YELLOW}Modifiche che finiranno nel commit/tag:${NC}"
+git -C "$PROJECT_ROOT" status --short
+echo ""
+
+read -rp "Procedere con commit, tag e push di ${TAG_VERSION}? [s/N] " confirm_release
+if [[ ! "$confirm_release" =~ ^[sS]$ ]]; then
+    echo -e "${YELLOW}Release annullata.${NC}"
+    exit 0
 fi
 
 echo -e "${YELLOW}Commit, tag e push...${NC}"
@@ -141,10 +151,6 @@ fi
 git push origin "$BRANCH"
 git push origin "$TAG_VERSION"
 
-echo -e "${YELLOW}Creo GitHub release...${NC}"
-gh release create "$TAG_VERSION" \
-    --title "textmerger ${TAG_VERSION}" \
-    --notes-file "$RELEASE_NOTES_FILE"
-
-echo -e "${GREEN}Release ${TAG_VERSION} creata con successo${NC}"
+echo -e "${GREEN}Tag ${TAG_VERSION} pubblicato con successo${NC}"
+echo -e "${BLUE}La GitHub Action creera la release usando solo la sezione ${TAG_VERSION} di docs/release-notes.md.${NC}"
 echo -e "${BLUE}Dopo il build GitHub, esegui ./push-aur.sh per aggiornare AUR.${NC}"

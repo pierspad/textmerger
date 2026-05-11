@@ -18,7 +18,7 @@ pkgbase = textmerger-bin
 	options = !debug
 	source = textmerger-2.3.1.deb::https://github.com/pierspad/textmerger/releases/download/v2.3.1/textmerger_2.3.1_amd64.deb
 	source = LICENSE::https://raw.githubusercontent.com/pierspad/textmerger/main/docs/LICENSE
-	sha256sums = 967ca7e912b914fcdff96ac9bf2030e90d280fadc21f05541f6be9d3bf8acc04
+	sha256sums = c6dfb4c98aa784682071e5663cb0cf00c1e55a28107de065098b427d5ba4bf5b
 	sha256sums = e0492c8870ed6ed7720ccdf98de84b894a5f778dd98ea916004af3e3623b70db
 
 pkgname = textmerger-bin

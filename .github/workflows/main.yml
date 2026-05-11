@@ -193,6 +193,8 @@ jobs:
       contents: write
     
     steps:
+    - uses: actions/checkout@v4
+
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
@@ -206,11 +208,17 @@ jobs:
         mkdir -p release
         find artifacts -type f -exec cp {} release/ \;
         ls -la release/
+
+    - name: Extract release notes for tag
+      run: |
+        build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: release/*
-        generate_release_notes: true
+        body_path: release-notes-for-tag.md
+        generate_release_notes: false
+        fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

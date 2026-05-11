@@ -10,6 +10,17 @@ export interface Shortcuts {
     refresh: string;
     closeTab: string;
     newTab: string;
+    previousTab: string;
+    nextTab: string;
+    tab1: string;
+    tab2: string;
+    tab3: string;
+    tab4: string;
+    tab5: string;
+    tab6: string;
+    tab7: string;
+    tab8: string;
+    tab9: string;
 }
 
 const DEFAULT_SHORTCUTS: Shortcuts = {
@@ -22,6 +33,17 @@ const DEFAULT_SHORTCUTS: Shortcuts = {
     refresh: 'F5',
     closeTab: 'Ctrl+W',
     newTab: 'Ctrl+T',
+    previousTab: 'Ctrl+PAGEUP',
+    nextTab: 'Ctrl+PAGEDOWN',
+    tab1: 'Ctrl+1',
+    tab2: 'Ctrl+2',
+    tab3: 'Ctrl+3',
+    tab4: 'Ctrl+4',
+    tab5: 'Ctrl+5',
+    tab6: 'Ctrl+6',
+    tab7: 'Ctrl+7',
+    tab8: 'Ctrl+8',
+    tab9: 'Ctrl+9',
 };
 
 function createShortcutsStore() {
@@ -59,6 +81,17 @@ export const ACTION_LABELS: Record<keyof Shortcuts, string> = {
     refresh: 'Refresh',
     closeTab: 'Close Tab',
     newTab: 'New Tab',
+    previousTab: 'Previous Tab',
+    nextTab: 'Next Tab',
+    tab1: 'Go to Tab 1',
+    tab2: 'Go to Tab 2',
+    tab3: 'Go to Tab 3',
+    tab4: 'Go to Tab 4',
+    tab5: 'Go to Tab 5',
+    tab6: 'Go to Tab 6',
+    tab7: 'Go to Tab 7',
+    tab8: 'Go to Tab 8',
+    tab9: 'Go to Tab 9',
 };
 
 export const ACTION_ICONS: Record<keyof Shortcuts, string> = {
@@ -71,4 +104,15 @@ export const ACTION_ICONS: Record<keyof Shortcuts, string> = {
     refresh: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>',
     closeTab: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>',
     newTab: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>',
+    previousTab: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>',
+    nextTab: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>',
+    tab1: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab2: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab3: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab4: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab5: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab6: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab7: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab8: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
+    tab9: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5" /></svg>',
 };
