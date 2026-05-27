@@ -83,6 +83,10 @@ fi
 
 echo -e "${YELLOW}🚀 Commit e push su AUR...${NC}"
 cd "$AUR_REPO_DIR"
+
+# FIX: Assicuriamo di trovarci sul branch master, creandolo se per caso ci trovassimo in un repo appena inizializzato e vuoto
+git checkout master 2>/dev/null || git checkout -b master
+
 git add -A
 
 if ! git diff --staged --quiet; then
@@ -90,5 +94,6 @@ if ! git diff --staged --quiet; then
     git commit -m "Update to v${VERSION}"
 fi
 
-git push
+# FIX: Push esplicito sul branch master remoto
+git push origin master
 echo -e "${GREEN}✅ Push completato su AUR${NC}"

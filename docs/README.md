@@ -9,6 +9,27 @@
 
 ---
 
+## Table of Contents
+
+- [Why TextMerger?](#why-textmerger)
+- [Features](#features)
+  - [Core workflow](#core-workflow)
+  - [Organization](#organization)
+  - [Output control](#output-control)
+  - [Usability](#usability)
+- [Supported Formats](#supported-formats)
+- [Installation](#installation)
+  - [Windows](#windows)
+  - [Linux](#linux)
+  - [Arch Linux (AUR)](#arch-linux-aur)
+  - [AppImage (any distro, no install required)](#appimage-any-distro-no-install-required)
+- [Building from Source](#building-from-source)
+- [Contributing](#contributing)
+- [AI Disclosure](#ai-disclosure)
+- [License](#license)
+
+---
+
 ## Why TextMerger?
 
 When working with AI assistants, code reviews, or documentation tools, you often need to feed them the contents of many files at once. TextMerger makes that effortless:
