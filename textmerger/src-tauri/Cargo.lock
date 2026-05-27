@@ -4072,7 +4072,7 @@ dependencies = [
 
 [[package]]
 name = "textmerger"
-version = "2.3.1"
+version = "2.5.0"
 dependencies = [
  "content_inspector",
  "glib 0.21.5",
