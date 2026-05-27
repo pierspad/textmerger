@@ -19,9 +19,9 @@
     "sortOriginal": "الأصلي",
     "sortAlphabetical": "أبجدي",
     "sortCharacters": "الأحرف",
-    "outputsHidden": "عرض مخرجات\nالدفتر المختصرة",
-    "outputsReduced": "عرض مخرجات\nالدفتر الكاملة",
-    "outputsFull": "إخفاء مخرجات\nالدفتر"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "الإعدادات",
@@ -38,7 +38,7 @@
     "resetConfirm": "هل أنت متأكد من أنك تريد إعادة كل الاختصارات إلى القيم الافتراضية؟",
     "resetSuccess": "تمت استعادة الاختصارات إلى الافتراضيات",
     "resetError": "خطأ أثناء استعادة الاختصارات",
-    "exclusions": "الملفات المستبعدة",
+    "exclusions": "استبعاد الملفات",
     "addPattern": "إضافة نمط",
     "patternPlaceholder": "مثال: *.log أو node_modules",
     "exclusionDescription": "سيتم تجاهل الملفات والمجلدات المطابقة لهذه الأنماط عند إضافة المجلدات.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "الاختصار مخصص بالفعل إلى",
     "exclusionExampleGlob": "يطابق كل ملفات PNG",
     "exclusionExampleExact": "يطابق اسم المجلد أو الملف بالضبط",
-    "hiddenFiles": "الملفات المخفية",
-    "hiddenFilesDescription": "سيتم إخفاء الملفات والمجلدات التي تطابق هذه الأنماط. لا يزال بإمكانك إظهارها يدويًا.",
+    "hiddenFiles": "إخفاء الملفات",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "تمت الإزالة من القائمة",
     "liveSyncPrefix": "إعادة تحميل محتوى الملف كل ",
     "liveSyncSuffix": " ثانية",
@@ -76,7 +76,7 @@
     "categoryGeneral": "عام",
     "categoryClipboard": "الحافظة",
     "categoryTabs": "علامات التبويب",
-    "categoryFileActions": "إجراءات الملفات",
+    "categoryFileActions": "إجراءات الملف",
     "liveSyncHint": "تعيين القيمة إلى 0 لتعطيل هذه الميزة.",
     "largeFileThresholdHint": "اختر بعد كم عدد من الأحرف يتم اقتطاع الملف. عيّن إلى 0 لتعطيل هذه الميزة (عدم الاقتطاع أبدًا).",
     "clickToCustomize": "انقر للتخصيص"
@@ -112,20 +112,22 @@
     "hideDirContent": "إخفاء المحتوى",
     "showDirContent": "عرض المحتوى",
     "showDirRecursive": "عرض بشكل متكرر",
-    "revealDirRecursive": "كشف المحتوى الكامل بشكل متكرر"
+    "revealDirRecursive": "كشف المحتوى الكامل بشكل متكرر",
+    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر"
   },
   "contextMenu": {
     "copyPath": "نسخ المسار المطلق",
     "copyFilename": "نسخ اسم الملف",
     "copyFileContent": "نسخ محتوى الملف",
-    "refreshFolderOnly": "تحديث هذا المجلد فقط",
-    "refreshFolderRecursive": "تحديث المجلد بشكل متكرر",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "إخفاء المحتوى",
     "showContent": "عرض المحتوى",
     "showRecursive": "عرض بشكل متكرر",
     "revealFullContent": "كشف محتوى الملف بالكامل",
-    "revealFullContentRecursive": "كشف المحتوى بالكامل بشكل متكرر",
-    "truncateFile": "اقتطاع الملف"
+    "revealFullContentRecursive": "كشف المحتوى الكامل بشكل متكرر",
+    "truncateFile": "اقتطاع الملف",
+    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر"
   },
   "messages": {
     "showingOutputs": "يتم إظهار المخرجات",

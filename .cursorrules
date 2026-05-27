@@ -1,0 +1,60 @@
+# Agent / LLM Instructions for Vesta (Tauri + Svelte Harness)
+
+All development, code generation, and AI assistance for this project must adhere strictly to these rules and architecture specifications.
+
+---
+
+## 2. Core Tech Stack
+*   **Backend**: Rust (Tauri v2) - high-performance system access, low memory footprint.
+*   **Frontend**: Svelte + TypeScript - reactive, fast compilation, clean stores.
+*   **Styling**: Vanilla CSS - custom CSS variables for theme states, glassmorphism UI, smooth transitions, and hardware-accelerated animations. Avoid Tailwind CSS.
+*   **Build Optimization**: High priority. Utilize preflight checks, local sccache, and custom bypass configs.
+
+---
+
+## 3. i18n & Localization Standard (15 Languages)
+*   **Locale Storage**:
+    *   `apps/srt-gui/src/lib/i18n/locales/` - General UI translations.
+    *   `apps/srt-gui/src/lib/i18n/locales/info/` - Detailed helper texts and descriptions.
+*   **Supported Locales**: English (`en` - source of truth), Italian (`it`), Spanish (`es`), French (`fr`), German (`de`), Portuguese (`pt`), Russian (`ru`), Chinese (`zh`), Japanese (`ja`), Korean (`ko`), Arabic (`ar`), Polish (`pl`), Dutch (`nl`), Turkish (`tr`), Swedish (`sv`).
+*   **Validation**: Maintain the Python script (`check_missing_translations.py`) in CI/CD to prevent releases if keys are missing, empty, or parameters (e.g., `{count}`) mismatch.
+
+---
+
+## 4. UI Shell & Sidebar Layout
+*   **Shell Structure**: Left-sidebar and workspace view configuration.
+*   **Attribution Dock (Bottom-Left)**:
+    *   Must display version, license, stack details (Tauri + Svelte).
+    *   Must display external links: Developer Web Site (`https://pierspad.com`) and GitHub Repository URL.
+    *   Links must be opened safely using Tauri Shell plugin (`open` API):
+        ```typescript
+        import { open as openExternal } from '@tauri-apps/plugin-shell';
+        ```
+
+---
+
+## 5. Settings Panel Architecture
+*   **Macro Cards**: Top grid summarizing settings sections (e.g., Download, Interface, Shortcuts) with real-time status.
+*   **Section Smooth Scroll**: Macro cards must scroll to target section using element `scrollIntoView({ behavior: 'smooth' })`.
+*   **Highlight Animation**: Glow target section on navigation with standard glow keyframes.
+*   **Theme Switcher**: Dark/Light mode theme change by toggling class/attributes on the root element.
+*   **Language Selector**: Flags/names button grid.
+*   **Shortcuts Panel**: Integrated keymap editor dynamically updating shortcut settings.
+
+---
+
+## 6. Whisper & Heavy Compilation Optimization
+*   **Env-Bypass via Precompiled Bindings**:
+    *   Set `WHISPER_DONT_GENERATE_BINDINGS="1"` in the compile environment to skip the `bindgen` step.
+    *   Copy local verified `src/bindings.rs` directly to `OUT_DIR` inside the vendored `whisper-rs-sys` crate.
+*   **CI/CD Caching**: Always use `sccache` + `rust-cache` inside GitHub Actions to reduce build times.
+
+---
+
+## 7. Change Logging & Release Governance
+*   **Immediate Change Logging**: Every time an LLM or AI assistant makes any modification to the code, it MUST immediately write what change it is making and the technical reasons for it in `docs/list_of_things_changed.md`.
+*   **Release Notes Updates**: Upon completion of the task, the AI must summarize all changes and update `docs/release-notes.md` following a clean release notes format:
+    *   Header: `## Release Notes vX.Y.Z` (increment version or align with current release version).
+    *   Sections: Separate items under `### Fixes` and `### Improvements`.
+    *   List Items: Use bullet points prefixed by bold components (e.g., `* **Component Name**: Description of changes`).
+    *   This ensures the release notes are kept completely updated and curated for every release.

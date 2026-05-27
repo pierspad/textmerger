@@ -19,9 +19,9 @@
     "sortOriginal": "Orijinal",
     "sortAlphabetical": "Alfabetik",
     "sortCharacters": "Karakterler",
-    "outputsHidden": "Küçültülmüş Notebook\nçıktılarını göster",
-    "outputsReduced": "Tam Notebook\nçıktılarını göster",
-    "outputsFull": "Notebook çıktılarını\ngizle"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "Ayarlar",
@@ -38,7 +38,7 @@
     "resetConfirm": "Tüm kısayolları varsayılan değerlere döndürmek istediğinizden emin misiniz?",
     "resetSuccess": "Kısayollar varsayılanlara döndürüldü",
     "resetError": "Kısayollar sıfırlanırken hata oluştu",
-    "exclusions": "Hariç tutulan dosyalar",
+    "exclusions": "Dosyaları hariç tut",
     "addPattern": "Desen ekle",
     "patternPlaceholder": "örn. *.log veya node_modules",
     "exclusionDescription": "Bu desenlerle eşleşen dosya ve klasörler dizin eklenirken yok sayılır.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Kısayol zaten şuna atanmış:",
     "exclusionExampleGlob": "Tüm PNG dosyalarıyla eşleşir",
     "exclusionExampleExact": "Tam klasör veya dosya adıyla eşleşir",
-    "hiddenFiles": "Gizli Dosyalar",
-    "hiddenFilesDescription": "Bu desenlerle eşleşen dosya ve klasörler gizlenecektir. Bunları manuel olarak göstermeye devam edebilirsiniz.",
+    "hiddenFiles": "Dosyaları gizle",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "Listeden kaldırıldı",
     "liveSyncPrefix": "Dosya içeriğini yeniden yükle her ",
     "liveSyncSuffix": " saniye",
@@ -76,7 +76,7 @@
     "categoryGeneral": "Genel",
     "categoryClipboard": "Pano",
     "categoryTabs": "Sekmeler",
-    "categoryFileActions": "Dosya İşlemleri",
+    "categoryFileActions": "Dosya Eylemleri",
     "liveSyncHint": "Bu özelliği devre dışı bırakmak için 0 olarak ayarlayın.",
     "largeFileThresholdHint": "Bir dosyanın kaç karakterden sonra kesileceğini seçin. Bu özelliği devre dışı bırakmak için 0 olarak ayarlayın (asla kesme).",
     "clickToCustomize": "Özelleştirmek için tıklayın"
@@ -111,21 +111,23 @@
     "tab9": "Sekme 9'a git",
     "hideDirContent": "İçeriği gizle",
     "showDirContent": "İçeriği göster",
-    "showDirRecursive": "Özyinelemeli göster",
-    "revealDirRecursive": "Tam içeriği özyinelemeli göster"
+    "showDirRecursive": "Yinelemeli olarak göster",
+    "revealDirRecursive": "Tüm içeriği yinelemeli olarak göster",
+    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt"
   },
   "contextMenu": {
     "copyPath": "Mutlak yolu kopyala",
     "copyFilename": "Dosya adını kopyala",
     "copyFileContent": "Dosya içeriğini kopyala",
-    "refreshFolderOnly": "Yalnızca bu klasörü yenile",
-    "refreshFolderRecursive": "Klasörü özyinelemeli yenile",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "İçeriği gizle",
     "showContent": "İçeriği göster",
-    "showRecursive": "Özyinelemeli göster",
+    "showRecursive": "Yinelemeli olarak göster",
     "revealFullContent": "Dosyanın tüm içeriğini göster",
-    "revealFullContentRecursive": "Tüm içeriği özyinelemeli göster",
-    "truncateFile": "Dosyayı kırp"
+    "revealFullContentRecursive": "Tüm içeriği yinelemeli olarak göster",
+    "truncateFile": "Dosyayı kırp",
+    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt"
   },
   "messages": {
     "showingOutputs": "Çıktılar gösteriliyor",

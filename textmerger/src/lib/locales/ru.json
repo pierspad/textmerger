@@ -19,9 +19,9 @@
     "sortOriginal": "Оригинал",
     "sortAlphabetical": "По алфавиту",
     "sortCharacters": "Символы",
-    "outputsHidden": "Показать сокращенные\nвыводы Notebook",
-    "outputsReduced": "Показать полные\nвыводы Notebook",
-    "outputsFull": "Скрыть выводы\nNotebook"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "Настройки",
@@ -38,7 +38,7 @@
     "resetConfirm": "Вы уверены, что хотите сбросить все сочетания клавиш?",
     "resetSuccess": "Сочетания сброшены",
     "resetError": "Ошибка сброса сочетаний",
-    "exclusions": "Исключенные файлы",
+    "exclusions": "Исключить файлы",
     "addPattern": "Добавить шаблон",
     "patternPlaceholder": "например *.log или node_modules",
     "exclusionDescription": "Файлы и папки, соответствующие этим шаблонам, будут игнорироваться при добавлении каталогов.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Сочетание уже назначено для",
     "exclusionExampleGlob": "Соответствует всем PNG-файлам",
     "exclusionExampleExact": "Соответствует точному имени папки или файла",
-    "hiddenFiles": "Скрытые файлы",
-    "hiddenFilesDescription": "Файлы и папки, соответствующие этим шаблонам, будут скрыты. Вы все еще можете показать их вручную.",
+    "hiddenFiles": "Скрыть файлы",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "Удалено из списка",
     "liveSyncPrefix": "Перезагружать содержимое файлов каждые ",
     "liveSyncSuffix": " секунд",
@@ -112,20 +112,22 @@
     "hideDirContent": "Скрыть содержимое",
     "showDirContent": "Показать содержимое",
     "showDirRecursive": "Показать рекурсивно",
-    "revealDirRecursive": "Показать полное содержимое рекурсивно"
+    "revealDirRecursive": "Показать полное содержимое рекурсивно",
+    "truncateDirRecursive": "Обрезать содержимое рекурсивно"
   },
   "contextMenu": {
     "copyPath": "Копировать полный путь",
     "copyFilename": "Копировать имя файла",
     "copyFileContent": "Копировать содержимое файла",
-    "refreshFolderOnly": "Обновить только эту папку",
-    "refreshFolderRecursive": "Обновить папку рекурсивно",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "Скрыть содержимое",
     "showContent": "Показать содержимое",
     "showRecursive": "Показать рекурсивно",
     "revealFullContent": "Показать полное содержимое файла",
     "revealFullContentRecursive": "Показать полное содержимое рекурсивно",
-    "truncateFile": "Обрезать файл"
+    "truncateFile": "Обрезать файл",
+    "truncateDirRecursive": "Обрезать содержимое рекурсивно"
   },
   "messages": {
     "showingOutputs": "Вывод показан",

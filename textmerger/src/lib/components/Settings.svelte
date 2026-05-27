@@ -377,7 +377,6 @@
 <svelte:window on:keydown={handleWindowKeydown} />
 
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
-  <!-- Settings Sidebar -->
   <aside
     class="bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col"
     style="width: {sidebarWidth}px; min-width: 250px;"
@@ -484,14 +483,12 @@
     </div>
   </aside>
 
-  <!-- Settings Content -->
   <main class="flex-1 flex flex-col min-w-0">
     <div class="flex-1 p-8 overflow-y-auto flex flex-col">
     {#if activeTab === 'general'}
       <div class="w-full max-w-none">
         
         <div class="grid gap-4 grid-cols-5">
-          <!-- Languages Section (Moved to the top) -->
           <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3 col-span-5">
             <div class="relative z-10 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
                 {#each availableUILanguages as lang}
@@ -511,7 +508,6 @@
             </div>
           </div>
 
-          <!-- Theme Button -->
           <button 
             class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex justify-center items-center hover:bg-[var(--bg-hover-strong)] transition-colors col-span-2"
             on:click={toggleTheme}
@@ -531,7 +527,6 @@
             </div>
           </button>
 
-          <!-- Updates Section -->
           <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-row items-stretch justify-center gap-3 col-span-3">
             <button
               type="button"
@@ -558,7 +553,6 @@
             </button>
           </div>
 
-          <!-- Live Sync Section -->
           <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
             <div class="cursor-help flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -578,7 +572,6 @@
             <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncSuffix')}</span>
           </div>
 
-          <!-- Large File Threshold Section -->
           <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
             <div class="cursor-help flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -596,7 +589,7 @@
               on:input={handleLargeFileInput}
               class="w-24 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c] text-center font-mono text-sm"
             />
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">caratteri</span>
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('app.characters').toLowerCase()}</span>
           </div>
 
         </div>
@@ -761,7 +754,6 @@
     {/if}
     </div>
 
-    <!-- Unified Bottom Bar -->
       <div class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0">
         <button
           class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20 inline-flex items-center gap-2"

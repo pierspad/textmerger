@@ -58,12 +58,12 @@
     },
   };
 
-  // Action to focus element on mount
   function focusElement(node: HTMLElement) {
       node.focus();
   }
 
-  // Reactive state from store
+  const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
+
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
   let mergedContent = "";
@@ -87,12 +87,10 @@
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
   
-  // Dialog States
   let showRenameModal = false;
   let showMergeModal = false;
   let newTabName = "";
   
-  // Sort States
   const savedSortType = localStorage.getItem('textmerger_sort_type');
   let sortType: 'original' | 'alphabetical' | 'size' = 
     (savedSortType === 'original' || savedSortType === 'alphabetical' || savedSortType === 'size') 
@@ -109,7 +107,6 @@
     localStorage.setItem('textmerger_sort_ascending', String(sortAscending));
   }
   
-  // Tab Scrolling
   let tabContainer: HTMLElement;
   let showScrollButtons = false;
 
@@ -127,12 +124,10 @@
     showScrollButtons = tabContainer.scrollWidth > tabContainer.clientWidth;
   }
   
-  // Update scroll buttons on resize and tab changes
   $: if ($tabs.tabs) {
       tick().then(checkScroll);
   }
 
-  // Scroll active tab into view
   $: if ($tabs.activeTabId && tabContainer) {
       tick().then(() => {
           const activeTabEl = tabContainer.querySelector(`[data-id="${$tabs.activeTabId}"]`) as HTMLElement;
@@ -149,7 +144,6 @@
 
   let selectedMergeSourceId = "";
   
-  // Drag and drop for tabs
   let draggedTabId: string | null = null;
   let dragOverTabId: string | null = null;
 
@@ -160,9 +154,8 @@
   });
   $: snackbarStyle = snackbarPalette[snackbarVariant];
   
-  // Auto-update content when files change
   $: if (files) {
-      updateContent();
+      debouncedUpdateContent();
   }
 
   let liveSyncIntervalId: ReturnType<typeof setInterval> | undefined;
@@ -207,7 +200,6 @@
         mergedContent = "";
         return;
       }
-      // Pass paths to backend
       const paths = files.map((f) => f.path);
       const hiddenPaths = files.filter(f => f.hidden).map(f => f.path);
       mergedContent = await invoke("get_merged_content", {
@@ -222,6 +214,14 @@
       console.error(e);
       mergedContent = `<div class='error'>Error: ${e}</div>`;
     }
+  }
+
+  let updateTimeout: any;
+  function debouncedUpdateContent() {
+    if (updateTimeout) clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(() => {
+      updateContent();
+    }, 10);
   }
 
   async function restoreFilesForSession() {
@@ -278,7 +278,7 @@
       sortAscending ||
       ipynbOutputMode
     ) {
-      updateContent();
+      debouncedUpdateContent();
     }
   }
 
@@ -305,7 +305,6 @@
 
             const { files: newFiles, errors } = result as AddFilesResult;
             tabs.addFilesToTab($tabs.activeTabId, newFiles);
-            // files updates reactively
 
             if (errors.length > 0) {
               const errorMsg =
@@ -374,22 +373,16 @@
   async function removeSelected() {
     if (selectedFiles.size === 0) return;
 
-    // Check all files in active tab
     const filesToRemove = new Set<string>();
-
-    const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
 
     for (const selectedPath of selectedFiles) {
       if (files.some(f => f.path === selectedPath)) {
         filesToRemove.add(selectedPath);
       } else {
-         // Check if it's a directory (prefix)
-         // We normalize both paths to check for adherence
          const normSelected = normalize(selectedPath);
          
          files.forEach(f => {
              const normPath = normalize(f.path);
-             // Check if it matches exactly or is a child
              if (normPath === normSelected || normPath.startsWith(normSelected + '/')) {
                  filesToRemove.add(f.path);
              }
@@ -397,8 +390,6 @@
       }
     }
     
-    // Convert to removeFile calls or just setFiles
-    // We can just filter the current list
     const remaining = files.filter(f => !filesToRemove.has(f.path));
     tabs.setFilesForTab($tabs.activeTabId, remaining);
 
@@ -466,7 +457,6 @@
     isSidebarExpanded = !isSidebarExpanded;
   }
   
-  // Tab functions
   function handleTabClick(id: string) {
       tabs.setActiveTab(id);
   }
@@ -577,7 +567,6 @@
       showMergeModal = false;
   }
 
-    // Drag and Drop Tabs
   function handleTabDragStart(e: DragEvent, id: string) {
       draggedTabId = id;
       if (e.dataTransfer) {
@@ -640,7 +629,6 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    // If modal is open, let modal handle keys or check specific conditions
     if (showRenameModal || showMergeModal) return;
 
     const target = event.target as HTMLElement;
@@ -732,6 +720,9 @@
     } else if (isShortcut($shortcuts.revealDirRecursive)) {
       event.preventDefault();
       revealFullContentRecursive();
+    } else if (isShortcut($shortcuts.truncateDirRecursive)) {
+      event.preventDefault();
+      truncateDirRecursive();
     } else if (combo === "CTRL+ARROWDOWN") {
       if (!isEditing) {
         event.preventDefault();
@@ -824,7 +815,6 @@
 
       const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
       if (activeTab) {
-          const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
           const normFolder = normalize(dirPath);
 
           const unchangedFiles = activeTab.files.filter(f => {
@@ -876,7 +866,6 @@
 
     const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
     if (activeTab) {
-      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
       const normFolder = normalize(dirPath);
 
       const updatedFiles = activeTab.files.map(f => {
@@ -899,7 +888,6 @@
 
     const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
     if (activeTab) {
-      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
       const normFolder = normalize(dirPath);
 
       const updatedFiles = activeTab.files.map(f => {
@@ -925,7 +913,6 @@
 
     const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
     if (activeTab) {
-      const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
       const normFolder = normalize(dirPath);
 
       const updatedFiles = activeTab.files.map(f => {
@@ -945,10 +932,8 @@
     const targetPath = contextMenu.path || focusedFilePath;
     if (!targetPath) return;
 
-    const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
     const normTarget = normalize(targetPath);
     
-    // Add all files under this path (or the file itself)
     const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
     if (activeTab) {
       activeTab.files.forEach(f => {
@@ -959,6 +944,28 @@
       });
     } else {
       forceFullLoadPaths.add(targetPath);
+    }
+    forceFullLoadPaths = forceFullLoadPaths;
+    updateContent();
+    closeContextMenu();
+  }
+
+  function truncateDirRecursive() {
+    const targetPath = contextMenu.path || focusedFilePath;
+    if (!targetPath) return;
+
+    const normTarget = normalize(targetPath);
+    
+    const activeTab = $tabs.tabs.find(t => t.id === $tabs.activeTabId);
+    if (activeTab) {
+      activeTab.files.forEach(f => {
+        const normPath = normalize(f.path);
+        if (normPath === normTarget || normPath.startsWith(normTarget + '/')) {
+          forceFullLoadPaths.delete(f.path);
+        }
+      });
+    } else {
+      forceFullLoadPaths.delete(targetPath);
     }
     forceFullLoadPaths = forceFullLoadPaths;
     updateContent();
@@ -1063,7 +1070,7 @@
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
       return;
     }
-    if (target.closest('.tab-item')) return; // Allow tab context menu
+    if (target.closest('.tab-item')) return;
     e.preventDefault();
   }
 </script>
@@ -1077,7 +1084,6 @@
 <main
   class="flex h-full w-full overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans relative"
 >
-  <!-- Snackbar -->
   {#if snackbarMessage}
     {#key snackbarAnimationKey}
       <div
@@ -1105,7 +1111,6 @@
     {/key}
   {/if}
 
-  <!-- Loading Overlay -->
   {#if isLoading}
     <div
       class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center backdrop-blur-sm"
@@ -1123,7 +1128,6 @@
     </div>
   {/if}
 
-  <!-- Settings Overlay -->
   {#if showSettings}
     <Settings
       {sidebarWidth}
@@ -1132,7 +1136,6 @@
     />
   {/if}
   
-  <!-- Rename Modal -->
   {#if showRenameModal}
       <Modal 
           title="Rename Tab" 
@@ -1155,7 +1158,6 @@
       </Modal>
   {/if}
 
-  <!-- Merge Modal -->
   {#if showMergeModal}
       <Modal 
           title="Merge Tabs" 
@@ -1187,13 +1189,11 @@
   {/if}
 
 
-  <!-- Sidebar -->
   {#if isSidebarExpanded}
     <aside
       class="flex flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]"
       style="width: {sidebarWidth}px; min-width: 250px;"
     >
-      <!-- Sidebar Header / Toolbar -->
       <div
         class="h-12 px-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
       >
@@ -1366,7 +1366,6 @@
     </aside>
   {/if}
 
-  <!-- Main Content -->
   <section class="flex-1 flex flex-col h-full min-w-0 bg-[var(--bg-primary)]">
     <header
       class="h-12 border-b border-[var(--border-color)] flex items-center px-4 justify-between bg-[var(--bg-tertiary)]"
@@ -1402,7 +1401,6 @@
           </svg>
         </button>
         
-        <!-- Tab Bar in Header -->
          <div class="flex items-center flex-1 min-w-0 h-full gap-1 pt-2 relative">
             {#if showScrollButtons}
               <button 
@@ -1442,7 +1440,6 @@
                aria-label={`Tab: ${tab.name}`}
                title={getTabTooltip(tab)}
             >
-                <!-- Separator (visual trick for inactive tabs, strictly optional, relying on spacing for now) -->
                 
                 <div class="truncate text-xs font-medium pr-5 flex-1">{tab.name}</div>
                 <button 
@@ -1459,7 +1456,6 @@
           {/each}
           </div>
 
-            <!-- New Tab Button -->
             <div class="h-full flex items-center border-b border-[var(--border-color)] px-1 relative z-20 shrink-0">
                 <button 
                    class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--text-muted)]"
@@ -1535,7 +1531,6 @@
       </div>
     </div>
 
-    <!-- Bottom Action Bar -->
     <div
       class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
     >
@@ -1620,7 +1615,6 @@
   </section>
 </main>
 
-<!-- Context Menu for Files -->
 {#if contextMenu.show}
   <div
     class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[180px]"
@@ -1762,11 +1756,22 @@
         <span class="flex-1">{$t("contextMenu.revealFullContentRecursive")}</span>
         <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.revealDirRecursive)}</span>
       </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        on:click={truncateDirRecursive}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11h4" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.truncateDirRecursive")}</span>
+        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.truncateDirRecursive)}</span>
+      </button>
     {/if}
   </div>
 {/if}
 
-<!-- Context Menu for Tabs -->
 {#if tabContextMenu.show}
   <div
     class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"

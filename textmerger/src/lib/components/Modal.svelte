@@ -24,12 +24,6 @@
     if (e.key === "Escape") {
       handleClose();
     } else if (e.key === "Enter" && !disabled) {
-        // Only confirm on Enter if it's not a textarea to avoid accidental submits? 
-        // Or strictly if the focus is not on a cancel button.
-        // For simplicity, let's allow it but be careful with inputs.
-        // We'll let the parent handle specific enter key logic for inputs if needed, 
-        // but for the modal generally, Enter = Confirm is standard for simple dialogs.
-        // We will leave it to the specific input to stop propagation if needed, or just trigger confirm here.
         handleConfirm();
     }
   }
@@ -47,13 +41,13 @@
     class="w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-xl shadow-2xl overflow-hidden transform"
     transition:scale={{ duration: 200, start: 0.95 }}
     on:click|stopPropagation
-    on:keydown={(e) => { /* handled by window, just satisfying a11y */ }}
+    on:keydown={(e) => {}}
     role="dialog"
     tabindex="-1"
     aria-modal="true"
     aria-labelledby="modal-title"
   >
-    <!-- Header -->
+
     <div class="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-tertiary)]">
       <h3 id="modal-title" class="text-lg font-semibold text-[var(--text-primary)]">
         {title}
@@ -70,12 +64,12 @@
       </button>
     </div>
 
-    <!-- Body -->
+
     <div class="px-6 py-6 text-[var(--text-primary)]">
       <slot />
     </div>
 
-    <!-- Footer -->
+
     <div class="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-color)] flex justify-end gap-3">
       {#if showCancel}
         <button

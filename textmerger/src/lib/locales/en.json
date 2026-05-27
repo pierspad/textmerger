@@ -38,7 +38,7 @@
     "resetConfirm": "Are you sure you want to reset all shortcuts to default?",
     "resetSuccess": "Shortcuts reset to defaults",
     "resetError": "Error resetting shortcuts",
-    "exclusions": "Excluded Files",
+    "exclusions": "Exclude Files",
     "addPattern": "Add Pattern",
     "patternPlaceholder": "e.g. *.log or node_modules",
     "exclusionDescription": "Files and folders matching these patterns will be ignored when adding directories.",
@@ -65,7 +65,7 @@
     "duplicateShortcut": "Shortcut already assigned to",
     "exclusionExampleGlob": "Matches all PNG files",
     "exclusionExampleExact": "Matches exact folder or file name",
-    "hiddenFiles": "Hidden Files",
+    "hiddenFiles": "Hide Files",
     "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "Removed from list",
     "liveSyncPrefix": "Reload file content every ",
@@ -112,7 +112,8 @@
     "hideDirContent": "Hide content",
     "showDirContent": "Show content",
     "showDirRecursive": "Show recursively",
-    "revealDirRecursive": "Reveal full content recursively"
+    "revealDirRecursive": "Reveal full content recursively",
+    "truncateDirRecursive": "Truncate content recursively"
   },
   "contextMenu": {
     "copyPath": "Copy absolute path",
@@ -125,7 +126,8 @@
     "showRecursive": "Show recursively",
     "revealFullContent": "Reveal full file content",
     "revealFullContentRecursive": "Reveal full content recursively",
-    "truncateFile": "Truncate file"
+    "truncateFile": "Truncate file",
+    "truncateDirRecursive": "Truncate content recursively"
   },
   "messages": {
     "showingOutputs": "Showing outputs",

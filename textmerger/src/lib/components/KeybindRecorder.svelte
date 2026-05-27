@@ -26,13 +26,8 @@
     if (e.shiftKey) keys.push("Shift");
     if (e.metaKey) keys.push("Meta");
 
-    // Don't add modifier keys themselves if they are the only key pressed
-    if (
-      !["Control", "Alt", "Shift", "Meta"].includes(e.key)
-    ) {
-      // Convert key to uppercase for consistency
+    if (!["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
       let key = e.key.toUpperCase();
-      // Handle special keys if needed, but usually e.key is fine
       if (key === " ") key = "SPACE";
       keys.push(key);
       
@@ -48,7 +43,6 @@
     dispatch("start");
   }
 
-  // Global listener when recording
   $: if (recording) {
     window.addEventListener("keydown", handleKeyDown, true);
   } else {

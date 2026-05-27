@@ -112,7 +112,8 @@
     "hideDirContent": "隐藏内容",
     "showDirContent": "显示内容",
     "showDirRecursive": "递归显示",
-    "revealDirRecursive": "递归显示完整内容"
+    "revealDirRecursive": "递归显示完整内容",
+    "truncateDirRecursive": "递归截断内容"
   },
   "contextMenu": {
     "copyPath": "复制绝对路径",
@@ -125,7 +126,8 @@
     "showRecursive": "递归显示",
     "revealFullContent": "显示文件完整内容",
     "revealFullContentRecursive": "递归显示完整内容",
-    "truncateFile": "截断文件"
+    "truncateFile": "截断文件",
+    "truncateDirRecursive": "递归截断内容"
   },
   "messages": {
     "showingOutputs": "正在显示输出",

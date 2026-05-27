@@ -38,7 +38,7 @@
     "resetConfirm": "Sind Sie sicher, dass Sie alle Tastenkürzel auf die Standardwerte zurücksetzen möchten?",
     "resetSuccess": "Tastenkürzel auf Standardwerte zurückgesetzt",
     "resetError": "Fehler beim Zurücksetzen der Tastenkürzel",
-    "exclusions": "Ausgeschlossene Dateien",
+    "exclusions": "Dateien ausschließen",
     "addPattern": "Muster Hinzufügen",
     "patternPlaceholder": "z. B. *.log oder node_modules",
     "exclusionDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden beim Hinzufügen von Ordnern ignoriert.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Tastenkürzel ist bereits zugewiesen zu",
     "exclusionExampleGlob": "Entspricht allen PNG-Dateien",
     "exclusionExampleExact": "Entspricht dem exakten Ordner- oder Dateinamen",
-    "hiddenFiles": "Versteckte Dateien",
-    "hiddenFilesDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden ausgeblendet. Sie können sie weiterhin manuell einblenden.",
+    "hiddenFiles": "Dateien ausblenden",
+    "hiddenFilesDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden ausgeblendet.",
     "patternRemoved": "Aus der Liste entfernt",
     "liveSyncPrefix": "Dateiinhalt neu laden alle ",
     "liveSyncSuffix": " Sekunden",
@@ -112,7 +112,8 @@
     "hideDirContent": "Inhalt ausblenden",
     "showDirContent": "Inhalt anzeigen",
     "showDirRecursive": "Rekursiv anzeigen",
-    "revealDirRecursive": "Vollständigen Inhalt rekursiv anzeigen"
+    "revealDirRecursive": "Vollständigen Inhalt rekursiv anzeigen",
+    "truncateDirRecursive": "Inhalt rekursiv kürzen"
   },
   "contextMenu": {
     "copyPath": "Absoluten Pfad kopieren",
@@ -124,8 +125,9 @@
     "showContent": "Inhalt anzeigen",
     "showRecursive": "Rekursiv anzeigen",
     "revealFullContent": "Gesamten Dateiinhalt anzeigen",
-    "revealFullContentRecursive": "Gesamten Inhalt rekursiv anzeigen",
-    "truncateFile": "Datei kürzen"
+    "revealFullContentRecursive": "Vollständigen Inhalt rekursiv anzeigen",
+    "truncateFile": "Datei kürzen",
+    "truncateDirRecursive": "Inhalt rekursiv kürzen"
   },
   "messages": {
     "showingOutputs": "Ausgaben werden angezeigt",

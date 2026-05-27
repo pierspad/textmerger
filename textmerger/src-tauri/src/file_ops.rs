@@ -8,16 +8,8 @@ use nom_exif::{MediaParser, MediaSource};
 use mime_guess::from_path;
 use image::io::Reader as ImageReader;
 
-pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<String, String> {
+pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<(String, u64), String> {
     let path_obj = Path::new(path);
-    
-    if !path_obj.exists() {
-        return Err(format!("File not found: {}", path));
-    }
-
-    if path_obj.is_dir() {
-        return Err(format!("Is a directory: {}", path));
-    }
     let ext = path_obj.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
 
     if ext == "pdf" {
@@ -28,32 +20,47 @@ pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<String, Stri
         return read_ipynb(path, output_mode);
     }
 
-    // Check for media files (video/image)
     let media_extensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "mp4", "mov", "avi", "mkv", "webm", "m4v", "3gp"];
     if media_extensions.contains(&ext.as_str()) {
         return read_metadata(path);
     }
 
-    let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
-    let mut buffer = [0; 1024];
-    let n = file.read(&mut buffer).unwrap_or(0);
+    let file = fs::File::open(path).map_err(|e| format!("Could not open file: {}", e))?;
     
-    if n == 0 {
-        return Ok(String::new());
+    let metadata = file.metadata().map_err(|e| format!("Could not read metadata: {}", e))?;
+    
+    if metadata.is_dir() {
+        return Err(format!("Is a directory: {}", path));
     }
 
-    if inspect(&buffer[..n]) == ContentType::BINARY {
-        return Err(format!("Binary file detected: {}", path));
-    }
-    let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
-    if metadata.len() > 10 * 1024 * 1024 {
+    let size = metadata.len();
+    if size > 10 * 1024 * 1024 {
         return Err(format!("File too large (>10MB): {}", path));
     }
 
-    fs::read_to_string(path).map_err(|e| e.to_string())
+    let mut buffer = Vec::with_capacity(size as usize);
+    
+    let mut handle = file.take(1024);
+    handle.read_to_end(&mut buffer).map_err(|e| format!("Error reading header: {}", e))?;
+    
+    if buffer.is_empty() {
+        return Ok((String::new(), 0));
+    }
+
+    if inspect(&buffer) == ContentType::BINARY {
+        return Err(format!("Binary file detected: {}", path));
+    }
+
+    let mut original_file = handle.into_inner();
+    original_file.read_to_end(&mut buffer).map_err(|e| format!("Error reading content: {}", e))?;
+
+    let content = String::from_utf8(buffer)
+        .map_err(|e| format!("File contains invalid UTF-8: {}", e))?;
+
+    Ok((content, size))
 }
 
-fn read_metadata(path: &str) -> Result<String, String> {
+fn read_metadata(path: &str) -> Result<(String, u64), String> {
     let path_obj = Path::new(path);
     let filename = path_obj.file_name().unwrap_or_default().to_string_lossy();
     let metadata_fs = fs::metadata(path).map_err(|e| e.to_string())?;
@@ -70,7 +77,6 @@ fn read_metadata(path: &str) -> Result<String, String> {
     
     output.push_str("Metadata:\n");
     
-    // Optimize: Read only dimensions without loading the full image
     if let Ok(reader) = ImageReader::open(path) {
         if let Ok(dims) = reader.into_dimensions() {
              output.push_str(&format!("Dimensions: {}x{}\n", dims.0, dims.1));
@@ -88,22 +94,25 @@ fn read_metadata(path: &str) -> Result<String, String> {
                 match tag_str.as_str() {
                     "Duration" | "ImageWidth" | "ImageHeight" | "Make" | "Model" | "CreateDate" | "FrameRate" | "BitRate" => {
                          output.push_str(&format!("{}: {}\n", tag_str, value));
-                    }
+                      }
                     _ => {}
                 }
             }
         }
     }
     
-    Ok(output)
+    Ok((output, size))
 }
 
-fn read_pdf(path: &str) -> Result<String, String> {
-    pdf_extract::extract_text(path).map_err(|e| e.to_string())
+fn read_pdf(path: &str) -> Result<(String, u64), String> {
+    let text = pdf_extract::extract_text(path).map_err(|e| e.to_string())?;
+    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    Ok((text, size))
 }
 
-fn read_ipynb(path: &str, output_mode: &str) -> Result<String, String> {
+fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(content.len() as u64);
     let json: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     
     let mut output = String::new();
@@ -176,5 +185,5 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<String, String> {
         }
     }
     
-    Ok(output)
+    Ok((output, size))
 }

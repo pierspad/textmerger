@@ -38,7 +38,7 @@
     "resetConfirm": "Êtes-vous sûr de vouloir rétablir tous les raccourcis par défaut ?",
     "resetSuccess": "Raccourcis rétablis par défaut",
     "resetError": "Erreur lors de la réinitialisation des raccourcis",
-    "exclusions": "Fichiers Exclus",
+    "exclusions": "Exclure des Fichiers",
     "addPattern": "Ajouter un Motif",
     "patternPlaceholder": "ex. *.log ou node_modules",
     "exclusionDescription": "Les fichiers et dossiers correspondant à ces motifs seront ignorés lors de l'ajout de dossiers.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Raccourci déjà attribué à",
     "exclusionExampleGlob": "Correspond à tous les fichiers PNG",
     "exclusionExampleExact": "Correspond au nom exact du dossier ou du fichier",
-    "hiddenFiles": "Fichiers Masqués",
-    "hiddenFilesDescription": "Les fichiers et dossiers correspondant à ces motifs seront masqués. Vous pouvez toujours les afficher manuellement.",
+    "hiddenFiles": "Masquer les Fichiers",
+    "hiddenFilesDescription": "Les fichiers et dossiers correspondant à ces motifs seront masqués.",
     "patternRemoved": "Supprimé de la liste",
     "liveSyncPrefix": "Recharger le contenu des fichiers toutes les ",
     "liveSyncSuffix": " secondes",
@@ -112,7 +112,8 @@
     "hideDirContent": "Masquer le contenu",
     "showDirContent": "Afficher le contenu",
     "showDirRecursive": "Afficher récursivement",
-    "revealDirRecursive": "Afficher le contenu complet récursivement"
+    "revealDirRecursive": "Afficher le contenu complet récursivement",
+    "truncateDirRecursive": "Tronquer le contenu récursivement"
   },
   "contextMenu": {
     "copyPath": "Copier le chemin absolu",
@@ -124,8 +125,9 @@
     "showContent": "Afficher le contenu",
     "showRecursive": "Afficher récursivement",
     "revealFullContent": "Révéler le contenu complet du fichier",
-    "revealFullContentRecursive": "Révéler le contenu complet récursivement",
-    "truncateFile": "Tronquer le fichier"
+    "revealFullContentRecursive": "Afficher le contenu complet récursivement",
+    "truncateFile": "Tronquer le fichier",
+    "truncateDirRecursive": "Tronquer le contenu récursivement"
   },
   "messages": {
     "showingOutputs": "Affichage des sorties",

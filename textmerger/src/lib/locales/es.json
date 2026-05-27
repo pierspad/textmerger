@@ -38,7 +38,7 @@
     "resetConfirm": "¿Estás seguro de que quieres restablecer todos los atajos a los valores predeterminados?",
     "resetSuccess": "Atajos restablecidos a los valores predeterminados",
     "resetError": "Error al restablecer los atajos",
-    "exclusions": "Archivos Excluidos",
+    "exclusions": "Excluir Archivos",
     "addPattern": "Añadir Patrón",
     "patternPlaceholder": "p. ej. *.log o node_modules",
     "exclusionDescription": "Los archivos y carpetas que coincidan con estos patrones se ignorarán al añadir directorios.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Atajo ya asignado a",
     "exclusionExampleGlob": "Coincide con todos los archivos PNG",
     "exclusionExampleExact": "Coincide con el nombre exacto de carpeta o archivo",
-    "hiddenFiles": "Archivos Ocultos",
-    "hiddenFilesDescription": "Los archivos y carpetas que coincidan con estos patrones se ocultarán. Aún puedes mostrarlos manualmente.",
+    "hiddenFiles": "Ocultar Archivos",
+    "hiddenFilesDescription": "Los archivos y carpetas que coincidan con estos patrones se ocultarán.",
     "patternRemoved": "Eliminado de la lista",
     "liveSyncPrefix": "Recargar el contenido del archivo cada ",
     "liveSyncSuffix": " segundos",
@@ -76,7 +76,7 @@
     "categoryGeneral": "General",
     "categoryClipboard": "Portapapeles",
     "categoryTabs": "Pestañas",
-    "categoryFileActions": "Acciones de Archivos",
+    "categoryFileActions": "Acciones de Archivo",
     "liveSyncHint": "Establece en 0 para desactivar esta función.",
     "largeFileThresholdHint": "Selecciona después de cuántos caracteres se trunca un archivo. Establece en 0 para desactivar esta función (nunca truncar).",
     "clickToCustomize": "Haz clic para personalizar"
@@ -112,7 +112,8 @@
     "hideDirContent": "Ocultar contenido",
     "showDirContent": "Mostrar contenido",
     "showDirRecursive": "Mostrar recursivamente",
-    "revealDirRecursive": "Mostrar contenido completo recursivamente"
+    "revealDirRecursive": "Mostrar contenido completo recursivamente",
+    "truncateDirRecursive": "Truncar contenido recursivamente"
   },
   "contextMenu": {
     "copyPath": "Copiar ruta absoluta",
@@ -124,8 +125,9 @@
     "showContent": "Mostrar contenido",
     "showRecursive": "Mostrar recursivamente",
     "revealFullContent": "Revelar contenido completo del archivo",
-    "revealFullContentRecursive": "Revelar contenido completo recursivamente",
-    "truncateFile": "Truncar archivo"
+    "revealFullContentRecursive": "Mostrar contenido completo recursivamente",
+    "truncateFile": "Truncar archivo",
+    "truncateDirRecursive": "Truncar contenido recursivamente"
   },
   "messages": {
     "showingOutputs": "Mostrando salidas",

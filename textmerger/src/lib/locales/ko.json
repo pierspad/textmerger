@@ -19,9 +19,9 @@
     "sortOriginal": "원본",
     "sortAlphabetical": "알파벳순",
     "sortCharacters": "문자 수",
-    "outputsHidden": "축소된 노트북\n출력 표시",
-    "outputsReduced": "전체 노트북\n출력 표시",
-    "outputsFull": "노트북 출력\n숨기기"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "설정",
@@ -38,7 +38,7 @@
     "resetConfirm": "모든 단축키를 기본값으로 되돌리시겠습니까?",
     "resetSuccess": "단축키가 기본값으로 복원되었습니다",
     "resetError": "단축키 복원 오류",
-    "exclusions": "제외된 파일",
+    "exclusions": "파일 제외",
     "addPattern": "패턴 추가",
     "patternPlaceholder": "예: *.log 또는 node_modules",
     "exclusionDescription": "이 패턴과 일치하는 파일과 폴더는 디렉터리를 추가할 때 무시됩니다.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "이미 할당된 단축키:",
     "exclusionExampleGlob": "모든 PNG 파일과 일치",
     "exclusionExampleExact": "정확한 폴더 또는 파일 이름과 일치",
-    "hiddenFiles": "숨겨진 파일",
-    "hiddenFilesDescription": "이 패턴과 일치하는 파일 및 폴더는 숨겨집니다. 수동으로 다시 표시할 수 있습니다.",
+    "hiddenFiles": "파일 숨기기",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "목록에서 제거됨",
     "liveSyncPrefix": "파일 내용 다시 로드 간격 ",
     "liveSyncSuffix": " 초",
@@ -112,20 +112,22 @@
     "hideDirContent": "콘텐츠 숨기기",
     "showDirContent": "콘텐츠 표시",
     "showDirRecursive": "재귀적으로 표시",
-    "revealDirRecursive": "전체 콘텐츠 재귀적으로 표시"
+    "revealDirRecursive": "전체 콘텐츠 재귀적으로 표시",
+    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기"
   },
   "contextMenu": {
     "copyPath": "절대 경로 복사",
     "copyFilename": "파일 이름 복사",
     "copyFileContent": "파일 내용 복사",
-    "refreshFolderOnly": "이 폴더만 새로고침",
-    "refreshFolderRecursive": "폴더 재귀적으로 새로고침",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "콘텐츠 숨기기",
     "showContent": "콘텐츠 표시",
     "showRecursive": "재귀적으로 표시",
     "revealFullContent": "파일 전체 내용 표시",
-    "revealFullContentRecursive": "전체 내용 재귀적 표시",
-    "truncateFile": "파일 자르기"
+    "revealFullContentRecursive": "전체 콘텐츠 재귀적으로 표시",
+    "truncateFile": "파일 자르기",
+    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기"
   },
   "messages": {
     "showingOutputs": "출력 표시 중",

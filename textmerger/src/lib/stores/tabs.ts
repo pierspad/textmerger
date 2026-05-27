@@ -127,7 +127,6 @@ function persistTabsState(state: TabsState) {
     try {
         localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(state));
     } catch {
-        // Ignore storage write errors and keep app functional.
     }
 }
 
@@ -212,22 +211,17 @@ function createTabsStore() {
             };
         }),
         setActiveTab: (id: string) => withPersistence(s => ({ ...s, activeTabId: id })),
-
-        // Updates files for the ACTIVE tab (common use case) or specific tab
         addFilesToTab: (id: string, newFiles: FileNode[]) => withPersistence(s => {
             return {
                 ...s,
                 tabs: s.tabs.map(t => {
                     if (t.id === id) {
                         let newName = t.name;
-                        // Auto-rename logic
                         if (t.files.length === 0 && newFiles.length > 0 && t.name.startsWith("Tab ")) {
-                            // Find common prefix
                             if (newFiles.length === 1) {
                                 newName = newFiles[0].name;
                             } else {
                                 const splitPaths = newFiles.map(f => f.path.split(/[/\\]/));
-                                // Find shortest path length
                                 const minLen = Math.min(...splitPaths.map(p => p.length));
                                 let commonLen = 0;
                                 for (let i = 0; i < minLen; i++) {
@@ -239,15 +233,8 @@ function createTabsStore() {
                                     }
                                 }
 
-                                // if commonLen > 0, we have a common path.
-                                // The common path ends at index commonLen - 1.
-                                // Example: /home/user/dir/file1, /home/user/dir/file2
-                                // Split: ["", "home", "user", "dir", "file1"]
-                                // Common: ["", "home", "user", "dir"] (len 4)
-                                // Name should be "dir" -> index 3 (commonLen - 1)
                                 if (commonLen > 0) {
                                     const commonPart = splitPaths[0][commonLen - 1];
-                                    // If commonPart is empty (root?), grab next? NO.
                                     newName = commonPart || newFiles[0].name;
                                 } else {
                                     newName = newFiles[0].name;
@@ -255,7 +242,6 @@ function createTabsStore() {
                             }
                         }
 
-                        // Filter duplicates based on path
                         const existingPaths = new Set(t.files.map(f => f.path));
                         const uniqueNew = newFiles.filter(f => !existingPaths.has(f.path));
                         return { ...t, name: newName, files: [...t.files, ...uniqueNew] };
@@ -279,8 +265,6 @@ function createTabsStore() {
             ...s,
             tabs: s.tabs.map(t => t.id === id ? { ...t, name } : t)
         })),
-
-        // Move the active tab left or right
         moveTab: (id: string, direction: 'left' | 'right') => withPersistence(s => {
             const index = s.tabs.findIndex(t => t.id === id);
             if (index === -1) return s;
@@ -293,8 +277,6 @@ function createTabsStore() {
             }
             return { ...s, tabs: newTabs };
         }),
-
-        // Merge contents of sourceId into targetId
         uniteTabs: (targetId: string, sourceId: string) => withPersistence(s => {
             const sourceTab = s.tabs.find(t => t.id === sourceId);
             if (!sourceTab) return s;

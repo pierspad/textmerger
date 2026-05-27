@@ -38,7 +38,7 @@
     "resetConfirm": "Sei sicuro di voler ripristinare tutte le scorciatoie ai valori predefiniti?",
     "resetSuccess": "Scorciatoie ripristinate ai valori predefiniti",
     "resetError": "Errore nel ripristino delle scorciatoie",
-    "exclusions": "File Esclusi",
+    "exclusions": "Escludi File",
     "addPattern": "Aggiungi Pattern",
     "patternPlaceholder": "es. *.log o node_modules",
     "exclusionDescription": "File e cartelle che corrispondono a questi pattern verranno ignorati durante l'aggiunta di directory.",
@@ -65,7 +65,7 @@
     "duplicateShortcut": "Scorciatoia già assegnata a",
     "exclusionExampleGlob": "Corrisponde a tutti i file PNG",
     "exclusionExampleExact": "Corrisponde al nome esatto della cartella o del file",
-    "hiddenFiles": "File Nascosti",
+    "hiddenFiles": "Nascondi File",
     "hiddenFilesDescription": "I file e le cartelle che corrispondono a questi pattern verranno nascosti. Puoi ancora rivelarli manualmente.",
     "patternRemoved": "Rimosso dalla lista",
     "liveSyncPrefix": "Ricarica il contenuto dei file ogni ",
@@ -112,7 +112,8 @@
     "hideDirContent": "Nascondi contenuto",
     "showDirContent": "Mostra contenuto",
     "showDirRecursive": "Mostra ricorsivamente",
-    "revealDirRecursive": "Mostra per intero ricorsivamente"
+    "revealDirRecursive": "Mostra per intero ricorsivamente",
+    "truncateDirRecursive": "Tronca contenuto ricorsivamente"
   },
   "contextMenu": {
     "copyPath": "Copia percorso assoluto",
@@ -125,7 +126,8 @@
     "showRecursive": "Mostra ricorsivamente",
     "revealFullContent": "Svela l'intero contenuto del file",
     "revealFullContentRecursive": "Mostra per intero ricorsivamente",
-    "truncateFile": "Tronca file"
+    "truncateFile": "Tronca file",
+    "truncateDirRecursive": "Tronca contenuto ricorsivamente"
   },
   "messages": {
     "showingOutputs": "Mostrando gli output",

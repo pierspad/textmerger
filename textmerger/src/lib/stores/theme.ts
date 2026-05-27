@@ -4,7 +4,6 @@ function createThemeStore() {
     const stored = localStorage.getItem('textmerger_theme') || 'dark';
     const { subscribe, set } = writable(stored);
 
-    // Apply theme to document
     if (typeof document !== 'undefined') {
         document.documentElement.setAttribute('data-theme', stored);
     }

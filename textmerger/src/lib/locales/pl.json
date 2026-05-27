@@ -19,9 +19,9 @@
     "sortOriginal": "Oryginalna",
     "sortAlphabetical": "Alfabetycznie",
     "sortCharacters": "Znaki",
-    "outputsHidden": "Pokaż zmniejszone\nwyniki Notebooka",
-    "outputsReduced": "Pokaż pełne\nwyniki Notebooka",
-    "outputsFull": "Ukryj wyniki\nNotebooka"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "Ustawienia",
@@ -38,7 +38,7 @@
     "resetConfirm": "Czy na pewno chcesz przywrócić wszystkie skróty do wartości domyślnych?",
     "resetSuccess": "Skróty przywrócone do wartości domyślnych",
     "resetError": "Błąd przywracania skrótów",
-    "exclusions": "Wykluczone pliki",
+    "exclusions": "Wyklucz pliki",
     "addPattern": "Dodaj wzorzec",
     "patternPlaceholder": "np. *.log lub node_modules",
     "exclusionDescription": "Pliki i foldery pasujące do tych wzorców zostaną zignorowane podczas dodawania katalogów.",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "Skrót jest już przypisany do",
     "exclusionExampleGlob": "Pasuje do wszystkich plików PNG",
     "exclusionExampleExact": "Pasuje do dokładnej nazwy folderu lub pliku",
-    "hiddenFiles": "Ukryte pliki",
-    "hiddenFilesDescription": "Pliki i foldery pasujące do tych wzorców zostaną ukryte. Nadal możesz je odkryć ręcznie.",
+    "hiddenFiles": "Ukryj pliki",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "Usunięto z listy",
     "liveSyncPrefix": "Odświeżaj zawartość plików co ",
     "liveSyncSuffix": " sekund",
@@ -112,20 +112,22 @@
     "hideDirContent": "Ukryj zawartość",
     "showDirContent": "Pokaż zawartość",
     "showDirRecursive": "Pokaż rekurencyjnie",
-    "revealDirRecursive": "Odkryj pełną zawartość rekurencyjnie"
+    "revealDirRecursive": "Odkryj pełną zawartość rekurencyjnie",
+    "truncateDirRecursive": "Skróć zawartość rekurencyjnie"
   },
   "contextMenu": {
     "copyPath": "Kopiuj ścieżkę bezwzględną",
     "copyFilename": "Kopiuj nazwę pliku",
     "copyFileContent": "Kopiuj zawartość pliku",
-    "refreshFolderOnly": "Odśwież tylko ten folder",
-    "refreshFolderRecursive": "Odśwież folder rekurencyjnie",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "Ukryj zawartość",
     "showContent": "Pokaż zawartość",
     "showRecursive": "Pokaż rekurencyjnie",
     "revealFullContent": "Pokaż pełną zawartość pliku",
-    "revealFullContentRecursive": "Pokaż pełną zawartość rekursywnie",
-    "truncateFile": "Obetnij plik"
+    "revealFullContentRecursive": "Odkryj pełną zawartość rekurencyjnie",
+    "truncateFile": "Obetnij plik",
+    "truncateDirRecursive": "Skróć zawartość rekurencyjnie"
   },
   "messages": {
     "showingOutputs": "Pokazywanie wyników",

@@ -58,7 +58,6 @@ const DEFAULT_SETTINGS: SettingsState = {
 };
 
 function createSettingsStore() {
-    // Load from localStorage
     const savedPatterns = localStorage.getItem('excludedPatterns');
     const initialPatterns = savedPatterns ? JSON.parse(savedPatterns) : defaultExcludedPatterns;
     const savedAutomaticUpdateChecks = localStorage.getItem('automaticUpdateChecks');

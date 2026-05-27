@@ -19,9 +19,9 @@
     "sortOriginal": "元の順序",
     "sortAlphabetical": "アルファベット順",
     "sortCharacters": "文字数",
-    "outputsHidden": "ノートブックの出力を精簡表示",
-    "outputsReduced": "ノートブックの出力を完全表示",
-    "outputsFull": "ノートブックの出力を非表示"
+    "outputsHidden": "Show reduced\nNotebook outputs",
+    "outputsReduced": "Show full\nNotebook outputs",
+    "outputsFull": "Hide Notebook\noutputs"
   },
   "settings": {
     "title": "設定",
@@ -38,7 +38,7 @@
     "resetConfirm": "すべてのショートカットを既定値に戻しますか？",
     "resetSuccess": "ショートカットを既定値に戻しました",
     "resetError": "ショートカットのリセットに失敗しました",
-    "exclusions": "除外ファイル",
+    "exclusions": "ファイルを対象外にする",
     "addPattern": "パターンを追加",
     "patternPlaceholder": "例: *.log または node_modules",
     "exclusionDescription": "これらのパターンに一致するファイルとフォルダーは、ディレクトリ追加時に無視されます。",
@@ -65,8 +65,8 @@
     "duplicateShortcut": "ショートカットはすでに割り当てられています:",
     "exclusionExampleGlob": "すべての PNG ファイルに一致します",
     "exclusionExampleExact": "フォルダーまたはファイルの正確な名前に一致します",
-    "hiddenFiles": "非表示ファイル",
-    "hiddenFilesDescription": "これらのパターンに一致するファイルとフォルダーは非表示になります。手動で表示させることも可能です。",
+    "hiddenFiles": "ファイルを非表示にする",
+    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
     "patternRemoved": "リストから削除されました",
     "liveSyncPrefix": "ファイルの内容を ",
     "liveSyncSuffix": " 秒ごとに再読み込み",
@@ -112,20 +112,22 @@
     "hideDirContent": "コンテンツを非表示",
     "showDirContent": "コンテンツを表示",
     "showDirRecursive": "再帰的に表示",
-    "revealDirRecursive": "フルコンテンツを再帰的に表示"
+    "revealDirRecursive": "フルコンテンツを再帰的に表示",
+    "truncateDirRecursive": "コンテンツを再帰的に切り詰める"
   },
   "contextMenu": {
     "copyPath": "絶対パスをコピー",
     "copyFilename": "ファイル名をコピー",
     "copyFileContent": "ファイルの内容をコピー",
-    "refreshFolderOnly": "このフォルダーのみ更新",
-    "refreshFolderRecursive": "フォルダーを再帰的に更新",
+    "refreshFolderOnly": "Refresh this folder only",
+    "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "コンテンツを非表示",
     "showContent": "コンテンツを表示",
     "showRecursive": "再帰的に表示",
     "revealFullContent": "ファイルの全内容を表示",
-    "revealFullContentRecursive": "全内容を再帰的に表示",
-    "truncateFile": "ファイルを切り詰める"
+    "revealFullContentRecursive": "フルコンテンツを再帰的に表示",
+    "truncateFile": "ファイルを切り詰める",
+    "truncateDirRecursive": "コンテンツを再帰的に切り詰める"
   },
   "messages": {
     "showingOutputs": "出力を表示中",

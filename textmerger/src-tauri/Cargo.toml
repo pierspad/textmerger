@@ -18,13 +18,11 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-log = "0.4"
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 rayon = "1.10.0"
 content_inspector = "0.2.4"
 tauri-plugin-fs = "2"
-html-escape = "0.2"
 walkdir = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
@@ -40,8 +38,6 @@ image = { version = "0.24", default-features = false, features = [
 mime_guess = "2.0"
 pdf-extract = "0.7"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-glib = "0.21"
 
 [profile.dev]
 opt-level = 0
@@ -53,7 +49,7 @@ opt-level = 1
 
 [profile.release]
 codegen-units = 1
-lto = "thin"
+lto = true
 opt-level = 3
 panic = "abort"
 strip = true

@@ -8,7 +8,7 @@
   export let selectedFiles: Set<string>;
   export let focusedFilePath: string | null = null;
   export let depth = 0;
-  export let maxCharCount = 0; // Prop from parent
+  export let maxCharCount = 0;
   export let largeFileThreshold = 20000;
   export let forceFullLoadPaths: Set<string> = new Set();
   export let sortType: 'original' | 'alphabetical' | 'size' = 'original';
@@ -18,10 +18,7 @@
 
   function toggle() {
     if (!node.isFile) {
-      // We mutate the node state here for local toggle. 
-      // ideally this should bubble up, but for simple tree checking 'isOpen' property on node object ref works
       node.isOpen = !node.isOpen;
-      // Force update
       node = node;
       dispatch('toggle', node);
     }
@@ -43,22 +40,15 @@
       dispatch('contextmenu', { path: node.path, name: node.name, isFile: node.isFile, event });
   }
 
-
-
-  // Updated logic: Relative coloring
   function getHeavinessColor(charCount: number): string {
-      if (!maxCharCount) return '#22c55e'; // Default green if no max
+      if (!maxCharCount) return '#22c55e';
       
       const ratio = charCount / maxCharCount;
-      // 0 - 0.25: Green
-      // 0.25 - 0.5: Yellow
-      // 0.5 - 0.75: Orange
-      // 0.75 - 1.0: Red
       
-      if (ratio < 0.25) return '#22c55e'; // Green
-      if (ratio < 0.50) return '#eab308'; // Yellow
-      if (ratio < 0.75) return '#f97316'; // Orange
-      return '#ef4444'; // Red
+      if (ratio < 0.25) return '#22c55e';
+      if (ratio < 0.50) return '#eab308';
+      if (ratio < 0.75) return '#f97316';
+      return '#ef4444';
   }
 
   function getSortedChildren(children: any): any[] {
