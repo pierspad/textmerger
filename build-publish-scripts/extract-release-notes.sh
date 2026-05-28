@@ -33,6 +33,7 @@ if awk -v version="$VERSION" '
 
     function heading_title(line) {
         sub(/^#+[[:space:]]*/, "", line)
+        sub(/^[Rr]elease[[:space:]]+[Nn]otes[[:space:]]+/, "", line)
         sub(/^[Vv]ersion[[:space:]]+/, "", line)
         sub(/^v/, "", line)
         sub(/[[:space:]]+$/, "", line)
