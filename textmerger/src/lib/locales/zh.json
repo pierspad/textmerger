@@ -19,9 +19,9 @@
     "sortOriginal": "原始",
     "sortAlphabetical": "按字母",
     "sortCharacters": "字符数",
-    "outputsHidden": "显示精简\n笔记本输出",
-    "outputsReduced": "显示完整\n笔记本输出",
-    "outputsFull": "隐藏\n笔记本输出"
+    "outputsHidden": "笔记本输出已隐藏",
+    "outputsReduced": "笔记本输出已精简",
+    "outputsFull": "笔记本输出已完整"
   },
   "settings": {
     "title": "设置",
@@ -79,7 +79,9 @@
     "categoryFileActions": "文件操作",
     "liveSyncHint": "设置为 0 以禁用此功能。",
     "largeFileThresholdHint": "选择文件在达到多少个字符后被截断。设置为 0 以禁用此功能（永不截断）。",
-    "clickToCustomize": "点击进行自定义"
+    "clickToCustomize": "选择进行自定义",
+    "tokenizer": "LLM 分词器",
+    "tokenizerDescription": "选择估算 LLM Token 使用量的模型。"
   },
   "shortcuts": {
     "open": "打开",

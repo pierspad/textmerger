@@ -19,9 +19,9 @@
     "sortOriginal": "Oryginalna",
     "sortAlphabetical": "Alfabetycznie",
     "sortCharacters": "Znaki",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Wyjścia Notebooka ukryte",
+    "outputsReduced": "Wyjścia Notebooka zredukowane",
+    "outputsFull": "Wyjścia Notebooka pełne"
   },
   "settings": {
     "title": "Ustawienia",
@@ -40,7 +40,7 @@
     "resetError": "Błąd przywracania skrótów",
     "exclusions": "Wyklucz pliki",
     "addPattern": "Dodaj wzorzec",
-    "patternPlaceholder": "np. *.log lub node_modules",
+    "patternPlaceholder": "Np. *.log lub node_modules",
     "exclusionDescription": "Pliki i foldery pasujące do tych wzorców zostaną zignorowane podczas dodawania katalogów.",
     "resetPatterns": "Resetuj wzorce",
     "repository": "Repozytorium",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Pasuje do wszystkich plików PNG",
     "exclusionExampleExact": "Pasuje do dokładnej nazwy folderu lub pliku",
     "hiddenFiles": "Ukryj pliki",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "Pliki i foldery pasujące do tych wzorców zostaną ukryte.",
     "patternRemoved": "Usunięto z listy",
     "liveSyncPrefix": "Odświeżaj zawartość plików co ",
     "liveSyncSuffix": " sekund",
@@ -79,7 +79,9 @@
     "categoryFileActions": "Akcje na plikach",
     "liveSyncHint": "Ustaw na 0, aby wyłączyć tę funkcję.",
     "largeFileThresholdHint": "Wybierz, po ilu znakach plik ma być skracany. Ustaw na 0, aby wyłączyć tę funkcję (nigdy nie skracaj).",
-    "clickToCustomize": "Kliknij, aby dostosować"
+    "clickToCustomize": "Wybierz, aby dostosować",
+    "tokenizer": "Tokenizer LLM",
+    "tokenizerDescription": "Wybierz model, aby oszacować zużycie tokenów dla LLM."
   },
   "shortcuts": {
     "open": "Otwórz",
@@ -119,8 +121,8 @@
     "copyPath": "Kopiuj ścieżkę bezwzględną",
     "copyFilename": "Kopiuj nazwę pliku",
     "copyFileContent": "Kopiuj zawartość pliku",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "Odśwież tylko ten folder",
+    "refreshFolderRecursive": "Odśwież folder rekurencyjnie",
     "hideContent": "Ukryj zawartość",
     "showContent": "Pokaż zawartość",
     "showRecursive": "Pokaż rekurencyjnie",

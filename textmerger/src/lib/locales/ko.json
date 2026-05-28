@@ -19,9 +19,9 @@
     "sortOriginal": "원본",
     "sortAlphabetical": "알파벳순",
     "sortCharacters": "문자 수",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Notebook 출력 숨김",
+    "outputsReduced": "Notebook 출력 축소 표시",
+    "outputsFull": "Notebook 출력 전체 표시"
   },
   "settings": {
     "title": "설정",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "모든 PNG 파일과 일치",
     "exclusionExampleExact": "정확한 폴더 또는 파일 이름과 일치",
     "hiddenFiles": "파일 숨기기",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "이 패턴과 일치하는 파일과 폴더는 숨겨집니다.",
     "patternRemoved": "목록에서 제거됨",
     "liveSyncPrefix": "파일 내용 다시 로드 간격 ",
     "liveSyncSuffix": " 초",
@@ -79,7 +79,9 @@
     "categoryFileActions": "파일 작업",
     "liveSyncHint": "이 기능을 비활성화하려면 0으로 설정하십시오.",
     "largeFileThresholdHint": "파일이 잘리는 글자 수를 선택합니다. 이 기능을 비활성화하려면 0으로 설정하십시오 (잘라내지 않음).",
-    "clickToCustomize": "클릭하여 사용자 지정"
+    "clickToCustomize": "선택하여 사용자 지정",
+    "tokenizer": "LLM 토크나이저",
+    "tokenizerDescription": "LLM의 토큰 사용량을 추정할 모델을 선택하십시오."
   },
   "shortcuts": {
     "open": "열기",
@@ -119,8 +121,8 @@
     "copyPath": "절대 경로 복사",
     "copyFilename": "파일 이름 복사",
     "copyFileContent": "파일 내용 복사",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "이 폴더만 새로고침",
+    "refreshFolderRecursive": "폴더 재귀적 새로고침",
     "hideContent": "콘텐츠 숨기기",
     "showContent": "콘텐츠 표시",
     "showRecursive": "재귀적으로 표시",

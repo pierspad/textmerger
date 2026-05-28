@@ -19,9 +19,9 @@
     "sortOriginal": "元の順序",
     "sortAlphabetical": "アルファベット順",
     "sortCharacters": "文字数",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Notebook 出力非表示",
+    "outputsReduced": "Notebook 出力縮小表示",
+    "outputsFull": "Notebook 出力全画面表示"
   },
   "settings": {
     "title": "設定",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "すべての PNG ファイルに一致します",
     "exclusionExampleExact": "フォルダーまたはファイルの正確な名前に一致します",
     "hiddenFiles": "ファイルを非表示にする",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "これらのパターンに一致するファイルやフォルダは非表示になります。",
     "patternRemoved": "リストから削除されました",
     "liveSyncPrefix": "ファイルの内容を ",
     "liveSyncSuffix": " 秒ごとに再読み込み",
@@ -79,7 +79,9 @@
     "categoryFileActions": "ファイル操作",
     "liveSyncHint": "0 に設定するとこの機能が無効になります。",
     "largeFileThresholdHint": "ファイルを何文字で切り詰めるかを選択します。0 に設定するとこの機能が無効になります（切り詰めない）。",
-    "clickToCustomize": "クリックしてカスタマイズ"
+    "clickToCustomize": "選択してカスタマイズ",
+    "tokenizer": "LLM トークナイザー",
+    "tokenizerDescription": "LLMのトークン使用量を推定するモデルを選択します。"
   },
   "shortcuts": {
     "open": "開く",
@@ -119,8 +121,8 @@
     "copyPath": "絶対パスをコピー",
     "copyFilename": "ファイル名をコピー",
     "copyFileContent": "ファイルの内容をコピー",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "このフォルダのみ更新",
+    "refreshFolderRecursive": "フォルダを再帰的に更新",
     "hideContent": "コンテンツを非表示",
     "showContent": "コンテンツを表示",
     "showRecursive": "再帰的に表示",

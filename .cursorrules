@@ -1,60 +1,248 @@
-# Agent / LLM Instructions for Vesta (Tauri + Svelte Harness)
+# Agent & LLM Instructions: Principles of Excellent Software (Tauri + Svelte Stack)
 
-All development, code generation, and AI assistance for this project must adhere strictly to these rules and architecture specifications.
+All development, code generation, and AI assistance for this project must adhere strictly to these rules, architectural specifications, and software engineering principles. These standards ensure premium visual aesthetics, minimal boilerplate, high performance, and robust code maintainability.
 
 ---
 
-## 2. Core Tech Stack
-*   **Backend**: Rust (Tauri v2) - high-performance system access, low memory footprint.
-*   **Frontend**: Svelte + TypeScript - reactive, fast compilation, clean stores.
-*   **Styling**: Vanilla CSS - custom CSS variables for theme states, glassmorphism UI, smooth transitions, and hardware-accelerated animations. Avoid Tailwind CSS.
-*   **Build Optimization**: High priority. Utilize preflight checks, local sccache, and custom bypass configs.
+## 1. Core Tech Stack & Standards
+*   **Backend**: Rust (Tauri v2) - high-performance system access, low memory footprint, strict security models.
+*   **Frontend**: Svelte 5 + TypeScript + Vite - highly reactive, fast compilation, minimal boilerplate.
+    *   *Svelte 5 Runes*: Always prefer Svelte 5 runes (`$state`, `$derived`, `$props()`) for new components. If modifying legacy components, maintain the existing Svelte 4 syntax (`export let`, reactive `$: `) or refactor them cleanly to Runes if requested.
+*   **Build Optimization**: High priority. Utilize preflight checks, local `sccache`, and custom compiler configs to optimize compile times.
+
+---
+
+## 2. Generic Theme & Design Token Architecture
+Do not hardcode hex colors or specific palettes directly in component styles. All styling must be driven by semantic CSS variables, allowing the color scheme to be changed dynamically without modifying component logic.
+
+*   **Reactive Theme Store (`theme.ts`)**:
+    *   Initialize state by checking `localStorage.getItem('theme')` (defaulting to `dark` for a premium first impression).
+    *   Provide `setTheme(theme)` and `toggle()` methods that:
+        1. Update the reactive store.
+        2. Set the localStorage item.
+        3. Dynamically update the root element: `document.documentElement.setAttribute('data-theme', theme)`.
+*   **Semantic Color Variable Template (Hint/Structure)**:
+    Define color tokens inside a global stylesheet (e.g. `app.css`). Map specific color codes to these variables in Dark/Light themes. Do not lock yourself to one specific hex value:
+    ```css
+    :root {
+      /* Theme Canvas */
+      --bg-primary: #1e1e1e;       /* Base app background */
+      --bg-secondary: #252526;     /* Sidebars, panels, secondary views */
+      --bg-tertiary: #2d2d2d;      /* Modals, popup cards, inner boxes */
+      --bg-hover: #2a2d2e;         /* Hover state on list elements and buttons */
+      --bg-hover-strong: #3c3c3c;  /* Highlighted or active list elements/buttons */
+
+      /* Typography */
+      --text-primary: #e5e7eb;     /* Main readable text (high contrast) */
+      --text-secondary: #d1d5db;   /* Secondary/subtitle text */
+      --text-muted: #9ca3af;       /* Desaturated text for helpers, placeholders */
+
+      /* Boundaries */
+      --border-color: #333333;     /* Standard thin borders */
+      --border-light: #444444;     /* Very subtle separation lines */
+
+      /* Accents */
+      --accent-primary: #007acc;   /* Focus accent, main actions (customizable) */
+      --accent-hover: #0098ff;     /* Hover state on primary actions */
+      --accent-glow: rgba(0, 122, 204, 0.4); /* Accent shadow glow */
+    }
+
+    :root[data-theme="light"] {
+      /* Dynamic Light Theme Swapping overrides all values */
+      --bg-primary: #ffffff;
+      --bg-secondary: #f3f4f6;
+      --bg-tertiary: #e5e7eb;
+      --bg-hover: #f9fafb;
+      --bg-hover-strong: #d1d5db;
+
+      --text-primary: #111827;
+      --text-secondary: #374151;
+      --text-muted: #6b7280;
+
+      --border-color: #e5e7eb;
+      --border-light: #d1d5db;
+
+      --accent-primary: #0066b3;
+      --accent-hover: #005599;
+      --accent-glow: rgba(0, 102, 179, 0.3);
+    }
+    ```
+*   **Transitions**:
+    Ensure components transition smoothly during theme changes by applying global transitions to canvas-changing variables:
+    ```css
+    body, button, input, div, span, nav {
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    ```
 
 ---
 
 ## 3. i18n & Localization Standard (15 Languages)
-*   **Locale Storage**:
-    *   `apps/srt-gui/src/lib/i18n/locales/` - General UI translations.
-    *   `apps/srt-gui/src/lib/i18n/locales/info/` - Detailed helper texts and descriptions.
-*   **Supported Locales**: English (`en` - source of truth), Italian (`it`), Spanish (`es`), French (`fr`), German (`de`), Portuguese (`pt`), Russian (`ru`), Chinese (`zh`), Japanese (`ja`), Korean (`ko`), Arabic (`ar`), Polish (`pl`), Dutch (`nl`), Turkish (`tr`), Swedish (`sv`).
-*   **Validation**: Maintain the Python script (`check_missing_translations.py`) in CI/CD to prevent releases if keys are missing, empty, or parameters (e.g., `{count}`) mismatch.
+To minimize compiled bundle size, avoid external localization packages. Implement a lightweight reactive derived translation store.
+
+*   **Supported Languages (15)**:
+    1.  English (`en` - source of truth)
+    2.  Italian (`it`)
+    3.  Spanish (`es`)
+    4.  French (`fr`)
+    5.  German (`de`)
+    6.  Portuguese (`pt`)
+    7.  Russian (`ru`)
+    8.  Chinese (`zh`)
+    9.  Japanese (`ja`)
+    10. Korean (`ko`)
+    11. Arabic (`ar` - RTL supported)
+    12. Polish (`pl`)
+    13. Dutch (`nl`)
+    14. Turkish (`tr`)
+    15. Hindi (`hi`)
+*   **Key Merging Strategy (Complete Implementation)**:
+    Import locale JSONs (both general UI and verbose information/help files) and merge them with English to guarantee a safe key-by-key fallback in case of incomplete translations:
+    ```typescript
+    import ar from './locales/ar.json';
+    import de from './locales/de.json';
+    import en from './locales/en.json';
+    import es from './locales/es.json';
+    import fr from './locales/fr.json';
+    import hi from './locales/hi.json';
+    import it from './locales/it.json';
+    import ja from './locales/ja.json';
+    import ko from './locales/ko.json';
+    import nl from './locales/nl.json';
+    import pl from './locales/pl.json';
+    import pt from './locales/pt.json';
+    import ru from './locales/ru.json';
+    import tr from './locales/tr.json';
+    import zh from './locales/zh.json';
+
+    import infoAr from './locales/info/ar.json';
+    import infoDe from './locales/info/de.json';
+    import infoEn from './locales/info/en.json';
+    import infoEs from './locales/info/es.json';
+    import infoFr from './locales/info/fr.json';
+    import infoHi from './locales/info/hi.json';
+    import infoIt from './locales/info/it.json';
+    import infoJa from './locales/info/ja.json';
+    import infoKo from './locales/info/ko.json';
+    import infoNl from './locales/info/nl.json';
+    import infoPl from './locales/info/pl.json';
+    import infoPt from './locales/info/pt.json';
+    import infoRu from './locales/info/ru.json';
+    import infoTr from './locales/info/tr.json';
+    import infoZh from './locales/info/zh.json';
+
+    const translations: Record<string, Record<string, string>> = {
+      ar: { ...en, ...infoEn, ...ar, ...infoAr },
+      zh: { ...en, ...infoEn, ...zh, ...infoZh },
+      nl: { ...en, ...infoEn, ...nl, ...infoNl },
+      en: { ...en, ...infoEn },
+      fr: { ...en, ...infoEn, ...fr, ...infoFr },
+      de: { ...en, ...infoEn, ...de, ...infoDe },
+      hi: { ...en, ...infoEn, ...hi, ...infoHi },
+      it: { ...en, ...infoEn, ...it, ...infoIt },
+      ja: { ...en, ...infoEn, ...ja, ...infoJa },
+      ko: { ...en, ...infoEn, ...ko, ...infoKo },
+      pl: { ...en, ...infoEn, ...pl, ...infoPl },
+      pt: { ...en, ...infoEn, ...pt, ...infoPt },
+      ru: { ...en, ...infoEn, ...ru, ...infoRu },
+      es: { ...en, ...infoEn, ...es, ...infoEs },
+      tr: { ...en, ...infoEn, ...tr, ...infoTr },
+    };
+    ```
+*   **Derived Store translation function `t`**:
+    Supports nested access paths (e.g. `t('settings.general.title')`) and parameter replacement using `{{paramName}}` placeholders:
+    ```typescript
+    function translate(lang: string, key: string, params?: Record<string, string | number>) {
+      const translation = translations[lang]?.[key] || translations['en']?.[key] || key;
+      if (params) {
+        return Object.entries(params).reduce(
+          (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), String(v)),
+          translation
+        );
+      }
+      return translation;
+    }
+    ```
+*   **Local Keyboard Shortcuts Formatting**:
+    Use `tShortcut` to format keybindings names according to localized keyboard layouts (e.g. German `Ctrl` -> `Strg`).
 
 ---
 
-## 4. UI Shell & Sidebar Layout
-*   **Shell Structure**: Left-sidebar and workspace view configuration.
-*   **Attribution Dock (Bottom-Left)**:
-    *   Must display version, license, stack details (Tauri + Svelte).
-    *   Must display external links: Developer Web Site (`https://pierspad.com`) and GitHub Repository URL.
-    *   Links must be opened safely using Tauri Shell plugin (`open` API):
-        ```typescript
-        import { open as openExternal } from '@tauri-apps/plugin-shell';
+## 4. Keyboard Shortcuts & Keybinds Engine
+A robust keyboard shortcuts architecture must allow global control while avoiding overlaps with natural user inputs.
+
+*   **Input Protection**:
+    Inside the global `handleKeydown` window listener, bypass keyboard shortcut logic if the event's target is an interactive editor (e.g., input fields, textareas, or elements with `contenteditable="true"`):
+    ```typescript
+    const target = event.target as HTMLElement;
+    const isEditing = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    ```
+*   **Normalized Combo Detection**:
+    Always parse inputs in a fixed sequence: `Ctrl`, `Alt`, `Shift`, `Meta`, followed by the uppercase representation of the character pressed. `SPACE` represents the spacebar.
+    ```typescript
+    const keys = [];
+    if (event.ctrlKey) keys.push("Ctrl");
+    if (event.altKey) keys.push("Alt");
+    if (event.shiftKey) keys.push("Shift");
+    if (event.metaKey) keys.push("Meta");
+    if (!["Control", "Alt", "Shift", "Meta"].includes(event.key)) {
+      let key = event.key.toUpperCase();
+      if (key === " ") key = "SPACE";
+      keys.push(key);
+    }
+    const combo = keys.join("+").toUpperCase();
+    ```
+*   **Interactive Keybind Recording (`KeybindRecorder.svelte`)**:
+    Provides an active keyboard capture window that catches modifiers and normal keys, updates the `shortcuts` store dynamically, and supports `Escape` to close/cancel without saving.
+
+---
+
+## 5. Snackbars & Toast Notification System
+*   **Lightweight Component (`Snackbar.svelte`)**:
+    Uses state-based triggers supporting variants: `success` (emerald/green), `info` (blue), `warning` (amber), and `error` (red).
+*   **Micro-Animations**:
+    *   Use a reactive `#key` block linked to a dynamic variable to trigger entry animation (`animate-fade-in-up`) on every new toast.
+    *   Include a visual, shrinking progress bar indicating time left before close:
+        ```html
+        <div class="h-1 w-full {progressBg}" style="animation: toast-shrink {duration}ms linear forwards;"></div>
+        ```
+        ```css
+        @keyframes toast-shrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
         ```
 
 ---
 
-## 5. Settings Panel Architecture
-*   **Macro Cards**: Top grid summarizing settings sections (e.g., Download, Interface, Shortcuts) with real-time status.
-*   **Section Smooth Scroll**: Macro cards must scroll to target section using element `scrollIntoView({ behavior: 'smooth' })`.
-*   **Highlight Animation**: Glow target section on navigation with standard glow keyframes.
-*   **Theme Switcher**: Dark/Light mode theme change by toggling class/attributes on the root element.
-*   **Language Selector**: Flags/names button grid.
-*   **Shortcuts Panel**: Integrated keymap editor dynamically updating shortcut settings.
+## 6. Modals & Dialog Windows
+*   **Event Handling**:
+    *   Dismiss dialogs via `Escape` or backdrop clicks.
+    *   **CRITICAL**: Modal card containers MUST explicitly stop event propagation (`on:click|stopPropagation` or `onclick={(e) => e.stopPropagation()}`) to prevent clicks inside the modal card from closing it.
+*   **Transitions**:
+    Combine a `fade` overlay backdrop transition with a `scale` card entry zoom transition (e.g. `duration: 200, start: 0.95`).
 
 ---
 
-## 6. Whisper & Heavy Compilation Optimization
+## 7. Whisper & Heavy Compilation Optimizations (Optional Crate)
+*   **NOTE ON WHISPER**: Whisper integration is **NOT mandatory**. Do NOT add whisper, transcription, or model-download logic to the codebase unless explicitly requested by the user or as a core functional requirement of the task.
 *   **Env-Bypass via Precompiled Bindings**:
-    *   Set `WHISPER_DONT_GENERATE_BINDINGS="1"` in the compile environment to skip the `bindgen` step.
-    *   Copy local verified `src/bindings.rs` directly to `OUT_DIR` inside the vendored `whisper-rs-sys` crate.
+    If Whisper is active and causing heavy compilation delays:
+    *   Set `WHISPER_DONT_GENERATE_BINDINGS="1"` in the compile environment to skip the slow `bindgen` step.
+    *   Copy a local verified `src/bindings.rs` directly to the cargo `OUT_DIR` inside the vendored `whisper-rs-sys` crate.
 *   **CI/CD Caching**: Always use `sccache` + `rust-cache` inside GitHub Actions to reduce build times.
 
 ---
 
-## 7. Change Logging & Release Governance
-*   **Immediate Change Logging**: Every time an LLM or AI assistant makes any modification to the code, it MUST immediately write what change it is making and the technical reasons for it in `docs/list_of_things_changed.md`.
-*   **Release Notes Updates**: Upon completion of the task, the AI must summarize all changes and update `docs/release-notes.md` following a clean release notes format:
-    *   Header: `## Release Notes vX.Y.Z` (increment version or align with current release version).
-    *   Sections: Separate items under `### Fixes` and `### Improvements`.
-    *   List Items: Use bullet points prefixed by bold components (e.g., `* **Component Name**: Description of changes`).
-    *   This ensures the release notes are kept completely updated and curated for every release.
+## 8. Release Notes & Versioning Governance
+*   **Determine if a Release was Done**:
+    When preparing a release or reviewing project info, inspect `build-publish-scripts/PKGBUILD` (or equivalent build scripts) to check `pkgver=X.Y.Z` and compare it to the latest version header in `docs/release-notes.md`.
+*   **Propagate Version Bump**:
+    If the versions match, it means a new version is required:
+    1.  Increment the version inside the PKGBUILD/cargo config.
+    2.  Run `sh build-publish-scripts/update_project_info.sh` (or the project's corresponding update script) to sync the version across all project files.
+    3.  Create a clean section inside `docs/release-notes.md` detailing the changes:
+        *   `## Release Notes vX.Y.Z`
+        *   `### Fixes` & `### Improvements` using bullet points prefixed by bold components.
+*   **Immediate Change Logging**:
+    Every single modification made to source files by an LLM or AI assistant must be recorded with technical reasons inside `docs/list_of_things_changed.md` immediately.

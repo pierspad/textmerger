@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { getName, getVersion } from "@tauri-apps/api/app";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import { shortcuts, ACTION_ICONS, type Shortcuts } from "../stores/shortcuts";
@@ -9,6 +9,82 @@
   import KeybindRecorder from "./KeybindRecorder.svelte";
   import FileIcon from "./FileIcon.svelte";
   import { ask } from "@tauri-apps/plugin-dialog";
+
+  let tooltipText = "";
+  let tooltipX = 0;
+  let tooltipY = 0;
+  let showTooltip = false;
+
+  function handleMouseMove(e: MouseEvent, text: string) {
+    tooltipText = text;
+    let x = e.clientX + 12;
+    let y = e.clientY + 12;
+    
+    const tooltipWidth = 280;
+    const tooltipHeight = 80;
+    if (x + tooltipWidth > window.innerWidth) {
+      x = e.clientX - tooltipWidth - 12;
+    }
+    if (y + tooltipHeight > window.innerHeight) {
+      y = e.clientY - tooltipHeight - 12;
+    }
+    
+    tooltipX = x;
+    tooltipY = y;
+    showTooltip = true;
+  }
+
+  function handleMouseLeave() {
+    showTooltip = false;
+  }
+
+  // Tokenizer highlight (driven from parent)
+  export let highlightTokenizer = false;
+  let tokenizerRowEl: HTMLElement | null = null;
+  let tokenizerFlashing = false;
+
+  $: if (highlightTokenizer) {
+    highlightTokenizer = false;
+    activeTab = 'general';
+    // wait a tick for the DOM to render the general tab
+    setTimeout(() => {
+      if (tokenizerRowEl) {
+        tokenizerRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        tokenizerFlashing = true;
+        setTimeout(() => { tokenizerFlashing = false; }, 1400);
+      }
+    }, 80);
+  }
+
+  // Custom dropdown state
+  let tokenizerDropdownOpen = false;
+  let dropdownButtonEl: HTMLElement | null = null;
+  let dropdownOpenUpward = false;
+
+  function handleToggleDropdown() {
+    if (!tokenizerDropdownOpen) {
+      // Calculate if there's enough space below
+      if (dropdownButtonEl) {
+        const rect = dropdownButtonEl.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        dropdownOpenUpward = spaceBelow < 240; // 5 options × ~48px each
+      }
+    }
+    tokenizerDropdownOpen = !tokenizerDropdownOpen;
+  }
+
+  function selectTokenizerOption(val: string) {
+    settings.setTokenizerModel(val as any);
+    tokenizerDropdownOpen = false;
+  }
+
+  function handleDropdownKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') tokenizerDropdownOpen = false;
+  }
+
+  function handleWindowClick() {
+    if (tokenizerDropdownOpen) tokenizerDropdownOpen = false;
+  }
 
   type SnackbarVariant = "success" | "info" | "warning" | "error";
 
@@ -55,6 +131,7 @@
     settings.setAutomaticUpdateChecks(true);
     settings.setLiveSyncInterval(0);
     settings.setLargeFileThreshold(30000);
+    settings.setTokenizerModel('cl100k_base');
     liveSyncInput = '0';
     largeFileInput = '30,000';
   }
@@ -91,18 +168,40 @@
   }
 
   const shortcutCategories = [
-    { id: 'all', key: 'settings.categoryAll', actions: null },
     { id: 'general', key: 'settings.categoryGeneral', actions: ['open', 'save', 'exit', 'refresh'] },
     { id: 'clipboard', key: 'settings.categoryClipboard', actions: ['copyText', 'copyPath', 'copyFilename', 'copyFileContent'] },
     { id: 'tabs', key: 'settings.categoryTabs', actions: ['newTab', 'closeTab', 'previousTab', 'nextTab', 'tab1', 'tab2', 'tab3', 'tab4', 'tab5', 'tab6', 'tab7', 'tab8', 'tab9'] },
     { id: 'fileActions', key: 'settings.categoryFileActions', actions: ['remove', 'removeAll', 'toggleVisibility', 'refreshFolder', 'refreshFolderRecursive', 'revealFullContent'] }
   ];
-  let selectedShortcutCategory = 'all';
+  let selectedShortcutCategories: string[] = [];
+
+  function toggleCategory(catId: string) {
+    if (selectedShortcutCategories.includes(catId)) {
+      selectedShortcutCategories = selectedShortcutCategories.filter(id => id !== catId);
+    } else {
+      selectedShortcutCategories = [...selectedShortcutCategories, catId];
+    }
+  }
   
-  $: filteredShortcuts = shortcutEntries.filter(([actionKey, _]) => {
-      if (selectedShortcutCategory === 'all') return true;
-      const cat = shortcutCategories.find(c => c.id === selectedShortcutCategory);
-      return cat?.actions?.includes(actionKey);
+  $: filteredShortcuts = shortcutEntries.filter(([actionKey, keybind]) => {
+      // First, filter by category
+      if (selectedShortcutCategories.length > 0) {
+        const matches = shortcutCategories.some(c => 
+          selectedShortcutCategories.includes(c.id) && c.actions?.includes(actionKey)
+        );
+        if (!matches) return false;
+      }
+      
+      // Second, filter by search keys
+      if (searchKeys.length > 0) {
+        const shortcutParts = keybind.split("+").map(k => k.trim().toUpperCase());
+        return searchKeys.every(searchKey => {
+          const upperSearchKey = searchKey.toUpperCase();
+          return shortcutParts.includes(upperSearchKey);
+        });
+      }
+      
+      return true;
   });
 
   type UpdateStatus = "idle" | "checking" | "available" | "current" | "error" | "disabled";
@@ -117,7 +216,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let activeTab = "general";
+  export let activeTab = "general";
   let recordingAction: string | null = null;
   let newPattern = "";
   let newHiddenPattern = "";
@@ -372,9 +471,78 @@
       updateError = "";
     }
   }
+
+  // Shortcut search state and handlers
+  let searchKeys: string[] = [];
+  let isListeningForSearchKeys = false;
+
+  function startSearchListening() {
+    isListeningForSearchKeys = true;
+    window.addEventListener("keydown", handleSearchKeyDown, true);
+  }
+
+  function stopSearchListening() {
+    isListeningForSearchKeys = false;
+    window.removeEventListener("keydown", handleSearchKeyDown, true);
+  }
+
+  function handleSearchKeyDown(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      stopSearchListening();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const keys: string[] = [];
+    if (e.ctrlKey) keys.push("Ctrl");
+    if (e.altKey) keys.push("Alt");
+    if (e.shiftKey) keys.push("Shift");
+    if (e.metaKey) keys.push("Meta");
+
+    if (!["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
+      let key = e.key.toUpperCase();
+      if (key === " ") key = "SPACE";
+      else if (key === "ARROWUP") key = "UP";
+      else if (key === "ARROWDOWN") key = "DOWN";
+      else if (key === "ARROWLEFT") key = "LEFT";
+      else if (key === "ARROWRIGHT") key = "RIGHT";
+      
+      if (!keys.includes(key)) {
+        keys.push(key);
+      }
+    }
+
+    searchKeys = keys;
+  }
+
+  function clearSearchKeys() {
+    searchKeys = [];
+    stopSearchListening();
+  }
+
+  function handleGlobalClick() {
+    if (isListeningForSearchKeys) {
+      stopSearchListening();
+    }
+  }
+
+  $: if (isListeningForSearchKeys) {
+    window.addEventListener("click", handleGlobalClick);
+  } else {
+    window.removeEventListener("click", handleGlobalClick);
+  }
+
+  onDestroy(() => {
+    window.removeEventListener("keydown", handleSearchKeyDown, true);
+    window.removeEventListener("click", handleGlobalClick);
+  });
 </script>
 
-<svelte:window on:keydown={handleWindowKeydown} />
+<svelte:window on:keydown={handleWindowKeydown} on:click={handleWindowClick} />
 
 <div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
   <aside
@@ -393,45 +561,55 @@
       </button>
       <h2 class="font-bold text-[var(--text-primary)]">{$t('settings.title')}</h2>
     </div>
-    
-    <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+    <nav class="flex-1 p-4 space-y-4 overflow-y-auto">
       <button
-        class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
-        {activeTab === 'general' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+        class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
+        {activeTab === 'general' 
+          ? 'bg-[#0e639c] text-white shadow-md shadow-[#0e639c]/25 border border-[#0e639c]' 
+          : 'text-[var(--text-muted)] border border-transparent hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/20'}"
         on:click={() => activeTab = 'general'}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         {$t('settings.general')}
       </button>
+
       <button
-        class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
-        {activeTab === 'shortcuts' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+        class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
+        {activeTab === 'shortcuts' 
+          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25 border border-amber-500' 
+          : 'text-[var(--text-muted)] border border-transparent hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/20'}"
         on:click={() => activeTab = 'shortcuts'}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
         </svg>
         {$t('settings.shortcuts')}
       </button>
+
       <button
-        class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
-        {activeTab === 'exclusions' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+        class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
+        {activeTab === 'exclusions' 
+          ? 'bg-rose-600 text-white shadow-md shadow-rose-600/25 border border-rose-600' 
+          : 'text-[var(--text-muted)] border border-transparent hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20'}"
         on:click={() => activeTab = 'exclusions'}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
         </svg>
         {$t('settings.exclusions')}
       </button>
+
       <button
-        class="w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2
-        {activeTab === 'hiddenFiles' ? 'bg-[#0e639c] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+        class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
+        {activeTab === 'hiddenFiles' 
+          ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25 border border-violet-600' 
+          : 'text-[var(--text-muted)] border border-transparent hover:bg-violet-500/10 hover:text-violet-400 hover:border-violet-500/20'}"
         on:click={() => activeTab = 'hiddenFiles'}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
         </svg>
         {$t('settings.hiddenFiles')}
@@ -530,37 +708,50 @@
           <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-row items-stretch justify-center gap-3 col-span-3">
             <button
               type="button"
-              class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover)] transition-colors min-w-0"
+              class="flex-1 rounded border px-3 py-2 flex flex-col items-center justify-between gap-2 min-w-0 transition-all duration-200 shadow-sm
+              {$settings.automaticUpdateChecks ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)] opacity-40 hover:opacity-80 hover:bg-[var(--bg-hover)]'}"
               on:click={toggleAutomaticUpdateChecks}
               title={$t('settings.automaticUpdateChecksHint')}
             >
-              <span class="text-sm font-medium text-[var(--text-primary)] leading-tight text-center whitespace-pre-line">{$t('settings.automaticUpdateChecks')}</span>
-              <span class="relative inline-block w-8 h-4 transition duration-200 ease-in-out rounded-full {$settings.automaticUpdateChecks ? 'bg-green-500' : 'bg-gray-600'} shrink-0">
-                <span class="absolute left-0 inline-block w-4 h-4 transform bg-white rounded-full shadow transition-transform duration-200 ease-in-out {$settings.automaticUpdateChecks ? 'translate-x-4' : 'translate-x-0'}"></span>
-              </span>
+              <span class="text-sm font-semibold leading-tight text-center whitespace-pre-line">{$t('settings.automaticUpdateChecks')}</span>
+              {#if $settings.automaticUpdateChecks}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 shrink-0 text-white">
+                  <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+                </svg>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              {/if}
             </button>
 
             <button
               type="button"
-              class="flex-1 rounded border border-[var(--border-light)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-60 min-w-0"
+              class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] hover:text-[var(--text-primary)] active:scale-95 active:bg-[var(--bg-hover-strong)] transition-all duration-150 shadow-sm disabled:opacity-60 min-w-0"
               on:click={() => checkForUpdates("manual")}
               disabled={updateStatus === 'checking'}
             >
-              <span class="text-sm font-semibold text-[var(--text-secondary)] text-center leading-tight whitespace-pre-line">{$t('settings.checkNow')}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--text-secondary)] shrink-0 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <span class="text-sm font-semibold text-center leading-tight whitespace-pre-line">{$t('settings.checkNow')}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--text-primary)] shrink-0 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
               </svg>
             </button>
           </div>
 
-          <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
-            <div class="cursor-help flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div 
+              role="button"
+              tabindex="-1"
+              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              on:mouseenter={(e) => handleMouseMove(e, $t('settings.liveSyncHint'))}
+              on:mousemove={(e) => handleMouseMove(e, $t('settings.liveSyncHint'))}
+              on:mouseleave={handleMouseLeave}
+              on:keydown={() => {}}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
-                {$t('settings.liveSyncHint')}
-              </div>
             </div>
             <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncPrefix')}</span>
             <input 
@@ -572,15 +763,20 @@
             <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncSuffix')}</span>
           </div>
 
-          <div class="relative overflow-visible group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
-            <div class="cursor-help flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[var(--text-muted)] hover:text-[#0e639c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div 
+              role="button"
+              tabindex="-1"
+              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              on:mouseenter={(e) => handleMouseMove(e, ($locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato. Imposta a 0 per disabilitare il limite.' : 'Select after how many characters a file is truncated. Set to 0 to disable the limit.'))}
+              on:mousemove={(e) => handleMouseMove(e, ($locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato. Imposta a 0 per disabilitare il limite.' : 'Select after how many characters a file is truncated. Set to 0 to disable the limit.'))}
+              on:mouseleave={handleMouseLeave}
+              on:keydown={() => {}}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col items-center text-center w-72">
-                <span class="font-medium">{$locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato.' : 'Select after how many characters a file is truncated.'}</span>
-                <span class="text-[var(--text-muted)] mt-1 font-normal">{$locale === 'it' ? 'Imposta a 0 per disabilitare il limite.' : 'Set to 0 to disable the limit.'}</span>
-              </div>
             </div>
             <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.largeFileThreshold')}</span>
             <input 
@@ -592,28 +788,169 @@
             <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('app.characters').toLowerCase()}</span>
           </div>
 
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            id="tokenizer-setting-row"
+            bind:this={tokenizerRowEl}
+            class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border-2 flex items-center justify-center gap-2 col-span-5 transition-all duration-300 {tokenizerFlashing ? 'tokenizer-flash' : 'border-transparent'}"
+          >
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div 
+              role="button"
+              tabindex="-1"
+              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              on:mouseenter={(e) => handleMouseMove(e, $t('settings.tokenizerDescription'))}
+              on:mousemove={(e) => handleMouseMove(e, $t('settings.tokenizerDescription'))}
+              on:mouseleave={handleMouseLeave}
+              on:keydown={() => {}}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.tokenizer')}</span>
+
+            <!-- Custom dropdown with smart positioning -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="relative ml-2" on:keydown={handleDropdownKeydown}>
+              <button
+                type="button"
+                bind:this={dropdownButtonEl}
+                class="flex items-center gap-2 pl-3 pr-2.5 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] text-sm font-semibold cursor-pointer hover:bg-[var(--bg-hover)] hover:border-[var(--border-light)] focus:outline-none focus:border-[#0e639c] focus:ring-1 focus:ring-[#0e639c] transition-all shadow-sm min-w-[260px] justify-between"
+                on:click|stopPropagation={handleToggleDropdown}
+              >
+                <span class="truncate">
+                  {#if $settings.tokenizerModel === 'cl100k_base'}GPT-4 / GPT-3.5 / Claude 3
+                  {:else if $settings.tokenizerModel === 'o200k_base'}GPT-4o / GPT-4o-mini / o1
+                  {:else if $settings.tokenizerModel === 'p50k_base'}GPT-3 / Codex (text-davinci)
+                  {:else if $settings.tokenizerModel === 'r50k_base'}GPT-2 / GPT-3 base
+                  {:else}{$locale === 'it' ? 'Stima rapida' : 'Fast estimate'}{/if}
+                </span>
+                <span class="text-[10px] font-mono opacity-60 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">
+                  {#if $settings.tokenizerModel === 'cl100k_base'}cl100k
+                  {:else if $settings.tokenizerModel === 'o200k_base'}o200k
+                  {:else if $settings.tokenizerModel === 'p50k_base'}p50k
+                  {:else if $settings.tokenizerModel === 'r50k_base'}r50k
+                  {:else}~4 chars{/if}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] transition-transform {tokenizerDropdownOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {#if tokenizerDropdownOpen}
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <div
+                  class="absolute {dropdownOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 z-[200] w-max min-w-[340px] bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded shadow-xl overflow-hidden"
+                  on:click|stopPropagation
+                >
+                  {#each [
+                    { value: 'o200k_base',   label: 'GPT-4o / GPT-4o-mini / o1 / o3', badge: 'o200k',   desc: $locale === 'it' ? 'Modelli OpenAI più recenti' : 'Newest OpenAI models' },
+                    { value: 'cl100k_base',  label: 'GPT-4 / GPT-3.5 / Claude 3',     badge: 'cl100k',  desc: $locale === 'it' ? 'OpenAI + Anthropic' : 'OpenAI + Anthropic' },
+                    { value: 'p50k_base',    label: 'GPT-3 / Codex / text-davinci',   badge: 'p50k',    desc: $locale === 'it' ? 'Modelli legacy OpenAI' : 'Legacy OpenAI models' },
+                    { value: 'r50k_base',    label: 'GPT-2 / GPT-3 base',             badge: 'r50k',    desc: $locale === 'it' ? 'Modelli base più vecchi' : 'Older base models' },
+                    { value: 'chars_ratio',  label: $locale === 'it' ? 'Stima rapida (1 token ≈ 4 car.)' : 'Fast estimate (1 token ≈ 4 chars)', badge: '~4 chars', desc: $locale === 'it' ? 'Calcolo istantaneo senza tokenizer' : 'Instant, no tokenizer' }
+                  ] as opt}
+                    <button
+                      type="button"
+                      class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors
+                        {$settings.tokenizerModel === opt.value
+                          ? 'bg-[#0e639c]/20 text-[var(--text-primary)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+                      on:click={() => selectTokenizerOption(opt.value)}
+                    >
+                      {#if $settings.tokenizerModel === opt.value}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[#0e639c]" viewBox="0 0 24 24" fill="currentColor">
+                          <path fill-rule="evenodd" d="M20.707 5.293a1 1 0 010 1.414l-11 11a1 1 0 01-1.414 0l-5-5a1 1 0 111.414-1.414L9 15.586 19.293 5.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      {:else}
+                        <span class="w-3.5 shrink-0"></span>
+                      {/if}
+                      <div class="flex flex-col flex-1">
+                        <span class="font-medium whitespace-nowrap">{opt.label}</span>
+                        <span class="text-[11px] opacity-50 whitespace-nowrap">{opt.desc}</span>
+                      </div>
+                      <span class="text-[10px] font-mono opacity-50 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">{opt.badge}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
         </div>
       </div>
     {:else if activeTab === 'shortcuts'}
       <div class="max-w-none flex flex-col flex-1 min-h-0">
-        <div class="mb-6 flex flex-wrap items-center gap-4">
-          <div class="flex flex-wrap gap-2">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex flex-wrap gap-2 items-center">
             {#each shortcutCategories as cat}
               <button
-                class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategory === cat.id ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}"
-                on:click={() => selectedShortcutCategory = cat.id}
+                class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategories.includes(cat.id) ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}"
+                on:click={() => toggleCategory(cat.id)}
               >
                 {$t(cat.key)}
               </button>
             {/each}
           </div>
-          <div class="w-px h-6 bg-[var(--border-color)] hidden sm:block"></div>
-          <div class="text-xs font-medium transition-colors duration-200 {recordingAction ? 'text-red-400' : 'text-[var(--text-muted)]'}">
-            {#if recordingAction}
-              <span>{getRecordingHintParts().second || getRecordingHintParts().first}</span>
-            {:else}
-              <span>{$t('settings.clickToCustomize')}</span>
-            {/if}
+
+          <!-- Search Bar -->
+          <div class="relative flex items-center min-w-[280px]">
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div 
+              class="flex items-center gap-2 px-3 py-1.5 w-full bg-[var(--bg-secondary)] border {isListeningForSearchKeys ? 'border-[#0e639c] ring-1 ring-[#0e639c]' : 'border-[var(--border-color)]'} rounded text-sm cursor-pointer hover:bg-[var(--bg-hover)] transition-all select-none"
+              on:click|stopPropagation={() => {
+                if (isListeningForSearchKeys) {
+                  stopSearchListening();
+                } else {
+                  startSearchListening();
+                }
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)] shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
+              </svg>
+
+              <div class="flex-1 flex flex-wrap items-center gap-1.5 min-h-[20px]">
+                {#if searchKeys.length > 0}
+                  <div class="flex items-center gap-1.5">
+                    {#each searchKeys as key, i}
+                      {#if i > 0}
+                        <span class="text-[var(--text-muted)] text-xs font-semibold select-none">+</span>
+                      {/if}
+                      <kbd class="px-1.5 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] font-mono text-xs font-semibold shadow-sm">
+                        {key}
+                      </kbd>
+                    {/each}
+                    {#if isListeningForSearchKeys}
+                      <span class="w-[1.5px] h-[15px] bg-[#0e639c] animate-caret ml-0.5 shrink-0 self-center"></span>
+                    {/if}
+                  </div>
+                {:else}
+                  {#if isListeningForSearchKeys}
+                    <span class="w-[1.5px] h-[15px] bg-[#0e639c] animate-caret shrink-0 self-center"></span>
+                  {:else}
+                    <span class="text-[var(--text-muted)] text-xs flex items-center gap-0.5">
+                      {$locale === 'it' ? 'Cerca' : 'Search'}
+                    </span>
+                  {/if}
+                {/if}
+              </div>
+
+              {#if searchKeys.length > 0 || isListeningForSearchKeys}
+                <button
+                  type="button"
+                  class="p-0.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-hover-strong)] rounded transition-colors shrink-0"
+                  on:click|stopPropagation={clearSearchKeys}
+                  title={$locale === 'it' ? 'Cancella ricerca' : 'Clear search'}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
+                    <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              {/if}
+            </div>
           </div>
         </div>
         
@@ -808,4 +1145,34 @@
       </div>
     </div>
   {/if}
+
+  {#if showTooltip}
+    <div 
+      class="fixed px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg z-[9999] pointer-events-none text-center max-w-[280px] leading-relaxed select-none"
+      style="left: {tooltipX}px; top: {tooltipY}px;"
+    >
+      {tooltipText}
+    </div>
+  {/if}
 </div>
+
+<style>
+  @keyframes caret-blink {
+    50% { opacity: 0; }
+  }
+  .animate-caret {
+    animation: caret-blink 1s step-start infinite;
+  }
+
+  @keyframes tokenizer-flash-anim {
+    0%   { border-color: transparent; }
+    20%  { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25); }
+    45%  { border-color: transparent; box-shadow: none; }
+    65%  { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25); }
+    90%  { border-color: transparent; box-shadow: none; }
+    100% { border-color: transparent; }
+  }
+  .tokenizer-flash {
+    animation: tokenizer-flash-anim 1.4s ease-in-out forwards;
+  }
+</style>

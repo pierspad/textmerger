@@ -19,9 +19,9 @@
     "sortOriginal": "Origineel",
     "sortAlphabetical": "Alfabetisch",
     "sortCharacters": "Tekens",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Notebook-uitvoeren verborgen",
+    "outputsReduced": "Notebook-uitvoeren gereduceerd",
+    "outputsFull": "Notebook-uitvoeren volledig"
   },
   "settings": {
     "title": "Instellingen",
@@ -40,7 +40,7 @@
     "resetError": "Fout bij herstellen van sneltoetsen",
     "exclusions": "Bestanden uitsluiten",
     "addPattern": "Patroon toevoegen",
-    "patternPlaceholder": "bijv. *.log of node_modules",
+    "patternPlaceholder": "Bijv. *.log of node_modules",
     "exclusionDescription": "Bestanden en mappen die met deze patronen overeenkomen, worden genegeerd bij het toevoegen van mappen.",
     "resetPatterns": "Patronen herstellen",
     "repository": "Repository",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Komt overeen met alle PNG-bestanden",
     "exclusionExampleExact": "Komt overeen met de exacte map- of bestandsnaam",
     "hiddenFiles": "Bestanden verbergen",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "Bestanden en mappen die met deze patronen overeenkomen, worden verborgen.",
     "patternRemoved": "Verwijderd uit de lijst",
     "liveSyncPrefix": "Herlaad bestandsinhoud elke ",
     "liveSyncSuffix": " seconden",
@@ -79,7 +79,9 @@
     "categoryFileActions": "Bestandsacties",
     "liveSyncHint": "Stel in op 0 om deze functie uit te schakelen.",
     "largeFileThresholdHint": "Selecteer na hoeveel tekens een bestand wordt afgekapt. Stel in op 0 om deze functie uit te schakelen (nooit afkappen).",
-    "clickToCustomize": "Klik om aan te passen"
+    "clickToCustomize": "Selecteer om aan te passen",
+    "tokenizer": "LLM Tokenizer",
+    "tokenizerDescription": "Selecteer het model om het tokengebruik voor LLM's te schatten."
   },
   "shortcuts": {
     "open": "Openen",
@@ -119,8 +121,8 @@
     "copyPath": "Absoluut pad kopieren",
     "copyFilename": "Bestandsnaam kopieren",
     "copyFileContent": "Bestandsinhoud kopiëren",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "Alleen deze map vernieuwen",
+    "refreshFolderRecursive": "Map recursief vernieuwen",
     "hideContent": "Inhoud verbergen",
     "showContent": "Inhoud tonen",
     "showRecursive": "Recursief tonen",

@@ -112,7 +112,6 @@
       <div 
         class="w-2.5 h-2.5 rounded-full ml-auto mr-1 flex-shrink-0 transition-colors duration-300" 
         style="background-color: {node.charCount > largeFileThreshold && !forceFullLoadPaths.has(node.path) ? '#a855f7' : getHeavinessColor(node.charCount)}"
-        title="{node.charCount > largeFileThreshold && !forceFullLoadPaths.has(node.path) ? 'File truncated. Use context menu to force load.' : node.charCount.toLocaleString() + ' chars (Max: ' + maxCharCount.toLocaleString() + ')'}"
       ></div>
     {/if}
   </div>

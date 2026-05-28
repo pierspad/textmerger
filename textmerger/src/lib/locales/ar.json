@@ -19,9 +19,9 @@
     "sortOriginal": "الأصلي",
     "sortAlphabetical": "أبجدي",
     "sortCharacters": "الأحرف",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "مخرجات Notebook مخفية",
+    "outputsReduced": "مخرجات Notebook مصغرة",
+    "outputsFull": "مخرجات Notebook كاملة"
   },
   "settings": {
     "title": "الإعدادات",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "يطابق كل ملفات PNG",
     "exclusionExampleExact": "يطابق اسم المجلد أو الملف بالضبط",
     "hiddenFiles": "إخفاء الملفات",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "سيتم إخفاء الملفات والمجلدات التي تطابق هذه الأنماط. لا يزال بإمكانك كشفها يدويًا.",
     "patternRemoved": "تمت الإزالة من القائمة",
     "liveSyncPrefix": "إعادة تحميل محتوى الملف كل ",
     "liveSyncSuffix": " ثانية",
@@ -79,7 +79,9 @@
     "categoryFileActions": "إجراءات الملف",
     "liveSyncHint": "تعيين القيمة إلى 0 لتعطيل هذه الميزة.",
     "largeFileThresholdHint": "اختر بعد كم عدد من الأحرف يتم اقتطاع الملف. عيّن إلى 0 لتعطيل هذه الميزة (عدم الاقتطاع أبدًا).",
-    "clickToCustomize": "انقر للتخصيص"
+    "clickToCustomize": "حدد للتخصيص",
+    "tokenizer": "مجزئ النصوص LLM",
+    "tokenizerDescription": "حدد النموذج لتقدير استخدام الرموز (Tokens) لنماذج اللغات الكبيرة (LLMs)."
   },
   "shortcuts": {
     "open": "فتح",
@@ -119,8 +121,8 @@
     "copyPath": "نسخ المسار المطلق",
     "copyFilename": "نسخ اسم الملف",
     "copyFileContent": "نسخ محتوى الملف",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "تحديث هذا المجلد فقط",
+    "refreshFolderRecursive": "تحديث المجلد بشكل متكرر",
     "hideContent": "إخفاء المحتوى",
     "showContent": "عرض المحتوى",
     "showRecursive": "عرض بشكل متكرر",

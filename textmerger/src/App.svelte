@@ -4,10 +4,11 @@
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { writeTextFile } from "@tauri-apps/plugin-fs";
   import { onMount, onDestroy, tick } from "svelte";
+  import { getEncoding } from "js-tiktoken";
   import FileTree from "./lib/FileTree.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import Modal from "./lib/components/Modal.svelte";
-  import { t, tShortcut } from "./lib/stores/i18n";
+  import { t, tShortcut, locale } from "./lib/stores/i18n";
   import { settings } from "./lib/stores/settings";
   import { shortcuts } from "./lib/stores/shortcuts";
   import { tabs, type FileNode } from "./lib/stores/tabs";
@@ -67,6 +68,39 @@
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
   let mergedContent = "";
+  let tokenCount = 0;
+  let currentModel = "";
+  let encoder: any = null;
+
+  function calculateTokenCount(text: string, model: string): number {
+    if (!text) return 0;
+    if (model === "chars_ratio") {
+      const plainText = text.replace(/<[^>]*>/g, "");
+      return Math.round(plainText.length / 4);
+    }
+
+    try {
+      if (!encoder || currentModel !== model) {
+        encoder = getEncoding(model as any);
+        currentModel = model;
+      }
+      const plainText = text.replace(/<[^>]*>/g, "");
+      return encoder.encode(plainText).length;
+    } catch (e) {
+      console.error("Tokenization error:", e);
+      const plainText = text.replace(/<[^>]*>/g, "");
+      return Math.round(plainText.length / 4);
+    }
+  }
+
+  $: {
+    if (mergedContent) {
+      tokenCount = calculateTokenCount(mergedContent, $settings.tokenizerModel);
+    } else {
+      tokenCount = 0;
+    }
+  }
+
   let selectedFiles: Set<string> = new Set();
   let focusedFilePath: string | null = null;
   let fileTreeRef: any;
@@ -81,6 +115,15 @@
   let snackbarAnimationKey = 0;
   const snackbarDuration = 2200;
   let showSettings = false;
+  let settingsActiveTab = "general";
+  let highlightTokenizer = false;
+
+  function openTokenizerSettings() {
+    settingsActiveTab = "general";
+    showSettings = true;
+    // Trigger highlight after a short delay so the component mounts
+    setTimeout(() => { highlightTokenizer = true; }, 50);
+  }
   let contextMenu = { show: false, x: 0, y: 0, path: "", name: "", isFile: true };
   $: contextMenuFile = files.find(f => f.path === contextMenu.path);
   $: showTruncateOption = contextMenu.isFile && contextMenuFile && $settings.largeFileThreshold > 0 && contextMenuFile.char_count > $settings.largeFileThreshold;
@@ -271,6 +314,12 @@
     updateContent();
   }
 
+  function formatOutputModeText(text: string): string {
+    const lastSpaceIdx = text.lastIndexOf(' ');
+    if (lastSpaceIdx === -1) return text;
+    return text.substring(0, lastSpaceIdx) + '\n' + text.substring(lastSpaceIdx + 1);
+  }
+
   $: {
     if (
       $settings ||
@@ -279,6 +328,39 @@
       ipynbOutputMode
     ) {
       debouncedUpdateContent();
+    }
+  }
+
+  async function addFiles(paths: string[]) {
+    isLoading = true;
+    await tick();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    try {
+      const result = await invoke("add_files", {
+        paths,
+        excludedPatterns: $settings.excludedPatterns,
+        hiddenPatterns: $settings.hiddenPatterns,
+      });
+
+      const { files: newFiles, errors } = result as AddFilesResult;
+      tabs.addFilesToTab($tabs.activeTabId, newFiles);
+
+      if (errors.length > 0) {
+        const errorMsg =
+          errors.slice(0, 3).join("\n") +
+          (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
+        showSnackbar(
+          $t("messages.filesAddedWithErrors") + " " + errorMsg,
+          "warning",
+        );
+      } else {
+        showSnackbar($t("messages.filesAdded"));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -292,36 +374,7 @@
     const setup = async () => {
       unlisten = await getCurrentWebview().onDragDropEvent(async (event) => {
         if (event.payload.type === "drop") {
-          isLoading = true;
-          await tick();
-          await new Promise((resolve) => setTimeout(resolve, 50));
-
-          try {
-            const result = await invoke("add_files", {
-              paths: event.payload.paths,
-              excludedPatterns: $settings.excludedPatterns,
-              hiddenPatterns: $settings.hiddenPatterns,
-            });
-
-            const { files: newFiles, errors } = result as AddFilesResult;
-            tabs.addFilesToTab($tabs.activeTabId, newFiles);
-
-            if (errors.length > 0) {
-              const errorMsg =
-                errors.slice(0, 3).join("\n") +
-                (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
-              showSnackbar(
-                $t("messages.filesAddedWithErrors") + " " + errorMsg,
-                "warning",
-              );
-            } else {
-              showSnackbar($t("messages.filesAdded"));
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            isLoading = false;
-          }
+          await addFiles(event.payload.paths);
         }
       });
     };
@@ -341,32 +394,11 @@
       });
 
       if (selected) {
-        isLoading = true;
-        await tick();
-        await new Promise((resolve) => setTimeout(resolve, 50));
-
         const paths = Array.isArray(selected) ? selected : [selected];
-        const result = await invoke("add_files", {
-          paths,
-          excludedPatterns: $settings.excludedPatterns,
-          hiddenPatterns: $settings.hiddenPatterns,
-        });
-        const { files: newFiles, errors } = result as AddFilesResult;
-        tabs.addFilesToTab($tabs.activeTabId, newFiles);
-        
-        if (errors.length > 0) {
-          const errorMsg =
-            errors.slice(0, 3).join("\n") +
-            (errors.length > 3 ? `\n...and ${errors.length - 3} more` : "");
-          showSnackbar($t("messages.filesAddedWithErrors") + " " + errorMsg, "warning");
-        } else {
-          showSnackbar($t("messages.filesAdded"));
-        }
+        await addFiles(paths);
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      isLoading = false;
     }
   }
 
@@ -472,10 +504,24 @@
   
   function handleTabContextMenu(e: MouseEvent, id: string) {
       e.preventDefault();
+      
+      // Viewport boundary check
+      const menuWidth = 200;
+      const menuHeight = 220;
+      let x = e.clientX;
+      let y = e.clientY;
+      
+      if (x + menuWidth > window.innerWidth) {
+        x = Math.max(10, window.innerWidth - menuWidth - 10);
+      }
+      if (y + menuHeight > window.innerHeight) {
+        y = Math.max(10, window.innerHeight - menuHeight - 10);
+      }
+
       tabContextMenu = {
           show: true,
-          x: e.clientX,
-          y: e.clientY,
+          x,
+          y,
           tabId: id
       };
   }
@@ -785,10 +831,24 @@
   function handleContextMenu(e: CustomEvent) {
     const { event, path, name, isFile } = e.detail;
     event.preventDefault();
+    
+    // Viewport boundary check
+    const menuWidth = 240;
+    const menuHeight = isFile !== false ? 260 : 320;
+    let x = event.clientX;
+    let y = event.clientY;
+    
+    if (x + menuWidth > window.innerWidth) {
+      x = Math.max(10, window.innerWidth - menuWidth - 10);
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y = Math.max(10, window.innerHeight - menuHeight - 10);
+    }
+
     contextMenu = {
       show: true,
-      x: event.clientX,
-      y: event.clientY,
+      x,
+      y,
       path,
       name,
       isFile: isFile !== false,
@@ -1131,6 +1191,8 @@
   {#if showSettings}
     <Settings
       {sidebarWidth}
+      bind:activeTab={settingsActiveTab}
+      bind:highlightTokenizer
       on:close={() => (showSettings = false)}
       on:snackbar={handleSnackbarEvent}
     />
@@ -1490,35 +1552,46 @@
     <div class="flex-1 relative min-h-0 flex flex-col">
       {#if hasIpynb}
         <button
-          class="absolute top-6 right-6 w-[150px] h-[52px] px-2 {ipynbOutputMode === 'none' ? 'bg-[#0ea5e9]/80 hover:bg-[#0ea5e9]/90' : (ipynbOutputMode === 'reduced' ? 'bg-[#f59e0b]/80 hover:bg-[#f59e0b]/90' : 'bg-[#10b981]/80 hover:bg-[#10b981]/90')} backdrop-blur-sm text-white rounded font-bold text-xs flex flex-col items-center justify-center gap-0.5 transition-colors shadow-lg z-20"
+          class="group absolute top-6 right-6 h-12 w-max max-w-12 hover:max-w-xs flex items-center justify-start rounded-lg p-3 backdrop-blur-md text-white transition-all duration-300 ease-in-out shadow-lg z-20 overflow-hidden cursor-pointer border
+          {ipynbOutputMode === 'none' 
+            ? 'bg-[#0ea5e9]/80 hover:bg-[#0ea5e9]/95 border-[#0ea5e9]/40' 
+            : (ipynbOutputMode === 'reduced' 
+              ? 'bg-[#f59e0b]/80 hover:bg-[#f59e0b]/95 border-[#f59e0b]/40' 
+              : 'bg-[#10b981]/80 hover:bg-[#10b981]/95 border-[#10b981]/40')}"
           on:click={toggleOutputs}
-          title="Toggle Jupyter Notebook Outputs"
         >
-          {#if ipynbOutputMode === 'none'}
-            <div class="flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
-                <path d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.676 12.553a11.249 11.249 0 01-2.631 4.31l-3.099-3.099a5.25 5.25 0 00-6.71-6.71L7.759 4.577a11.217 11.217 0 014.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113z" />
-                <path d="M5.574 12.553A11.217 11.217 0 011.41 9.645a.75.75 0 011.061-1.06 9.716 9.716 0 002.181 1.802l.926-.926a.75.75 0 011.06 1.06l-.926.926c.441.374.904.72 1.387 1.034a.75.75 0 01-.83 1.26A12.72 12.72 0 015.574 12.553z" />
-                <path d="M10.5 14.25a3.75 3.75 0 005.25-5.25l-5.25 5.25z" />
-              </svg>
+          <div class="flex items-center w-max gap-2.5 pr-1">
+            <div class="w-6 h-6 flex items-center justify-center shrink-0">
+              {#if ipynbOutputMode === 'none'}
+                <!-- Closed Eye Icon (Eye Slashed) -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 opacity-90">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                </svg>
+              {:else if ipynbOutputMode === 'reduced'}
+                <!-- Reduced Eye Icon (contour with horizontal minus instead of pupil) -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 opacity-90">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 12h4" />
+                </svg>
+              {:else}
+                <!-- Fully Open Eye Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 opacity-90">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              {/if}
             </div>
-            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsHidden")}</span>
-          {:else if ipynbOutputMode === 'reduced'}
-            <div class="flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
-                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsReduced")}</span>
-          {:else}
-            <div class="flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 opacity-80">
-                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <span class="whitespace-pre-line leading-tight text-center">{$t("app.outputsFull")}</span>
-          {/if}
+            
+            <span class="flex-1 text-xs font-bold leading-tight whitespace-pre-line text-left text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              {#if ipynbOutputMode === 'none'}
+                {formatOutputModeText($t("app.outputsHidden"))}
+              {:else if ipynbOutputMode === 'reduced'}
+                {formatOutputModeText($t("app.outputsReduced"))}
+              {:else}
+                {formatOutputModeText($t("app.outputsFull"))}
+              {/if}
+            </span>
+          </div>
         </button>
       {/if}
       <div class="flex-1 overflow-auto p-6 bg-[var(--bg-primary)] relative">
@@ -1534,8 +1607,17 @@
     <div
       class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
     >
-      <div class="text-xs text-[var(--text-muted)]">
-        {$t("app.characters")}: {mergedContent.length.toLocaleString()}
+      <div class="text-xs text-[var(--text-muted)] flex items-center gap-2 flex-wrap select-none">
+        <span>{$t("app.characters")}: {mergedContent.length.toLocaleString()}</span>
+        <span>|</span>
+        <button 
+          type="button" 
+          class="hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] px-1.5 py-0.5 rounded transition-all cursor-pointer flex items-center focus:outline-none text-xs font-normal"
+          on:click={openTokenizerSettings}
+          title={$locale === 'it' ? 'Clicca per modificare il tokenizer nelle impostazioni' : 'Click to change the tokenizer in settings'}
+        >
+          {$locale === 'it' ? 'Token' : 'Tokens'}: {tokenCount.toLocaleString()}
+        </button>
       </div>
       <div class="flex gap-3">
         <button

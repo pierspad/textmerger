@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Visualização Mesclada",
+    "title": "Visualização mesclada",
     "addedFiles": "Arquivos adicionados:",
     "dragFiles": "Arraste arquivos aqui",
     "remove": "Remover",
@@ -19,9 +19,9 @@
     "sortOriginal": "Original",
     "sortAlphabetical": "Alfabética",
     "sortCharacters": "Caracteres",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Saídas de Notebook ocultas",
+    "outputsReduced": "Saídas de Notebook reduzidas",
+    "outputsFull": "Saídas de Notebook completas"
   },
   "settings": {
     "title": "Configurações",
@@ -40,7 +40,7 @@
     "resetError": "Erro ao restaurar atalhos",
     "exclusions": "Excluir arquivos",
     "addPattern": "Adicionar padrão",
-    "patternPlaceholder": "ex. *.log ou node_modules",
+    "patternPlaceholder": "Ex. *.log ou node_modules",
     "exclusionDescription": "Arquivos e pastas que correspondem a estes padrões serão ignorados ao adicionar diretórios.",
     "resetPatterns": "Restaurar padrões",
     "repository": "Repositório",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Corresponde a todos os arquivos PNG",
     "exclusionExampleExact": "Corresponde ao nome exato da pasta ou arquivo",
     "hiddenFiles": "Ocultar arquivos",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "Arquivos e pastas que correspondem a estes padrões serão ocultados.",
     "patternRemoved": "Removido da lista",
     "liveSyncPrefix": "Recarregar conteúdo dos ficheiros a cada ",
     "liveSyncSuffix": " segundos",
@@ -76,10 +76,12 @@
     "categoryGeneral": "Geral",
     "categoryClipboard": "Área de transferência",
     "categoryTabs": "Abas",
-    "categoryFileActions": "Ações de Arquivo",
+    "categoryFileActions": "Ações de ficheiros",
     "liveSyncHint": "Defina como 0 para desativar este recurso.",
     "largeFileThresholdHint": "Selecione após quantos caracteres um arquivo é truncado. Defina como 0 para desativar este recurso (nunca truncar).",
-    "clickToCustomize": "Clique para personalizar"
+    "clickToCustomize": "Selecione para personalizar",
+    "tokenizer": "Tokenizador LLM",
+    "tokenizerDescription": "Selecione o modelo para estimar o uso de tokens para LLMs."
   },
   "shortcuts": {
     "open": "Abrir",
@@ -119,8 +121,8 @@
     "copyPath": "Copiar caminho absoluto",
     "copyFilename": "Copiar nome do arquivo",
     "copyFileContent": "Copiar conteúdo do ficheiro",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "Atualizar apenas esta pasta",
+    "refreshFolderRecursive": "Atualizar pasta recursivamente",
     "hideContent": "Ocultar conteúdo",
     "showContent": "Mostrar conteúdo",
     "showRecursive": "Mostrar recursivamente",

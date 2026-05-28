@@ -19,9 +19,9 @@
     "sortOriginal": "Orijinal",
     "sortAlphabetical": "Alfabetik",
     "sortCharacters": "Karakterler",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Notebook çıktıları gizlendi",
+    "outputsReduced": "Notebook çıktıları kısaltıldı",
+    "outputsFull": "Notebook çıktıları tam"
   },
   "settings": {
     "title": "Ayarlar",
@@ -40,7 +40,7 @@
     "resetError": "Kısayollar sıfırlanırken hata oluştu",
     "exclusions": "Dosyaları hariç tut",
     "addPattern": "Desen ekle",
-    "patternPlaceholder": "örn. *.log veya node_modules",
+    "patternPlaceholder": "Örn. *.log veya node_modules",
     "exclusionDescription": "Bu desenlerle eşleşen dosya ve klasörler dizin eklenirken yok sayılır.",
     "resetPatterns": "Desenleri sıfırla",
     "repository": "Depo",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Tüm PNG dosyalarıyla eşleşir",
     "exclusionExampleExact": "Tam klasör veya dosya adıyla eşleşir",
     "hiddenFiles": "Dosyaları gizle",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "Bu desenlerle eşleşen dosya ve klasörler gizlenecektir.",
     "patternRemoved": "Listeden kaldırıldı",
     "liveSyncPrefix": "Dosya içeriğini yeniden yükle her ",
     "liveSyncSuffix": " saniye",
@@ -76,10 +76,12 @@
     "categoryGeneral": "Genel",
     "categoryClipboard": "Pano",
     "categoryTabs": "Sekmeler",
-    "categoryFileActions": "Dosya Eylemleri",
+    "categoryFileActions": "Dosya eylemleri",
     "liveSyncHint": "Bu özelliği devre dışı bırakmak için 0 olarak ayarlayın.",
     "largeFileThresholdHint": "Bir dosyanın kaç karakterden sonra kesileceğini seçin. Bu özelliği devre dışı bırakmak için 0 olarak ayarlayın (asla kesme).",
-    "clickToCustomize": "Özelleştirmek için tıklayın"
+    "clickToCustomize": "Özelleştirmek için seçin",
+    "tokenizer": "LLM Tokenizer",
+    "tokenizerDescription": "LLM'ler için token kullanımını tahmin etmek üzere modeli seçin."
   },
   "shortcuts": {
     "open": "Aç",
@@ -119,8 +121,8 @@
     "copyPath": "Mutlak yolu kopyala",
     "copyFilename": "Dosya adını kopyala",
     "copyFileContent": "Dosya içeriğini kopyala",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "Sadece bu klasörü yenile",
+    "refreshFolderRecursive": "Klasörü yinelemeli olarak yenile",
     "hideContent": "İçeriği gizle",
     "showContent": "İçeriği göster",
     "showRecursive": "Yinelemeli olarak göster",

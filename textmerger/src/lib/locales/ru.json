@@ -19,9 +19,9 @@
     "sortOriginal": "Оригинал",
     "sortAlphabetical": "По алфавиту",
     "sortCharacters": "Символы",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Выводы Notebook скрыты",
+    "outputsReduced": "Выводы Notebook сокращены",
+    "outputsFull": "Выводы Notebook полные"
   },
   "settings": {
     "title": "Настройки",
@@ -40,7 +40,7 @@
     "resetError": "Ошибка сброса сочетаний",
     "exclusions": "Исключить файлы",
     "addPattern": "Добавить шаблон",
-    "patternPlaceholder": "например *.log или node_modules",
+    "patternPlaceholder": "Например *.log или node_modules",
     "exclusionDescription": "Файлы и папки, соответствующие этим шаблонам, будут игнорироваться при добавлении каталогов.",
     "resetPatterns": "Сбросить шаблоны",
     "repository": "Репозиторий",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Соответствует всем PNG-файлам",
     "exclusionExampleExact": "Соответствует точному имени папки или файла",
     "hiddenFiles": "Скрыть файлы",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "Файлы и папки, соответствующие этим шаблонам, будут скрыты.",
     "patternRemoved": "Удалено из списка",
     "liveSyncPrefix": "Перезагружать содержимое файлов каждые ",
     "liveSyncSuffix": " секунд",
@@ -79,7 +79,9 @@
     "categoryFileActions": "Действия с файлами",
     "liveSyncHint": "Установите значение 0, чтобы отключить эту функцию.",
     "largeFileThresholdHint": "Выберите, после какого количества символов файл обрезается. Установите значение 0, чтобы отключить эту функцию (никогда не обрезать).",
-    "clickToCustomize": "Нажмите для настройки"
+    "clickToCustomize": "Выберите для настройки",
+    "tokenizer": "Токенизатор LLM",
+    "tokenizerDescription": "Выберите модель для оценки использования токенов для LLM."
   },
   "shortcuts": {
     "open": "Открыть",
@@ -119,8 +121,8 @@
     "copyPath": "Копировать полный путь",
     "copyFilename": "Копировать имя файла",
     "copyFileContent": "Копировать содержимое файла",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "Обновить только эту папку",
+    "refreshFolderRecursive": "Обновить папку рекурсивно",
     "hideContent": "Скрыть содержимое",
     "showContent": "Показать содержимое",
     "showRecursive": "Показать рекурсивно",

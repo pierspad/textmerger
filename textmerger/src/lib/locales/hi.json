@@ -19,9 +19,9 @@
     "sortOriginal": "मूल",
     "sortAlphabetical": "वर्णानुक्रम",
     "sortCharacters": "अक्षर",
-    "outputsHidden": "Show reduced\nNotebook outputs",
-    "outputsReduced": "Show full\nNotebook outputs",
-    "outputsFull": "Hide Notebook\noutputs"
+    "outputsHidden": "Notebook आउटपुट छिपे हुए",
+    "outputsReduced": "Notebook आउटपुट कम किए गए",
+    "outputsFull": "Notebook आउटपुट पूरे"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "सभी PNG फाइलों से मेल खाता है",
     "exclusionExampleExact": "सटीक फोल्डर या फाइल नाम से मेल खाता है",
     "hiddenFiles": "फ़ाइलें छिपाएँ",
-    "hiddenFilesDescription": "Files and folders matching these patterns will be hidden. You can still reveal them manually.",
+    "hiddenFilesDescription": "इन पैटर्नों से मेल खाने वाली फ़ाइलें और फ़ोल्डर छिपाए जाएंगे।",
     "patternRemoved": "सूची से हटाया गया",
     "liveSyncPrefix": "फाइल सामग्री हर ",
     "liveSyncSuffix": " सेकंड में पुनः लोड करें",
@@ -79,7 +79,9 @@
     "categoryFileActions": "फ़ाइल क्रियाएं",
     "liveSyncHint": "इस सुविधा को अक्षम करने के लिए 0 पर सेट करें।",
     "largeFileThresholdHint": "चुनें कि कितने वर्णों के बाद फ़ाइल को छोटा किया जाए। इस सुविधा को अक्षम करने के लिए 0 पर सेट करें (कभी छोटा न करें)।",
-    "clickToCustomize": "कस्टमाइज़ करने के लिए क्लिक करें"
+    "clickToCustomize": "कस्टमाइज़ करने के लिए चुनें",
+    "tokenizer": "LLM टोकनाइज़र",
+    "tokenizerDescription": "LLM के लिए टोकन उपयोग का अनुमान लगाने के लिए मॉडल चुनें।"
   },
   "shortcuts": {
     "open": "खोलें",
@@ -119,8 +121,8 @@
     "copyPath": "पूर्ण पथ कॉपी करें",
     "copyFilename": "फाइल नाम कॉपी करें",
     "copyFileContent": "फाइल सामग्री कॉपी करें",
-    "refreshFolderOnly": "Refresh this folder only",
-    "refreshFolderRecursive": "Refresh folder recursively",
+    "refreshFolderOnly": "केवल इस फ़ोल्डर को रीफ्रेश करें",
+    "refreshFolderRecursive": "फ़ोल्डर को पुनरावर्ती रूप से रीफ्रेश करें",
     "hideContent": "सामग्री छिपाएँ",
     "showContent": "सामग्री दिखाएँ",
     "showRecursive": "पुनरावर्ती रूप से दिखाएँ",
