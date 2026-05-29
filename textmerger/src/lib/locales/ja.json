@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "ファイルを何文字で切り詰めるかを選択します。0 に設定するとこの機能が無効になります（切り詰めない）。",
     "clickToCustomize": "選択してカスタマイズ",
     "tokenizer": "LLM トークナイザー",
-    "tokenizerDescription": "LLMのトークン使用量を推定するモデルを選択します。"
+    "tokenizerDescription": "LLMのトークン使用量を推定するモデルを選択します。",
+    "tokenizerO200kDesc": "最新の OpenAI モデル",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (推定)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (近似推定)",
+    "tokenizerGeminiDesc": "オフライン Google モデル",
+    "tokenizerP50kDesc": "レガシー OpenAI モデル",
+    "tokenizerR50kDesc": "古いベースモデル",
+    "tokenizerCharsRatioLabel": "簡易推定 (1 トークン ≈ 4 文字)",
+    "tokenizerCharsRatioDesc": "トークナイザーなしの即時計算"
   },
   "shortcuts": {
     "open": "開く",

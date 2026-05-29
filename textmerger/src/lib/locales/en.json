@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Select after how many characters a file is truncated. Set to 0 to disable this feature (never truncate).",
     "clickToCustomize": "Select one to customize",
     "tokenizer": "LLM Tokenizer",
-    "tokenizerDescription": "Select the model to estimate token usage for LLMs."
+    "tokenizerDescription": "Select the model to estimate token usage for LLMs.",
+    "tokenizerO200kDesc": "Newest OpenAI models",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (approx.)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (close estimate)",
+    "tokenizerGeminiDesc": "Google models offline",
+    "tokenizerP50kDesc": "Legacy OpenAI models",
+    "tokenizerR50kDesc": "Older base models",
+    "tokenizerCharsRatioLabel": "Fast estimate (1 token ≈ 4 chars)",
+    "tokenizerCharsRatioDesc": "Instant, no tokenizer"
   },
   "shortcuts": {
     "open": "Open",

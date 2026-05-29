@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "اختر بعد كم عدد من الأحرف يتم اقتطاع الملف. عيّن إلى 0 لتعطيل هذه الميزة (عدم الاقتطاع أبدًا).",
     "clickToCustomize": "حدد للتخصيص",
     "tokenizer": "مجزئ النصوص LLM",
-    "tokenizerDescription": "حدد النموذج لتقدير استخدام الرموز (Tokens) لنماذج اللغات الكبيرة (LLMs)."
+    "tokenizerDescription": "حدد النموذج لتقدير استخدام الرموز (Tokens) لنماذج اللغات الكبيرة (LLMs).",
+    "tokenizerO200kDesc": "أحدث نماذج OpenAI",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (تقديري)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (تقدير قريب)",
+    "tokenizerGeminiDesc": "نماذج Google دون اتصال بالإنترنت",
+    "tokenizerP50kDesc": "نماذج OpenAI القديمة",
+    "tokenizerR50kDesc": "النماذج الأساسية القديمة",
+    "tokenizerCharsRatioLabel": "تقدير سريع (رمز واحد ≈ 4 أحرف)",
+    "tokenizerCharsRatioDesc": "حساب فوري بدون مجزئ نصوص"
   },
   "shortcuts": {
     "open": "فتح",

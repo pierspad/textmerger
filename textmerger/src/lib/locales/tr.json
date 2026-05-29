@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Bir dosyanın kaç karakterden sonra kesileceğini seçin. Bu özelliği devre dışı bırakmak için 0 olarak ayarlayın (asla kesme).",
     "clickToCustomize": "Özelleştirmek için seçin",
     "tokenizer": "LLM Tokenizer",
-    "tokenizerDescription": "LLM'ler için token kullanımını tahmin etmek üzere modeli seçin."
+    "tokenizerDescription": "LLM'ler için token kullanımını tahmin etmek üzere modeli seçin.",
+    "tokenizerO200kDesc": "En yeni OpenAI modelleri",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (tahmini)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (yakın tahmin)",
+    "tokenizerGeminiDesc": "Çevrimdışı Google modelleri",
+    "tokenizerP50kDesc": "Eski OpenAI modelleri",
+    "tokenizerR50kDesc": "Eski temel modeller",
+    "tokenizerCharsRatioLabel": "Hızlı tahmin (1 token ≈ 4 kar.)",
+    "tokenizerCharsRatioDesc": "Tokenizer olmadan anında hesaplama"
   },
   "shortcuts": {
     "open": "Aç",

@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Sélectionnez après combien de caractères un fichier est tronqué. Réglez sur 0 pour désactiver cette fonctionnalité (ne jamais tronquer).",
     "clickToCustomize": "Sélectionner pour personnaliser",
     "tokenizer": "Tokenizer LLM",
-    "tokenizerDescription": "Sélectionnez le modèle pour estimer la consommation de jetons pour les LLM."
+    "tokenizerDescription": "Sélectionnez le modèle pour estimer la consommation de jetons pour les LLM.",
+    "tokenizerO200kDesc": "Modèles OpenAI les plus récents",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (estimation)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (estimation proche)",
+    "tokenizerGeminiDesc": "Modèles Google hors ligne",
+    "tokenizerP50kDesc": "Modèles OpenAI historiques",
+    "tokenizerR50kDesc": "Modèles de base plus anciens",
+    "tokenizerCharsRatioLabel": "Estimation rapide (1 jeton ≈ 4 caract.)",
+    "tokenizerCharsRatioDesc": "Calcul instantané sans tokenizer"
   },
   "shortcuts": {
     "open": "Ouvrir",

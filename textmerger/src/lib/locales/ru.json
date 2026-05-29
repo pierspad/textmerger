@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Выберите, после какого количества символов файл обрезается. Установите значение 0, чтобы отключить эту функцию (никогда не обрезать).",
     "clickToCustomize": "Выберите для настройки",
     "tokenizer": "Токенизатор LLM",
-    "tokenizerDescription": "Выберите модель для оценки использования токенов для LLM."
+    "tokenizerDescription": "Выберите модель для оценки использования токенов для LLM.",
+    "tokenizerO200kDesc": "Новейшие модели OpenAI",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (оценка)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (приблизительная оценка)",
+    "tokenizerGeminiDesc": "Модели Google офлайн",
+    "tokenizerP50kDesc": "Устаревшие модели OpenAI",
+    "tokenizerR50kDesc": "Старые базовые модели",
+    "tokenizerCharsRatioLabel": "Быстрая оценка (1 токен ≈ 4 симв.)",
+    "tokenizerCharsRatioDesc": "Мгновенный расчет без токенизатора"
   },
   "shortcuts": {
     "open": "Открыть",

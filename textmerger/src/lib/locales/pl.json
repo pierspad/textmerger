@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Wybierz, po ilu znakach plik ma być skracany. Ustaw na 0, aby wyłączyć tę funkcję (nigdy nie skracaj).",
     "clickToCustomize": "Wybierz, aby dostosować",
     "tokenizer": "Tokenizer LLM",
-    "tokenizerDescription": "Wybierz model, aby oszacować zużycie tokenów dla LLM."
+    "tokenizerDescription": "Wybierz model, aby oszacować zużycie tokenów dla LLM.",
+    "tokenizerO200kDesc": "Najnowsze modele OpenAI",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (szacunek)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (bliski szacunek)",
+    "tokenizerGeminiDesc": "Modele Google offline",
+    "tokenizerP50kDesc": "Starsze modele OpenAI",
+    "tokenizerR50kDesc": "Starsze modele bazowe",
+    "tokenizerCharsRatioLabel": "Szybki szacunek (1 token ≈ 4 znaki)",
+    "tokenizerCharsRatioDesc": "Natychmiastowe obliczanie bez tokenizera"
   },
   "shortcuts": {
     "open": "Otwórz",

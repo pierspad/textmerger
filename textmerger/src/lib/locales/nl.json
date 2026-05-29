@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Selecteer na hoeveel tekens een bestand wordt afgekapt. Stel in op 0 om deze functie uit te schakelen (nooit afkappen).",
     "clickToCustomize": "Selecteer om aan te passen",
     "tokenizer": "LLM Tokenizer",
-    "tokenizerDescription": "Selecteer het model om het tokengebruik voor LLM's te schatten."
+    "tokenizerDescription": "Selecteer het model om het tokengebruik voor LLM's te schatten.",
+    "tokenizerO200kDesc": "Nieuwste OpenAI-modellen",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (schatting)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (dichte schatting)",
+    "tokenizerGeminiDesc": "Google-modellen offline",
+    "tokenizerP50kDesc": "Verouderde OpenAI-modellen",
+    "tokenizerR50kDesc": "Oudere basismodellen",
+    "tokenizerCharsRatioLabel": "Snelle schatting (1 token ≈ 4 tekens)",
+    "tokenizerCharsRatioDesc": "Directe berekening zonder tokenizer"
   },
   "shortcuts": {
     "open": "Openen",

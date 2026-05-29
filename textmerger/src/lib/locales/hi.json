@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "चुनें कि कितने वर्णों के बाद फ़ाइल को छोटा किया जाए। इस सुविधा को अक्षम करने के लिए 0 पर सेट करें (कभी छोटा न करें)।",
     "clickToCustomize": "कस्टमाइज़ करने के लिए चुनें",
     "tokenizer": "LLM टोकनाइज़र",
-    "tokenizerDescription": "LLM के लिए टोकन उपयोग का अनुमान लगाने के लिए मॉडल चुनें।"
+    "tokenizerDescription": "LLM के लिए टोकन उपयोग का अनुमान लगाने के लिए मॉडल चुनें।",
+    "tokenizerO200kDesc": "नवीनतम OpenAI मॉडल",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (अनुमानित)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (निकटतम अनुमान)",
+    "tokenizerGeminiDesc": "ऑफ़लाइन Google मॉडल",
+    "tokenizerP50kDesc": "विरासत OpenAI मॉडल",
+    "tokenizerR50kDesc": "पुराने आधार मॉडल",
+    "tokenizerCharsRatioLabel": "त्वरित अनुमान (1 टोकन ≈ 4 वर्ण)",
+    "tokenizerCharsRatioDesc": "टोकनाइज़र के बिना त्वरित गणना"
   },
   "shortcuts": {
     "open": "खोलें",

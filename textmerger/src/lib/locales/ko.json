@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "파일이 잘리는 글자 수를 선택합니다. 이 기능을 비활성화하려면 0으로 설정하십시오 (잘라내지 않음).",
     "clickToCustomize": "선택하여 사용자 지정",
     "tokenizer": "LLM 토크나이저",
-    "tokenizerDescription": "LLM의 토큰 사용량을 추정할 모델을 선택하십시오."
+    "tokenizerDescription": "LLM의 토큰 사용량을 추정할 모델을 선택하십시오.",
+    "tokenizerO200kDesc": "최신 OpenAI 모델",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (추정)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (근접 추정)",
+    "tokenizerGeminiDesc": "오프라인 Google 모델",
+    "tokenizerP50kDesc": "레거시 OpenAI 모델",
+    "tokenizerR50kDesc": "이전 기본 모델",
+    "tokenizerCharsRatioLabel": "빠른 추정 (1 토큰 ≈ 4 자)",
+    "tokenizerCharsRatioDesc": "토크나이저 없는 즉시 계산"
   },
   "shortcuts": {
     "open": "열기",

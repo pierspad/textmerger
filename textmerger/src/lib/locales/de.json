@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Wählen Sie aus, nach wie vielen Zeichen eine Datei abgeschnitten wird. Auf 0 setzen, um diese Funktion zu deaktivieren (niemals abschneiden).",
     "clickToCustomize": "Wähle eine zum Anpassen",
     "tokenizer": "LLM-Tokenizer",
-    "tokenizerDescription": "Wählen Sie das Modell aus, um die Token-Nutzung für LLMs zu schätzen."
+    "tokenizerDescription": "Wählen Sie das Modell aus, um die Token-Nutzung für LLMs zu schätzen.",
+    "tokenizerO200kDesc": "Neueste OpenAI-Modelle",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (Schätzung)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (nahe Schätzung)",
+    "tokenizerGeminiDesc": "Google-Modelle offline",
+    "tokenizerP50kDesc": "Legacy-OpenAI-Modelle",
+    "tokenizerR50kDesc": "Ältere Basis-Modelle",
+    "tokenizerCharsRatioLabel": "Schnelle Schätzung (1 Token ≈ 4 Zeichen)",
+    "tokenizerCharsRatioDesc": "Sofortige Berechnung ohne Tokenizer"
   },
   "shortcuts": {
     "open": "Öffnen",

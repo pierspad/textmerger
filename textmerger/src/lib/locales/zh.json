@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "选择文件在达到多少个字符后被截断。设置为 0 以禁用此功能（永不截断）。",
     "clickToCustomize": "选择进行自定义",
     "tokenizer": "LLM 分词器",
-    "tokenizerDescription": "选择估算 LLM Token 使用量的模型。"
+    "tokenizerDescription": "选择估算 LLM Token 使用量的模型。",
+    "tokenizerO200kDesc": "最新的 OpenAI 模型",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (估算)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (接近估算)",
+    "tokenizerGeminiDesc": "谷歌离线模型",
+    "tokenizerP50kDesc": "旧版 OpenAI 模型",
+    "tokenizerR50kDesc": "较旧的基础模型",
+    "tokenizerCharsRatioLabel": "快速估算 (1 token ≈ 4 字符)",
+    "tokenizerCharsRatioDesc": "即时计算，无需分词器"
   },
   "shortcuts": {
     "open": "打开",

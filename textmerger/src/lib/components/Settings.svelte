@@ -820,12 +820,12 @@
                 on:click|stopPropagation={handleToggleDropdown}
               >
                 <span class="truncate">
-                  {#if $settings.tokenizerModel === 'cl100k_base'}GPT-4 / GPT-3.5 / Claude (stima)
+                  {#if $settings.tokenizerModel === 'cl100k_base'}{$t('settings.tokenizerCl100kLabel')}
                   {:else if $settings.tokenizerModel === 'o200k_base'}GPT-5.x / o1 / o3 / GPT-4o
-                  {:else if $settings.tokenizerModel === 'p50k_base'}GPT-3 / Codex (text-davinci)
+                  {:else if $settings.tokenizerModel === 'p50k_base'}GPT-3 / Codex / text-davinci
                   {:else if $settings.tokenizerModel === 'r50k_base'}GPT-2 / GPT-3 base
                   {:else if $settings.tokenizerModel === 'gemini'}Gemini 1.5 / 2.0 / Gemma 2
-                  {:else}{$locale === 'it' ? 'Stima rapida' : 'Fast estimate'}{/if}
+                  {:else}{$t('settings.tokenizerCharsRatioLabel')}{/if}
                 </span>
                 <span class="text-[10px] font-mono opacity-60 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">
                   {#if $settings.tokenizerModel === 'cl100k_base'}cl100k
@@ -848,12 +848,12 @@
                   on:click|stopPropagation
                 >
                   {#each [
-                    { value: 'o200k_base',   label: 'GPT-5.x / o1 / o3 / GPT-4o', badge: 'o200k',   desc: $locale === 'it' ? 'Modelli OpenAI più recenti' : 'Newest OpenAI models' },
-                    { value: 'cl100k_base',  label: 'GPT-4 / GPT-3.5 / Claude (stima)', badge: 'cl100k',  desc: $locale === 'it' ? 'OpenAI + Claude (stima vicina)' : 'OpenAI + Claude (close estimate)' },
-                    { value: 'gemini',       label: 'Gemini 1.5 / 2.0 / Gemma 2',     badge: 'gemini',  desc: $locale === 'it' ? 'Modelli Google offline' : 'Google models offline' },
-                    { value: 'p50k_base',    label: 'GPT-3 / Codex / text-davinci',   badge: 'p50k',    desc: $locale === 'it' ? 'Modelli legacy OpenAI' : 'Legacy OpenAI models' },
-                    { value: 'r50k_base',    label: 'GPT-2 / GPT-3 base',             badge: 'r50k',    desc: $locale === 'it' ? 'Modelli base più vecchi' : 'Older base models' },
-                    { value: 'chars_ratio',  label: $locale === 'it' ? 'Stima rapida (1 token ≈ 4 car.)' : 'Fast estimate (1 token ≈ 4 chars)', badge: '~4 chars', desc: $locale === 'it' ? 'Calcolo istantaneo senza tokenizer' : 'Instant, no tokenizer' }
+                    { value: 'o200k_base',   label: 'GPT-5.x / o1 / o3 / GPT-4o', badge: 'o200k',   desc: $t('settings.tokenizerO200kDesc') },
+                    { value: 'cl100k_base',  label: $t('settings.tokenizerCl100kLabel'), badge: 'cl100k',  desc: $t('settings.tokenizerCl100kDesc') },
+                    { value: 'gemini',       label: 'Gemini 1.5 / 2.0 / Gemma 2',     badge: 'gemini',  desc: $t('settings.tokenizerGeminiDesc') },
+                    { value: 'p50k_base',    label: 'GPT-3 / Codex / text-davinci',   badge: 'p50k',    desc: $t('settings.tokenizerP50kDesc') },
+                    { value: 'r50k_base',    label: 'GPT-2 / GPT-3 base',             badge: 'r50k',    desc: $t('settings.tokenizerR50kDesc') },
+                    { value: 'chars_ratio',  label: $t('settings.tokenizerCharsRatioLabel'), badge: '~4 chars', desc: $t('settings.tokenizerCharsRatioDesc') }
                   ] as opt}
                     <button
                       type="button"

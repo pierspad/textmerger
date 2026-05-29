@@ -81,7 +81,15 @@
     "largeFileThresholdHint": "Seleziona dopo quanti caratteri un file viene troncato. Imposta a 0 per disabilitare la funzione (non troncare mai).",
     "clickToCustomize": "Seleziona per personalizzare",
     "tokenizer": "Tokenizer LLM",
-    "tokenizerDescription": "Seleziona il modello per stimare il consumo dei token per gli LLM."
+    "tokenizerDescription": "Seleziona il modello per stimare il consumo dei token per gli LLM.",
+    "tokenizerO200kDesc": "Modelli OpenAI più recenti",
+    "tokenizerCl100kLabel": "GPT-4 / GPT-3.5 / Claude (stima)",
+    "tokenizerCl100kDesc": "OpenAI + Claude (stima vicina)",
+    "tokenizerGeminiDesc": "Modelli Google offline",
+    "tokenizerP50kDesc": "Modelli legacy OpenAI",
+    "tokenizerR50kDesc": "Modelli base più vecchi",
+    "tokenizerCharsRatioLabel": "Stima rapida (1 token ≈ 4 car.)",
+    "tokenizerCharsRatioDesc": "Calcolo istantaneo senza tokenizer"
   },
   "shortcuts": {
     "open": "Apri",
