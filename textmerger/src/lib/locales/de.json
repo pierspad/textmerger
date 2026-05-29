@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Entspricht allen PNG-Dateien",
     "exclusionExampleExact": "Entspricht dem exakten Ordner- oder Dateinamen",
     "hiddenFiles": "Dateien ausblenden",
-    "hiddenFilesDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden ausgeblendet.",
+    "hiddenFilesDescription": "Dateien und Ordner, die diesen Mustern entsprechen, werden ausgeblendet. Sie können sie weiterhin manuell einblenden.",
     "patternRemoved": "Aus der Liste entfernt",
     "liveSyncPrefix": "Dateiinhalt neu laden alle ",
     "liveSyncSuffix": " Sekunden",

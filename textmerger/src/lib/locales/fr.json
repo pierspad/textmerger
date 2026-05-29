@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Correspond à tous les fichiers PNG",
     "exclusionExampleExact": "Correspond au nom exact du dossier ou du fichier",
     "hiddenFiles": "Masquer les fichiers",
-    "hiddenFilesDescription": "Les fichiers et dossiers correspondant à ces motifs seront masqués.",
+    "hiddenFilesDescription": "Les fichiers et dossiers correspondant à ces motifs seront masqués. Vous pouvez toujours les afficher manuellement.",
     "patternRemoved": "Supprimé de la liste",
     "liveSyncPrefix": "Recharger le contenu des fichiers toutes les ",
     "liveSyncSuffix": " secondes",

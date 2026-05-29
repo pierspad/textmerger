@@ -6,7 +6,7 @@ interface SettingsState {
     automaticUpdateChecks: boolean;
     liveSyncInterval: number;
     largeFileThreshold: number;
-    tokenizerModel: "cl100k_base" | "o200k_base" | "p50k_base" | "r50k_base" | "chars_ratio";
+    tokenizerModel: "cl100k_base" | "o200k_base" | "p50k_base" | "r50k_base" | "gemini" | "chars_ratio";
 }
 
 const defaultExcludedPatterns = [
@@ -56,7 +56,7 @@ const DEFAULT_SETTINGS: SettingsState = {
     automaticUpdateChecks: true,
     liveSyncInterval: 0,
     largeFileThreshold: 40000,
-    tokenizerModel: "cl100k_base"
+    tokenizerModel: "o200k_base"
 };
 
 function createSettingsStore() {
@@ -77,9 +77,9 @@ function createSettingsStore() {
     const initialLargeFileThreshold = savedLargeFileThreshold ? Number(savedLargeFileThreshold) : 30000;
 
     const savedTokenizerModel = localStorage.getItem('tokenizerModel');
-    const initialTokenizerModel = (savedTokenizerModel === 'cl100k_base' || savedTokenizerModel === 'o200k_base' || savedTokenizerModel === 'p50k_base' || savedTokenizerModel === 'r50k_base' || savedTokenizerModel === 'chars_ratio')
+    const initialTokenizerModel = (savedTokenizerModel === 'cl100k_base' || savedTokenizerModel === 'o200k_base' || savedTokenizerModel === 'p50k_base' || savedTokenizerModel === 'r50k_base' || savedTokenizerModel === 'gemini' || savedTokenizerModel === 'chars_ratio')
         ? savedTokenizerModel
-        : 'cl100k_base';
+        : 'o200k_base';
 
     const { subscribe, set, update } = writable<SettingsState>({
         ...DEFAULT_SETTINGS,
@@ -133,7 +133,7 @@ function createSettingsStore() {
             localStorage.setItem('largeFileThreshold', String(threshold));
             update(s => ({ ...s, largeFileThreshold: threshold }));
         },
-        setTokenizerModel: (model: "cl100k_base" | "o200k_base" | "p50k_base" | "chars_ratio") => {
+        setTokenizerModel: (model: "cl100k_base" | "o200k_base" | "p50k_base" | "r50k_base" | "gemini" | "chars_ratio") => {
             localStorage.setItem('tokenizerModel', model);
             update(s => ({ ...s, tokenizerModel: model }));
         }

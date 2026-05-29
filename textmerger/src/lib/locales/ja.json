@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "すべての PNG ファイルに一致します",
     "exclusionExampleExact": "フォルダーまたはファイルの正確な名前に一致します",
     "hiddenFiles": "ファイルを非表示にする",
-    "hiddenFilesDescription": "これらのパターンに一致するファイルやフォルダは非表示になります。",
+    "hiddenFilesDescription": "これらのパターンに一致するファイルやフォルダは非表示になります。手動で再表示することもできます。",
     "patternRemoved": "リストから削除されました",
     "liveSyncPrefix": "ファイルの内容を ",
     "liveSyncSuffix": " 秒ごとに再読み込み",

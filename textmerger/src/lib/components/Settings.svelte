@@ -131,7 +131,7 @@
     settings.setAutomaticUpdateChecks(true);
     settings.setLiveSyncInterval(0);
     settings.setLargeFileThreshold(30000);
-    settings.setTokenizerModel('cl100k_base');
+    settings.setTokenizerModel('o200k_base');
     liveSyncInput = '0';
     largeFileInput = '30,000';
   }
@@ -820,10 +820,11 @@
                 on:click|stopPropagation={handleToggleDropdown}
               >
                 <span class="truncate">
-                  {#if $settings.tokenizerModel === 'cl100k_base'}GPT-4 / GPT-3.5 / Claude 3
-                  {:else if $settings.tokenizerModel === 'o200k_base'}GPT-4o / GPT-4o-mini / o1
+                  {#if $settings.tokenizerModel === 'cl100k_base'}GPT-4 / GPT-3.5 / Claude (stima)
+                  {:else if $settings.tokenizerModel === 'o200k_base'}GPT-5.x / o1 / o3 / GPT-4o
                   {:else if $settings.tokenizerModel === 'p50k_base'}GPT-3 / Codex (text-davinci)
                   {:else if $settings.tokenizerModel === 'r50k_base'}GPT-2 / GPT-3 base
+                  {:else if $settings.tokenizerModel === 'gemini'}Gemini 1.5 / 2.0 / Gemma 2
                   {:else}{$locale === 'it' ? 'Stima rapida' : 'Fast estimate'}{/if}
                 </span>
                 <span class="text-[10px] font-mono opacity-60 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">
@@ -831,6 +832,7 @@
                   {:else if $settings.tokenizerModel === 'o200k_base'}o200k
                   {:else if $settings.tokenizerModel === 'p50k_base'}p50k
                   {:else if $settings.tokenizerModel === 'r50k_base'}r50k
+                  {:else if $settings.tokenizerModel === 'gemini'}gemini
                   {:else}~4 chars{/if}
                 </span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] transition-transform {tokenizerDropdownOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -846,8 +848,9 @@
                   on:click|stopPropagation
                 >
                   {#each [
-                    { value: 'o200k_base',   label: 'GPT-4o / GPT-4o-mini / o1 / o3', badge: 'o200k',   desc: $locale === 'it' ? 'Modelli OpenAI più recenti' : 'Newest OpenAI models' },
-                    { value: 'cl100k_base',  label: 'GPT-4 / GPT-3.5 / Claude 3',     badge: 'cl100k',  desc: $locale === 'it' ? 'OpenAI + Anthropic' : 'OpenAI + Anthropic' },
+                    { value: 'o200k_base',   label: 'GPT-5.x / o1 / o3 / GPT-4o', badge: 'o200k',   desc: $locale === 'it' ? 'Modelli OpenAI più recenti' : 'Newest OpenAI models' },
+                    { value: 'cl100k_base',  label: 'GPT-4 / GPT-3.5 / Claude (stima)', badge: 'cl100k',  desc: $locale === 'it' ? 'OpenAI + Claude (stima vicina)' : 'OpenAI + Claude (close estimate)' },
+                    { value: 'gemini',       label: 'Gemini 1.5 / 2.0 / Gemma 2',     badge: 'gemini',  desc: $locale === 'it' ? 'Modelli Google offline' : 'Google models offline' },
                     { value: 'p50k_base',    label: 'GPT-3 / Codex / text-davinci',   badge: 'p50k',    desc: $locale === 'it' ? 'Modelli legacy OpenAI' : 'Legacy OpenAI models' },
                     { value: 'r50k_base',    label: 'GPT-2 / GPT-3 base',             badge: 'r50k',    desc: $locale === 'it' ? 'Modelli base più vecchi' : 'Older base models' },
                     { value: 'chars_ratio',  label: $locale === 'it' ? 'Stima rapida (1 token ≈ 4 car.)' : 'Fast estimate (1 token ≈ 4 chars)', badge: '~4 chars', desc: $locale === 'it' ? 'Calcolo istantaneo senza tokenizer' : 'Instant, no tokenizer' }

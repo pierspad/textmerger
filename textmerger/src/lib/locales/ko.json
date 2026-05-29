@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "모든 PNG 파일과 일치",
     "exclusionExampleExact": "정확한 폴더 또는 파일 이름과 일치",
     "hiddenFiles": "파일 숨기기",
-    "hiddenFilesDescription": "이 패턴과 일치하는 파일과 폴더는 숨겨집니다.",
+    "hiddenFilesDescription": "이 패턴과 일치하는 파일과 폴더는 숨겨집니다. 수동으로 다시 표시할 수 있습니다.",
     "patternRemoved": "목록에서 제거됨",
     "liveSyncPrefix": "파일 내용 다시 로드 간격 ",
     "liveSyncSuffix": " 초",

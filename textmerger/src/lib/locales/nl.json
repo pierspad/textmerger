@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Komt overeen met alle PNG-bestanden",
     "exclusionExampleExact": "Komt overeen met de exacte map- of bestandsnaam",
     "hiddenFiles": "Bestanden verbergen",
-    "hiddenFilesDescription": "Bestanden en mappen die met deze patronen overeenkomen, worden verborgen.",
+    "hiddenFilesDescription": "Bestanden en mappen die met deze patronen overeenkomen, worden verborgen. Je kunt ze nog steeds handmatig weergeven.",
     "patternRemoved": "Verwijderd uit de lijst",
     "liveSyncPrefix": "Herlaad bestandsinhoud elke ",
     "liveSyncSuffix": " seconden",

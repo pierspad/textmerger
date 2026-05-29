@@ -163,9 +163,17 @@ function createTabsStore() {
             };
         }),
         closeTab: (id: string) => withPersistence(s => {
-            if (s.tabs.length <= 1) return s;
             const index = s.tabs.findIndex(t => t.id === id);
             if (index === -1) return s;
+
+            if (s.tabs.length <= 1) {
+                const defaultTabId = generateId();
+                return {
+                    tabs: [{ id: defaultTabId, name: 'Tab 1', files: [] }],
+                    activeTabId: defaultTabId
+                };
+            }
+
             const newTabs = s.tabs.filter(t => t.id !== id);
             let newActiveId = s.activeTabId;
 

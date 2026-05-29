@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "सभी PNG फाइलों से मेल खाता है",
     "exclusionExampleExact": "सटीक फोल्डर या फाइल नाम से मेल खाता है",
     "hiddenFiles": "फ़ाइलें छिपाएँ",
-    "hiddenFilesDescription": "इन पैटर्नों से मेल खाने वाली फ़ाइलें और फ़ोल्डर छिपाए जाएंगे।",
+    "hiddenFilesDescription": "इन पैटर्नों से मेल खाने वाली फ़ाइलें और फ़ोल्डर छिपाए जाएंगे। आप अभी भी उन्हें मैन्युअल रूप से प्रकट कर सकते हैं।",
     "patternRemoved": "सूची से हटाया गया",
     "liveSyncPrefix": "फाइल सामग्री हर ",
     "liveSyncSuffix": " सेकंड में पुनः लोड करें",

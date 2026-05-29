@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Corresponde a todos os arquivos PNG",
     "exclusionExampleExact": "Corresponde ao nome exato da pasta ou arquivo",
     "hiddenFiles": "Ocultar arquivos",
-    "hiddenFilesDescription": "Arquivos e pastas que correspondem a estes padrões serão ocultados.",
+    "hiddenFilesDescription": "Arquivos e pastas que correspondem a estes padrões serão ocultados. Ainda pode revelá-los manualmente.",
     "patternRemoved": "Removido da lista",
     "liveSyncPrefix": "Recarregar conteúdo dos ficheiros a cada ",
     "liveSyncSuffix": " segundos",

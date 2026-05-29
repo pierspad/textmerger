@@ -66,7 +66,7 @@
     "exclusionExampleGlob": "Tüm PNG dosyalarıyla eşleşir",
     "exclusionExampleExact": "Tam klasör veya dosya adıyla eşleşir",
     "hiddenFiles": "Dosyaları gizle",
-    "hiddenFilesDescription": "Bu desenlerle eşleşen dosya ve klasörler gizlenecektir.",
+    "hiddenFilesDescription": "Bu desenlerle eşleşen dosya ve klasörler gizlenecektir. Bunları hala manuel olarak gösterebilirsiniz.",
     "patternRemoved": "Listeden kaldırıldı",
     "liveSyncPrefix": "Dosya içeriğini yeniden yükle her ",
     "liveSyncSuffix": " saniye",

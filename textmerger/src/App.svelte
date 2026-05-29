@@ -68,15 +68,50 @@
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
   let mergedContent = "";
+  let plainTextContent = "";
   let tokenCount = 0;
   let currentModel = "";
   let encoder: any = null;
 
-  function calculateTokenCount(text: string, model: string): number {
-    if (!text) return 0;
+  let geminiTokenizer: any = null;
+  let isGeminiLoading = false;
+  let isGeminiLoaded = false;
+
+  async function loadGeminiTokenizer() {
+    if (isGeminiLoaded || isGeminiLoading) return;
+    isGeminiLoading = true;
+    try {
+      const module = await import("@lenml/tokenizer-gemini");
+      geminiTokenizer = module.fromPreTrained();
+      isGeminiLoaded = true;
+    } catch (e) {
+      console.error("Failed to load Gemini tokenizer:", e);
+    } finally {
+      isGeminiLoading = false;
+    }
+  }
+
+  $: {
+    if ($settings.tokenizerModel === "gemini") {
+      void loadGeminiTokenizer();
+    }
+  }
+
+  function calculateTokenCount(plainText: string, model: string): number {
+    if (!plainText) return 0;
     if (model === "chars_ratio") {
-      const plainText = text.replace(/<[^>]*>/g, "");
       return Math.round(plainText.length / 4);
+    }
+    if (model === "gemini") {
+      if (isGeminiLoaded && geminiTokenizer) {
+        try {
+          return geminiTokenizer.encode(plainText).length;
+        } catch (e) {
+          console.error("Gemini tokenization error:", e);
+          return Math.round(plainText.length / 4);
+        }
+      }
+      return 0;
     }
 
     try {
@@ -84,18 +119,27 @@
         encoder = getEncoding(model as any);
         currentModel = model;
       }
-      const plainText = text.replace(/<[^>]*>/g, "");
       return encoder.encode(plainText).length;
     } catch (e) {
       console.error("Tokenization error:", e);
-      const plainText = text.replace(/<[^>]*>/g, "");
       return Math.round(plainText.length / 4);
     }
   }
 
   $: {
-    if (mergedContent) {
-      tokenCount = calculateTokenCount(mergedContent, $settings.tokenizerModel);
+    if (mergedContent && typeof document !== "undefined") {
+      const temp = document.createElement("div");
+      temp.innerHTML = mergedContent;
+      plainTextContent = temp.textContent || temp.innerText || "";
+    } else {
+      plainTextContent = "";
+    }
+  }
+
+  $: {
+    if (plainTextContent) {
+      const _dummy = isGeminiLoaded; // Reference to force reactive update when loaded
+      tokenCount = calculateTokenCount(plainTextContent, $settings.tokenizerModel);
     } else {
       tokenCount = 0;
     }
@@ -1608,7 +1652,7 @@
       class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
     >
       <div class="text-xs text-[var(--text-muted)] flex items-center gap-2 flex-wrap select-none">
-        <span>{$t("app.characters")}: {mergedContent.length.toLocaleString()}</span>
+        <span>{$t("app.characters")}: {plainTextContent.length.toLocaleString()}</span>
         <span>|</span>
         <button 
           type="button" 
@@ -1616,7 +1660,7 @@
           on:click={openTokenizerSettings}
           title={$locale === 'it' ? 'Clicca per modificare il tokenizer nelle impostazioni' : 'Click to change the tokenizer in settings'}
         >
-          {$locale === 'it' ? 'Token' : 'Tokens'}: {tokenCount.toLocaleString()}
+          {$locale === 'it' ? 'Token' : 'Tokens'}: {isGeminiLoading ? ($locale === 'it' ? 'Caricamento...' : 'Loading...') : tokenCount.toLocaleString()}
         </button>
       </div>
       <div class="flex gap-3">
