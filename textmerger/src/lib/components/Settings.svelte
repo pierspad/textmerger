@@ -549,7 +549,7 @@
     class="bg-[var(--surface)] border-r border-[var(--border)] flex flex-col"
     style="width: {sidebarWidth}px; min-width: 250px;"
   >
-    <div class="h-12 px-2 border-b border-[var(--border)] flex items-center gap-2">
+    <div class="h-12 px-2 border-b border-[var(--border)] bg-[var(--surface-2)] flex items-center gap-2">
       <button 
         class="p-2 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-secondary)] transition-colors"
         on:click={closeSettings}
