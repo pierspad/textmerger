@@ -229,7 +229,9 @@
   const repoUrl = "https://github.com/pierspad/textmerger";
   const latestReleaseApiUrl = "https://api.github.com/repos/pierspad/textmerger/releases/latest";
   const authorUrl = "https://pierspad.com";
-  const licenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html";
+  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/LICENSE";
+  const releasesUrl = "https://github.com/pierspad/textmerger/releases";
+  const authorIconUrl = "https://github.com/pierspad.png";
 
   $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
   $: releaseUrl = appVersion ? `${repoUrl}/releases/tag/v${appVersion}` : `${repoUrl}/releases`;
@@ -542,14 +544,12 @@
   });
 </script>
 
-<svelte:window on:keydown={handleWindowKeydown} on:click={handleWindowClick} />
-
-<div class="absolute inset-0 bg-[var(--bg-primary)] z-40 flex overflow-hidden">
+<svelte:window on:keydown={handleWindowKeydown} on:click={handleWindowClick} /><div class="absolute inset-0 bg-[var(--bg)] z-40 flex overflow-hidden">
   <aside
-    class="bg-[var(--bg-secondary)] border-r border-[var(--border-color)] flex flex-col"
+    class="bg-[var(--surface)] border-r border-[var(--border)] flex flex-col"
     style="width: {sidebarWidth}px; min-width: 250px;"
   >
-    <div class="h-12 px-2 border-b border-[var(--border-color)] flex items-center gap-2">
+    <div class="h-12 px-2 border-b border-[var(--border)] flex items-center gap-2">
       <button 
         class="p-2 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-secondary)] transition-colors"
         on:click={closeSettings}
@@ -559,14 +559,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
-      <h2 class="font-bold text-[var(--text-primary)]">{$t('settings.title')}</h2>
+      <h2 class="font-bold text-[var(--text)]">{$t('settings.title')}</h2>
     </div>
     <nav class="flex-1 p-4 space-y-4 overflow-y-auto">
       <button
         class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
         {activeTab === 'general' 
           ? 'bg-[#0e639c] text-white shadow-md shadow-[#0e639c]/25 border border-[#0e639c]' 
-          : 'text-[var(--text-muted)] border border-transparent hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/20'}"
+          : 'text-[var(--muted)] border border-transparent hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/20'}"
         on:click={() => activeTab = 'general'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
@@ -580,7 +580,7 @@
         class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
         {activeTab === 'shortcuts' 
           ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25 border border-amber-500' 
-          : 'text-[var(--text-muted)] border border-transparent hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/20'}"
+          : 'text-[var(--muted)] border border-transparent hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/20'}"
         on:click={() => activeTab = 'shortcuts'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
@@ -593,7 +593,7 @@
         class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
         {activeTab === 'exclusions' 
           ? 'bg-rose-600 text-white shadow-md shadow-rose-600/25 border border-rose-600' 
-          : 'text-[var(--text-muted)] border border-transparent hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20'}"
+          : 'text-[var(--muted)] border border-transparent hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20'}"
         on:click={() => activeTab = 'exclusions'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
@@ -606,7 +606,7 @@
         class="w-full text-left px-5 py-4 rounded text-[15px] font-bold transition-all duration-200 flex items-center gap-3.5 shadow-sm
         {activeTab === 'hiddenFiles' 
           ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25 border border-violet-600' 
-          : 'text-[var(--text-muted)] border border-transparent hover:bg-violet-500/10 hover:text-violet-400 hover:border-violet-500/20'}"
+          : 'text-[var(--muted)] border border-transparent hover:bg-violet-500/10 hover:text-violet-400 hover:border-violet-500/20'}"
         on:click={() => activeTab = 'hiddenFiles'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
@@ -616,48 +616,52 @@
       </button>
     </nav>
 
-    <div class="h-[76px] px-3 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center justify-between gap-2 shrink-0">
-      <div class="min-w-0 flex flex-col gap-1 justify-center">
-          <div class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1">
+    <div class="h-[76px] px-3 border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            class="flex-shrink-0 transition-transform hover:scale-110 active:scale-95 duration-150 inline-block"
+            title="Pierpaolo Spadafora"
+            on:click={() => openExternalLink(authorUrl)}
+          >
+            <img src={authorIconUrl} alt="Pierpaolo Spadafora" class="w-8 h-8 rounded-full border border-white/10 shadow-sm" />
+          </button>
+          <div class="flex flex-col gap-0.5 min-w-0">
             <button
               type="button"
-              class="hover:text-[var(--text-secondary)] transition-colors"
+              class="text-sm font-semibold text-gray-200 hover:text-indigo-400 transition-colors truncate leading-none text-left"
               title={$t('settings.release')}
-              on:click={() => openExternalLink(releaseUrl)}
+              on:click={() => openExternalLink(releasesUrl)}
             >
               {formattedAppVersion}
             </button>
-            <span class="text-xs text-[var(--text-muted)] font-normal">- Tauri + Svelte</span>
-          </div>
-          <div class="flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
             <button
               type="button"
-              class="hover:text-[var(--text-primary)] hover:underline hover:scale-[1.05] active:scale-[0.98] transition-[transform,color] duration-150 font-medium inline-block"
-              on:click={() => openExternalLink(authorUrl)}
-            >
-              pierspad
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              class="hover:text-[var(--text-primary)] hover:underline hover:scale-[1.05] active:scale-[0.98] transition-[transform,color] duration-150 font-medium inline-block"
+              class="text-[11px] text-gray-400 hover:text-indigo-400 transition-colors leading-none text-left"
               on:click={() => openExternalLink(licenseUrl)}
             >
               GPL-3.0
             </button>
           </div>
         </div>
+        
         <button
           type="button"
-          class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:scale-110 active:scale-90 transition-all duration-150"
+          class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-all duration-150 text-right shrink-0 select-none border border-transparent hover:border-white/5"
           aria-label={$t('settings.repository')}
           title={$t('settings.repository')}
           on:click={() => openExternalLink(repoUrl)}
         >
-          <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <div class="flex flex-col text-[10px] font-bold leading-tight uppercase tracking-wider text-right">
+            <span>GitHub</span>
+            <span class="opacity-75">Repo</span>
+          </div>
+          <svg class="w-6 h-6 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path fill-rule="evenodd" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.42 9.42 0 0112 6.96c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.54 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.1 10.1 0 0022 12.26C22 6.58 17.52 2 12 2z" clip-rule="evenodd" />
           </svg>
         </button>
+      </div>
     </div>
   </aside>
 
@@ -667,19 +671,19 @@
       <div class="w-full max-w-none">
         
         <div class="grid gap-4 grid-cols-5">
-          <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-col gap-3 col-span-5">
+          <div class="relative overflow-hidden group w-full p-4 bg-[var(--surface-2)] rounded border border-[var(--border)] flex flex-col gap-3 col-span-5">
             <div class="relative z-10 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
                 {#each availableUILanguages as lang}
                     <button 
-                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border-color)] flex items-center justify-center gap-2 min-w-0
-                        {$locale === lang.code ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'}"
+                        class="px-3 py-2 rounded text-sm font-bold transition-colors border border-[var(--border)] flex items-center justify-center gap-2 min-w-0
+                        {$locale === lang.code ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--bg-hover)]'}"
                         on:click={() => locale.set(lang.code)}
                         title={`${lang.name} / ${lang.nativeName}`}
                     >
                         <span class="text-lg leading-none">{lang.flag}</span>
                         <span class="min-w-0 text-left leading-tight">
-                          <span class="block truncate">{lang.name}</span>
-                          <span class="block truncate text-[11px] font-medium opacity-80">{lang.nativeName}</span>
+                           <span class="block truncate">{lang.name}</span>
+                           <span class="block truncate text-[11px] font-medium opacity-80">{lang.nativeName}</span>
                         </span>
                     </button>
                 {/each}
@@ -687,7 +691,7 @@
           </div>
 
           <button 
-            class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex justify-center items-center hover:bg-[var(--bg-hover-strong)] transition-colors col-span-2"
+            class="relative overflow-hidden group w-full p-4 bg-[var(--surface-2)] rounded border border-[var(--border)] flex justify-center items-center hover:bg-[var(--bg-hover-strong)] transition-colors col-span-2"
             on:click={toggleTheme}
           >
             <div class="relative z-10 inline-flex items-center w-28 h-14 transition-colors duration-200 ease-in-out rounded-full {$theme === 'light' ? 'bg-sky-400' : 'bg-indigo-900'} shrink-0">
@@ -705,11 +709,11 @@
             </div>
           </button>
 
-          <div class="relative overflow-hidden group w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex flex-row items-stretch justify-center gap-3 col-span-3">
+          <div class="relative overflow-hidden group w-full p-4 bg-[var(--surface-2)] rounded border border-[var(--border)] flex flex-row items-stretch justify-center gap-3 col-span-3">
             <button
               type="button"
               class="flex-1 rounded border px-3 py-2 flex flex-col items-center justify-between gap-2 min-w-0 transition-all duration-200 shadow-sm
-              {$settings.automaticUpdateChecks ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)] opacity-40 hover:opacity-80 hover:bg-[var(--bg-hover)]'}"
+              {$settings.automaticUpdateChecks ? 'bg-[#0e639c] text-white border-[#0e639c]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)] opacity-40 hover:opacity-80 hover:bg-[var(--bg-hover)]'}"
               on:click={toggleAutomaticUpdateChecks}
               title={$t('settings.automaticUpdateChecksHint')}
             >
@@ -719,7 +723,7 @@
                   <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
                 </svg>
               {:else}
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 shrink-0 text-[var(--muted)] group-hover:text-[var(--text)]">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               {/if}
@@ -727,23 +731,23 @@
 
             <button
               type="button"
-              class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] hover:text-[var(--text-primary)] active:scale-95 active:bg-[var(--bg-hover-strong)] transition-all duration-150 shadow-sm disabled:opacity-60 min-w-0"
+              class="flex-1 rounded border border-[var(--border)] bg-[var(--bg)] px-3 py-2 flex flex-col items-center justify-between gap-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] hover:text-[var(--text)] active:scale-95 active:bg-[var(--bg-hover-strong)] transition-all duration-150 shadow-sm disabled:opacity-60 min-w-0"
               on:click={() => checkForUpdates("manual")}
               disabled={updateStatus === 'checking'}
             >
               <span class="text-sm font-semibold text-center leading-tight whitespace-pre-line">{$t('settings.checkNow')}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--text-primary)] shrink-0 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--text)] shrink-0 {updateStatus === 'checking' ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992m0 0v-.001M21.015 9.348l-3.181-3.182a8.25 8.25 0 00-13.803 3.7M7.977 14.652H2.985m0 0v.001m0-.001l3.181 3.182a8.25 8.25 0 0013.803-3.7" />
               </svg>
             </button>
           </div>
 
-          <div class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+          <div class="relative overflow-visible w-full p-4 bg-[var(--surface-2)] rounded border border-[var(--border)] flex items-center justify-center gap-2 col-span-5">
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div 
               role="button"
               tabindex="-1"
-              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              class="cursor-pointer flex items-center text-[var(--muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
               on:mouseenter={(e) => handleMouseMove(e, $t('settings.liveSyncHint'))}
               on:mousemove={(e) => handleMouseMove(e, $t('settings.liveSyncHint'))}
               on:mouseleave={handleMouseLeave}
@@ -753,22 +757,22 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncPrefix')}</span>
+            <span class="text-sm font-medium text-[var(--text)] whitespace-nowrap">{$t('settings.liveSyncPrefix')}</span>
             <input 
               type="text" 
               value={liveSyncInput}
               on:input={handleLiveSyncInput}
-              class="w-16 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c] text-center font-mono"
+              class="w-16 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--text)] focus:outline-none focus:border-[#0e639c] text-center font-mono"
             />
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.liveSyncSuffix')}</span>
+            <span class="text-sm font-medium text-[var(--text)] whitespace-nowrap">{$t('settings.liveSyncSuffix')}</span>
           </div>
 
-          <div class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-color)] flex items-center justify-center gap-2 col-span-5">
+          <div class="relative overflow-visible w-full p-4 bg-[var(--surface-2)] rounded border border-[var(--border)] flex items-center justify-center gap-2 col-span-5">
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div 
               role="button"
               tabindex="-1"
-              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              class="cursor-pointer flex items-center text-[var(--muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
               on:mouseenter={(e) => handleMouseMove(e, ($locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato. Imposta a 0 per disabilitare il limite.' : 'Select after how many characters a file is truncated. Set to 0 to disable the limit.'))}
               on:mousemove={(e) => handleMouseMove(e, ($locale === 'it' ? 'Seleziona dopo quanti caratteri un file viene troncato. Imposta a 0 per disabilitare il limite.' : 'Select after how many characters a file is truncated. Set to 0 to disable the limit.'))}
               on:mouseleave={handleMouseLeave}
@@ -778,27 +782,27 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.largeFileThreshold')}</span>
+            <span class="text-sm font-medium text-[var(--text)] whitespace-nowrap">{$t('settings.largeFileThreshold')}</span>
             <input 
               type="text" 
               value={largeFileInput}
               on:input={handleLargeFileInput}
-              class="w-24 px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c] text-center font-mono text-sm"
+              class="w-24 px-2 py-1 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--text)] focus:outline-none focus:border-[#0e639c] text-center font-mono text-sm"
             />
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('app.characters').toLowerCase()}</span>
+            <span class="text-sm font-medium text-[var(--text)] whitespace-nowrap">{$t('app.characters').toLowerCase()}</span>
           </div>
 
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
             id="tokenizer-setting-row"
             bind:this={tokenizerRowEl}
-            class="relative overflow-visible w-full p-4 bg-[var(--bg-tertiary)] rounded border-2 flex items-center justify-center gap-2 col-span-5 transition-all duration-300 {tokenizerFlashing ? 'tokenizer-flash' : 'border-transparent'}"
+            class="relative overflow-visible w-full p-4 bg-[var(--surface-2)] rounded border-2 flex items-center justify-center gap-2 col-span-5 transition-all duration-300 {tokenizerFlashing ? 'tokenizer-flash' : 'border-transparent'}"
           >
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div 
               role="button"
               tabindex="-1"
-              class="cursor-pointer flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
+              class="cursor-pointer flex items-center text-[var(--muted)] hover:text-[var(--text-secondary)] transition-colors mr-1"
               on:mouseenter={(e) => handleMouseMove(e, $t('settings.tokenizerDescription'))}
               on:mousemove={(e) => handleMouseMove(e, $t('settings.tokenizerDescription'))}
               on:mouseleave={handleMouseLeave}
@@ -808,7 +812,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span class="text-sm font-medium text-[var(--text-primary)] whitespace-nowrap">{$t('settings.tokenizer')}</span>
+            <span class="text-sm font-medium text-[var(--text)] whitespace-nowrap">{$t('settings.tokenizer')}</span>
 
             <!-- Custom dropdown with smart positioning -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -816,7 +820,7 @@
               <button
                 type="button"
                 bind:this={dropdownButtonEl}
-                class="flex items-center gap-2 pl-3 pr-2.5 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] text-sm font-semibold cursor-pointer hover:bg-[var(--bg-hover)] hover:border-[var(--border-light)] focus:outline-none focus:border-[#0e639c] focus:ring-1 focus:ring-[#0e639c] transition-all shadow-sm min-w-[260px] justify-between"
+                class="flex items-center gap-2 pl-3 pr-2.5 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--text)] text-sm font-semibold cursor-pointer hover:bg-[var(--bg-hover)] hover:border-[var(--border-light)] focus:outline-none focus:border-[#0e639c] focus:ring-1 focus:ring-[#0e639c] transition-all shadow-sm min-w-[260px] justify-between"
                 on:click|stopPropagation={handleToggleDropdown}
               >
                 <span class="truncate">
@@ -827,7 +831,7 @@
                   {:else if $settings.tokenizerModel === 'gemini'}Gemini 1.5 / 2.0 / Gemma 2
                   {:else}{$t('settings.tokenizerCharsRatioLabel')}{/if}
                 </span>
-                <span class="text-[10px] font-mono opacity-60 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">
+                <span class="text-[10px] font-mono opacity-60 bg-[var(--bg)] px-1.5 py-0.5 rounded shrink-0">
                   {#if $settings.tokenizerModel === 'cl100k_base'}cl100k
                   {:else if $settings.tokenizerModel === 'o200k_base'}o200k
                   {:else if $settings.tokenizerModel === 'p50k_base'}p50k
@@ -835,7 +839,7 @@
                   {:else if $settings.tokenizerModel === 'gemini'}gemini
                   {:else}~4 chars{/if}
                 </span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] transition-transform {tokenizerDropdownOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-[var(--muted)] transition-transform {tokenizerDropdownOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -844,7 +848,7 @@
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div
-                  class="absolute {dropdownOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 z-[200] w-max min-w-[340px] bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded shadow-xl overflow-hidden"
+                  class="absolute {dropdownOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 z-[200] w-max min-w-[340px] bg-[var(--surface)] border border-[var(--border)] rounded shadow-xl overflow-hidden"
                   on:click|stopPropagation
                 >
                   {#each [
@@ -859,8 +863,8 @@
                       type="button"
                       class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors
                         {$settings.tokenizerModel === opt.value
-                          ? 'bg-[#0e639c]/20 text-[var(--text-primary)]'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}"
+                          ? 'bg-[#0e639c]/20 text-[var(--text)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}"
                       on:click={() => selectTokenizerOption(opt.value)}
                     >
                       {#if $settings.tokenizerModel === opt.value}
@@ -874,7 +878,7 @@
                         <span class="font-medium whitespace-nowrap">{opt.label}</span>
                         <span class="text-[11px] opacity-50 whitespace-nowrap">{opt.desc}</span>
                       </div>
-                      <span class="text-[10px] font-mono opacity-50 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded shrink-0">{opt.badge}</span>
+                      <span class="text-[10px] font-mono opacity-50 bg-[var(--bg)] px-1.5 py-0.5 rounded shrink-0">{opt.badge}</span>
                     </button>
                   {/each}
                 </div>
@@ -889,7 +893,7 @@
           <div class="flex flex-wrap gap-2 items-center">
             {#each shortcutCategories as cat}
               <button
-                class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategories.includes(cat.id) ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}"
+                class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategories.includes(cat.id) ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)]'}"
                 on:click={() => toggleCategory(cat.id)}
               >
                 {$t(cat.key)}
@@ -902,7 +906,7 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div 
-              class="flex items-center gap-2 px-3 py-1.5 w-full bg-[var(--bg-secondary)] border {isListeningForSearchKeys ? 'border-[#0e639c] ring-1 ring-[#0e639c]' : 'border-[var(--border-color)]'} rounded text-sm cursor-pointer hover:bg-[var(--bg-hover)] transition-all select-none"
+              class="flex items-center gap-2 px-3 py-1.5 w-full bg-[var(--surface)] border {isListeningForSearchKeys ? 'border-[#0e639c] ring-1 ring-[#0e639c]' : 'border-[var(--border)]'} rounded text-sm cursor-pointer hover:bg-[var(--bg-hover)] transition-all select-none"
               on:click|stopPropagation={() => {
                 if (isListeningForSearchKeys) {
                   stopSearchListening();
@@ -911,7 +915,7 @@
                 }
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)] shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)] shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
               </svg>
 
@@ -920,9 +924,9 @@
                   <div class="flex items-center gap-1.5">
                     {#each searchKeys as key, i}
                       {#if i > 0}
-                        <span class="text-[var(--text-muted)] text-xs font-semibold select-none">+</span>
+                        <span class="text-[var(--muted)] text-xs font-semibold select-none">+</span>
                       {/if}
-                      <kbd class="px-1.5 py-0.5 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] font-mono text-xs font-semibold shadow-sm">
+                      <kbd class="px-1.5 py-0.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-mono text-xs font-semibold shadow-sm">
                         {key}
                       </kbd>
                     {/each}
@@ -934,7 +938,7 @@
                   {#if isListeningForSearchKeys}
                     <span class="w-[1.5px] h-[15px] bg-[#0e639c] animate-caret shrink-0 self-center"></span>
                   {:else}
-                    <span class="text-[var(--text-muted)] text-xs flex items-center gap-0.5">
+                    <span class="text-[var(--muted)] text-xs flex items-center gap-0.5">
                       {$locale === 'it' ? 'Cerca' : 'Search'}
                     </span>
                   {/if}
@@ -944,7 +948,7 @@
               {#if searchKeys.length > 0 || isListeningForSearchKeys}
                 <button
                   type="button"
-                  class="p-0.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-hover-strong)] rounded transition-colors shrink-0"
+                  class="p-0.5 text-[var(--muted)] hover:text-red-500 hover:bg-[var(--bg-hover-strong)] rounded transition-colors shrink-0"
                   on:click|stopPropagation={clearSearchKeys}
                   title={$locale === 'it' ? 'Cancella ricerca' : 'Clear search'}
                 >
@@ -957,20 +961,20 @@
           </div>
         </div>
         
-        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+        <div class="bg-[var(--surface)] rounded border border-[var(--border)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
           <div class="overflow-y-auto overflow-x-hidden flex-1 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))] content-start">
           {#each filteredShortcuts as [key, keybind]}
               <!-- svelte-ignore indent -->
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               {@const action = key}
               <div 
-                class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border-color)] transition-colors min-h-[60px] cursor-pointer"
+                class="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 p-3 items-center bg-[var(--surface)] hover:bg-[var(--bg-hover)] rounded border border-[var(--border)] transition-colors min-h-[60px] cursor-pointer"
                 on:click={() => recordingAction = action}
                 on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') recordingAction = action; }}
                 role="button"
                 tabindex="0"
               >
-                <div class="flex justify-center text-[var(--text-muted)]">
+                <div class="flex justify-center text-[var(--muted)]">
                   {@html getIcon(action)}
                 </div>
                 <div class="min-w-0 font-medium leading-snug text-[var(--text-secondary)]">
@@ -995,7 +999,7 @@
     {:else if activeTab === 'exclusions'}
       <div class="max-w-none flex flex-col h-full">
         
-        <div class="mb-4 text-sm text-[var(--text-muted)]">
+        <div class="mb-4 text-sm text-[var(--muted)]">
             <p class="mb-2">{$t('settings.exclusionDescription')}</p>
             <ul class="list-disc list-inside space-y-1 ml-2">
                 <li><code>*.png</code> - {$t('settings.exclusionExampleGlob')}</li>
@@ -1009,7 +1013,7 @@
                 type="text" 
                 bind:value={newPattern} 
                 placeholder={$t('settings.patternPlaceholder')}
-                class="flex-1 px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c]"
+                class="flex-1 px-3 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[var(--text)] focus:outline-none focus:border-[#0e639c]"
                 on:keydown={(e) => e.key === 'Enter' && addPattern()}
             />
             <button 
@@ -1020,13 +1024,13 @@
             </button>
         </div>
 
-        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+        <div class="bg-[var(--surface)] rounded border border-[var(--border)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
             <div class="overflow-y-auto overflow-x-hidden flex-1 gap-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 content-start">
                 {#each $settings.excludedPatterns as pattern}
-                    <div class="flex justify-between items-center p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
+                    <div class="flex justify-between items-center p-2 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
                         <div class="flex items-center gap-2 min-w-0">
                             <FileIcon name={pattern} />
-                            <span class="font-mono text-sm text-[var(--text-primary)] truncate">{pattern}</span>
+                            <span class="font-mono text-sm text-[var(--text)] truncate">{pattern}</span>
                         </div>
                         <button 
                             class="text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-[var(--bg-hover-strong)] transition-colors shrink-0"
@@ -1045,7 +1049,7 @@
     {:else if activeTab === 'hiddenFiles'}
       <div class="max-w-none flex flex-col h-full">
         
-        <div class="mb-4 text-sm text-[var(--text-muted)]">
+        <div class="mb-4 text-sm text-[var(--muted)]">
             <p class="mb-2">{$t('settings.hiddenFilesDescription')}</p>
             <ul class="list-disc list-inside space-y-1 ml-2">
                 <li><code>*.txt</code> - {$t('settings.exclusionExampleGlob')}</li>
@@ -1058,7 +1062,7 @@
                 type="text" 
                 bind:value={newHiddenPattern} 
                 placeholder={$t('settings.patternPlaceholder')}
-                class="flex-1 px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded text-[var(--text-primary)] focus:outline-none focus:border-[#0e639c]"
+                class="flex-1 px-3 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[var(--text)] focus:outline-none focus:border-[#0e639c]"
                 on:keydown={(e) => e.key === 'Enter' && addHiddenPattern()}
             />
             <button 
@@ -1069,13 +1073,13 @@
             </button>
         </div>
 
-        <div class="bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
+        <div class="bg-[var(--surface)] rounded border border-[var(--border)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
             <div class="overflow-y-auto overflow-x-hidden flex-1 gap-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 content-start">
                 {#each $settings.hiddenPatterns as pattern}
-                    <div class="flex justify-between items-center p-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
+                    <div class="flex justify-between items-center p-2 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:bg-[var(--bg-hover)] transition-colors group">
                         <div class="flex items-center gap-2 min-w-0">
                             <FileIcon name={pattern} />
-                            <span class="font-mono text-sm text-[var(--text-primary)] truncate">{pattern}</span>
+                            <span class="font-mono text-sm text-[var(--text)] truncate">{pattern}</span>
                         </div>
                         <button 
                             class="text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-[var(--bg-hover-strong)] transition-colors"
@@ -1094,7 +1098,7 @@
     {/if}
     </div>
 
-      <div class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0">
+      <div class="h-[76px] border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center justify-center shrink-0">
         <button
           class="px-4 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-medium transition-colors shadow-lg shadow-red-900/20 inline-flex items-center gap-2"
           on:click={triggerResetConfirmation}
@@ -1114,7 +1118,7 @@
       class="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-200"
       on:click|self={() => showConfirmModal = false}
     >
-      <div class="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg shadow-2xl max-w-md w-full overflow-hidden p-6 flex flex-col gap-4 transform scale-100 transition-transform duration-200">
+      <div class="bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-2xl max-w-md w-full overflow-hidden p-6 flex flex-col gap-4 transform scale-100 transition-transform duration-200">
         <div class="flex items-start gap-4">
           <div class="p-3 bg-red-500/10 text-red-500 rounded-full shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -1122,14 +1126,14 @@
             </svg>
           </div>
           <div class="min-w-0 flex-1">
-            <h3 class="text-lg font-bold text-[var(--text-primary)] leading-tight">{confirmTitle}</h3>
+            <h3 class="text-lg font-bold text-[var(--text)] leading-tight">{confirmTitle}</h3>
             <p class="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">{confirmMessage}</p>
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-3">
           <button
             type="button"
-            class="px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] rounded font-semibold text-sm transition-all duration-150 active:scale-95 cursor-pointer"
+            class="px-4 py-2 bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--bg-hover-strong)] text-[var(--text)] rounded font-semibold text-sm transition-all duration-150 active:scale-95 cursor-pointer"
             on:click={() => showConfirmModal = false}
           >
             {$locale === 'it' ? 'Annulla' : ($locale === 'de' ? 'Abbrechen' : ($locale === 'es' ? 'Cancelar' : ($locale === 'fr' ? 'Annuler' : 'Cancel')))}
@@ -1151,7 +1155,7 @@
 
   {#if showTooltip}
     <div 
-      class="fixed px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border-light)] text-[var(--text-primary)] text-xs rounded shadow-lg z-[9999] pointer-events-none text-center max-w-[280px] leading-relaxed select-none"
+      class="fixed px-3 py-2 bg-[var(--surface)] border border-[var(--border-light)] text-[var(--text)] text-xs rounded shadow-lg z-[9999] pointer-events-none text-center max-w-[280px] leading-relaxed select-none"
       style="left: {tooltipX}px; top: {tooltipY}px;"
     >
       {tooltipText}

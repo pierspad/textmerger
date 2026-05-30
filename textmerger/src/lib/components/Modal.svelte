@@ -38,7 +38,7 @@
   tabindex="-1"
 >
   <div
-    class="w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-xl shadow-2xl overflow-hidden transform"
+    class="w-full max-w-md bg-[var(--surface)] border border-[var(--border-light)] rounded-xl shadow-2xl overflow-hidden transform"
     transition:scale={{ duration: 200, start: 0.95 }}
     on:click|stopPropagation
     on:keydown={(e) => {}}
@@ -48,13 +48,13 @@
     aria-labelledby="modal-title"
   >
 
-    <div class="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-tertiary)]">
-      <h3 id="modal-title" class="text-lg font-semibold text-[var(--text-primary)]">
+    <div class="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-2)]">
+      <h3 id="modal-title" class="text-lg font-semibold text-[var(--text)]">
         {title}
       </h3>
       <button
         type="button"
-        class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-hover)]"
+        class="text-[var(--muted)] hover:text-[var(--text)] transition-colors p-1 rounded-md hover:bg-[var(--bg-hover)]"
         on:click={handleClose}
         aria-label="Close"
       >
@@ -65,15 +65,15 @@
     </div>
 
 
-    <div class="px-6 py-6 text-[var(--text-primary)]">
+    <div class="px-6 py-6 text-[var(--text)]">
       <slot />
     </div>
 
 
-    <div class="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-color)] flex justify-end gap-3">
+    <div class="px-6 py-4 bg-[var(--surface-2)] border-t border-[var(--border)] flex justify-end gap-3">
       {#if showCancel}
         <button
-          class="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors border border-[var(--border-color)]"
+          class="px-4 py-2 text-sm font-medium text-[var(--text)] bg-[var(--bg-hover-strong)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors border border-[var(--border)]"
           on:click={handleClose}
         >
           {cancelText}
