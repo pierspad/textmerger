@@ -3,6 +3,8 @@
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { writeTextFile } from "@tauri-apps/plugin-fs";
+  import { open as openExternal } from "@tauri-apps/plugin-shell";
+  import authorAvatar from "./assets/avatar.png";
   import { onMount, onDestroy, tick } from "svelte";
   import { getEncoding } from "js-tiktoken";
   import FileTree from "./lib/FileTree.svelte";
@@ -65,6 +67,15 @@
 
   const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
 
+  function truncatePath(path: string, limit = 50): string {
+    if (!path) return "";
+    if (path.length <= limit) return path;
+    const charsToShow = limit - 3;
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    return path.substring(0, frontChars) + "..." + path.substring(path.length - backChars);
+  }
+
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
   let mergedContent = "";
@@ -126,15 +137,19 @@
     }
   }
 
-  $: {
-    if (mergedContent && typeof document !== "undefined") {
-      const temp = document.createElement("div");
-      temp.innerHTML = mergedContent;
-      plainTextContent = temp.textContent || temp.innerText || "";
-    } else {
-      plainTextContent = "";
-    }
+  // Highly optimized HTML plain-text extraction to avoid DOM layout overhead and browser freezes
+  function extractPlainText(html: string): string {
+    if (!html) return "";
+    return html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&amp;/g, "&");
   }
+
+  $: plainTextContent = extractPlainText(mergedContent);
 
   $: {
     if (plainTextContent) {
@@ -151,13 +166,20 @@
   let forceFullLoadPaths: Set<string> = new Set();
   let isSidebarExpanded = true;
   let sidebarWidth = 300;
+  const repoUrl = "https://github.com/pierspad/textmerger";
+  const releasesUrl = "https://github.com/pierspad/textmerger/releases";
+  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/docs/LICENSE";
+  const authorUrl = "https://pierspad.com";
+  const authorIconUrl = authorAvatar;
+  const appVersionNum = "v2.7.1";
+  const appLicense = "GPL-3.0";
   let ipynbOutputMode: "none" | "reduced" | "full" = "none";
   let hasIpynb = false;
   let snackbarMessage = "";
   let snackbarVariant: SnackbarVariant = "success";
   let snackbarTimeout: any;
   let snackbarAnimationKey = 0;
-  const snackbarDuration = 2200;
+  const snackbarDuration = 2500;
   let showSettings = false;
   let settingsActiveTab = "general";
   let highlightTokenizer = false;
@@ -173,7 +195,130 @@
   $: showTruncateOption = contextMenu.isFile && contextMenuFile && $settings.largeFileThreshold > 0 && contextMenuFile.char_count > $settings.largeFileThreshold;
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
-  
+
+  // Caches for file contents and tokens
+  let fileContentsCache: Record<string, string> = {};
+  let fileTokensCache: Record<string, number> = {};
+
+  // Track the active model and active ipynb mode to know when to clear caches
+  let lastCachedModel = "";
+  let lastCachedIpynbMode = "";
+
+  $: {
+    const currentModel = $settings.tokenizerModel;
+    const currentIpynbMode = ipynbOutputMode;
+    const isReady = isGeminiLoaded || currentModel !== "gemini";
+
+    if (isReady && (currentModel !== lastCachedModel || currentIpynbMode !== lastCachedIpynbMode)) {
+      if (currentIpynbMode !== lastCachedIpynbMode) {
+        // Clear all cached contents and tokens because ipynb mode changed
+        fileContentsCache = {};
+        fileTokensCache = {};
+      } else if (currentModel !== lastCachedModel) {
+        // Only clear tokens cache, keep file contents cache!
+        fileTokensCache = {};
+      }
+      lastCachedModel = currentModel;
+      lastCachedIpynbMode = currentIpynbMode;
+    }
+  }
+
+  // Reactive trigger to load contents and calculate tokens for any new/missing files
+  $: {
+    const currentModel = $settings.tokenizerModel;
+    const currentIpynbMode = ipynbOutputMode;
+    const isReady = isGeminiLoaded || currentModel !== "gemini";
+
+    if (isReady && files && files.length > 0) {
+      void loadMissingFileStats(files, currentModel, currentIpynbMode);
+    }
+  }
+
+  async function loadMissingFileStats(currentFiles: FileNode[], model: string, ipynbMode: string) {
+    const pathsToFetch = currentFiles.filter(f => fileContentsCache[f.path] === undefined).map(f => f.path);
+    
+    // Fetch missing file contents
+    if (pathsToFetch.length > 0) {
+      await Promise.all(pathsToFetch.map(async (path) => {
+        try {
+          const content: string = await invoke("get_file_content", { path, ipynbOutputMode: ipynbMode });
+          fileContentsCache[path] = content;
+        } catch (e) {
+          console.error(`Failed to fetch content for ${path}:`, e);
+          fileContentsCache[path] = ""; // Set to empty to avoid repeated failing attempts
+        }
+      }));
+      fileContentsCache = { ...fileContentsCache };
+    }
+
+    // Compute missing token counts
+    let tokensChanged = false;
+    currentFiles.forEach(f => {
+      if (fileTokensCache[f.path] === undefined) {
+        const content = fileContentsCache[f.path] || "";
+        fileTokensCache[f.path] = calculateTokenCount(content, model);
+        tokensChanged = true;
+      }
+    });
+
+    if (tokensChanged) {
+      fileTokensCache = { ...fileTokensCache };
+    }
+  }
+
+  $: contextMenuStats = (() => {
+      if (!contextMenu.show || !contextMenu.path) return null;
+      if (contextMenu.isFile) {
+          const path = contextMenu.path;
+          const content = fileContentsCache[path];
+          const file = files.find(f => f.path === path);
+          const chars = content !== undefined ? content.length : (file ? file.char_count : 0);
+          const tokens = fileTokensCache[path];
+          return {
+              chars,
+              tokens,
+              isLoaded: content !== undefined && tokens !== undefined
+          };
+      } else {
+          // Folder
+          const normFolder = normalize(contextMenu.path);
+          let charSum = 0;
+          let tokenSum = 0;
+          let fileCount = 0;
+          let loadedCount = 0;
+          
+          files.forEach(f => {
+              const normPath = normalize(f.path);
+              if (normPath === normFolder || normPath.startsWith(normFolder + '/')) {
+                  fileCount++;
+                  const content = fileContentsCache[f.path];
+                  charSum += content !== undefined ? content.length : f.char_count;
+                  
+                  const tokens = fileTokensCache[f.path];
+                  if (tokens !== undefined) {
+                      tokenSum += tokens;
+                      loadedCount++;
+                  }
+              }
+          });
+          
+          return {
+              chars: charSum,
+              tokens: tokenSum,
+              fileCount,
+              isLoaded: fileCount === loadedCount
+          };
+      }
+  })();
+
+  // Clear selected files when active tab changes
+  $: {
+    if ($tabs.activeTabId) {
+      selectedFiles.clear();
+      selectedFiles = selectedFiles;
+    }
+  }
+
   let showRenameModal = false;
   let showMergeModal = false;
   let newTabName = "";
@@ -481,9 +626,7 @@
 
   async function copyToClipboard() {
     try {
-      const temp = document.createElement("div");
-      temp.innerHTML = mergedContent;
-      const text = temp.textContent || temp.innerText || "";
+      const text = extractPlainText(mergedContent);
 
       await navigator.clipboard.writeText(text);
       showSnackbar($t("messages.copied"), "copy");
@@ -761,6 +904,8 @@
       copyToClipboard();
     } else if (isShortcut($shortcuts.refresh)) {
       event.preventDefault();
+      fileContentsCache = {};
+      fileTokensCache = {};
       updateContent();
       showSnackbar($t("messages.refreshed"));
     } else if (isShortcut($shortcuts.newTab)) {
@@ -877,7 +1022,7 @@
     event.preventDefault();
     
     // Viewport boundary check
-    const menuWidth = 240;
+    const menuWidth = 340;
     const menuHeight = isFile !== false ? 260 : 320;
     let x = event.clientX;
     let y = event.clientY;
@@ -927,6 +1072,15 @@
           });
 
           const updatedFiles = [...unchangedFiles, ...newFiles];
+
+          // Invalidate caches for updated files
+          newFiles.forEach(f => {
+              delete fileContentsCache[f.path];
+              delete fileTokensCache[f.path];
+          });
+          fileContentsCache = { ...fileContentsCache };
+          fileTokensCache = { ...fileTokensCache };
+
           tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
 
           if (errors.length > 0) {
@@ -1186,7 +1340,7 @@
 />
 
 <main
-  class="flex h-full w-full overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans relative"
+  class="flex h-full w-full overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans relative"
 >
   {#if snackbarMessage}
     {#key snackbarAnimationKey}
@@ -1220,12 +1374,12 @@
       class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center backdrop-blur-sm"
     >
       <div
-        class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl flex flex-col items-center gap-4 border border-[var(--border-light)]"
+        class="bg-[var(--surface)] p-6 rounded-lg shadow-xl flex flex-col items-center gap-4 border border-[var(--border-light)]"
       >
         <div
-          class="w-10 h-10 border-4 border-[var(--text-muted)] border-t-[var(--text-primary)] rounded-full animate-spin"
+          class="w-10 h-10 border-4 border-[var(--muted)] border-t-[var(--text)] rounded-full animate-spin"
         ></div>
-        <span class="text-[var(--text-primary)] font-medium"
+        <span class="text-[var(--text)] font-medium"
           >Processing files...</span
         >
       </div>
@@ -1255,7 +1409,7 @@
                   id="rename-input"
                   type="text" 
                   bind:value={newTabName}
-                  class="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
+                  class="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded focus:outline-none focus:border-blue-500 text-[var(--text)]"
                   placeholder="Enter tab name..."
                   use:focusElement
                   on:keydown={(e) => e.key === 'Enter' && confirmRename()}
@@ -1273,14 +1427,14 @@
           on:confirm={confirmMerge}
       >
           <div class="flex flex-col gap-2">
-              <p class="text-sm text-[var(--text-muted)] mb-2">
+              <p class="text-sm text-[var(--muted)] mb-2">
                   Select a tab to merge into <strong>{$tabs.tabs.find(t => t.id === tabContextMenu.tabId)?.name}</strong>.
               </p>
               <label for="merge-select" class="text-sm font-medium text-[var(--text-secondary)]">Source Tab</label>
               <select 
                   id="merge-select"
                   bind:value={selectedMergeSourceId}
-                  class="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded focus:outline-none focus:border-blue-500 text-[var(--text-primary)]"
+                  class="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded focus:outline-none focus:border-blue-500 text-[var(--text)]"
               >
                   <option value="" disabled selected>Select a tab...</option>
                   {#each $tabs.tabs.filter(t => t.id !== tabContextMenu.tabId) as tab}
@@ -1297,11 +1451,11 @@
 
   {#if isSidebarExpanded}
     <aside
-      class="flex flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]"
+      class="flex flex-col border-r border-[var(--border)] bg-[var(--surface)]"
       style="width: {sidebarWidth}px; min-width: 250px;"
     >
       <div
-        class="h-12 px-2 border-b border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
+        class="h-12 px-2 border-b border-[var(--border)] bg-[var(--surface-2)] flex items-center gap-2"
       >
         <button
           class="p-2 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-secondary)] transition-colors"
@@ -1354,13 +1508,13 @@
       
 
       <div
-        class="px-3 py-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-secondary)] flex items-center justify-between"
+        class="px-3 py-2 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider bg-[var(--surface)] flex items-center justify-between"
       >
         <span>{$t("app.addedFiles")} {files.length ? `(${files.length})` : ''}</span>
         
         <div class="flex items-center gap-1">
           <button
-            class="bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded px-2 py-1 text-xs cursor-pointer hover:bg-[var(--bg-hover)] transition-colors select-none font-medium min-w-[80px] text-center"
+            class="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] rounded px-2 py-1 text-xs cursor-pointer hover:bg-[var(--bg-hover)] transition-colors select-none font-medium min-w-[80px] text-center"
             on:click={() => {
               const options = ['original', 'alphabetical', 'size'] as const;
               const idx = options.indexOf(sortType);
@@ -1370,7 +1524,7 @@
             {sortType === 'original' ? $t('app.sortOriginal') : sortType === 'alphabetical' ? $t('app.sortAlphabetical') : $t('app.sortCharacters')}
           </button>
           <button 
-            class="p-1 hover:bg-[var(--bg-hover-strong)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] transition-colors"
+            class="p-1 hover:bg-[var(--bg-hover-strong)] hover:text-[var(--text)] rounded text-[var(--muted)] transition-colors"
             on:click={() => sortAscending = !sortAscending}
             title={sortAscending ? "Crescente" : "Decrescente"}
           >
@@ -1395,7 +1549,7 @@
       >
         {#if files.length === 0}
           <div
-            class="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-sm border border-dashed border-[var(--border-light)] rounded-lg m-2 bg-[var(--bg-primary)]"
+            class="h-full flex flex-col items-center justify-center text-[var(--muted)] text-sm border border-dashed border-[var(--border-light)] rounded-lg m-2 bg-[var(--bg)]"
           >
             <p class="mb-2">{$t("app.dragFiles")}</p>
             <svg
@@ -1417,6 +1571,7 @@
           <FileTree
             bind:this={fileTreeRef}
             {files}
+            {fileTokensCache}
             bind:selectedFiles
             bind:focusedFilePath
             {sortType}
@@ -1430,7 +1585,7 @@
       </div>
 
       <div
-        class="h-[76px] px-3 border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center gap-2"
+        class="h-[76px] px-3 border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center gap-2"
       >
         <button
           class="flex-1 px-3 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded font-bold text-xs flex items-center justify-center gap-1 transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1469,16 +1624,17 @@
           {$t("app.removeAll")}
         </button>
       </div>
+
     </aside>
   {/if}
 
-  <section class="flex-1 flex flex-col h-full min-w-0 bg-[var(--bg-primary)]">
+  <section class="flex-1 flex flex-col h-full min-w-0 bg-[var(--bg)]">
     <header
-      class="h-12 border-b border-[var(--border-color)] flex items-center px-4 justify-between bg-[var(--bg-tertiary)]"
+      class="h-12 border-b border-[var(--border)] flex items-center px-4 justify-between bg-[var(--surface-2)]"
     >
       <div class="flex items-center gap-3 overflow-hidden flex-1 h-full pt-2">
         <button
-          class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] mb-1"
+          class="p-1 hover:bg-[var(--bg-hover-strong)] rounded text-[var(--muted)] mb-1"
           on:click={toggleSidebar}
           aria-label="Toggle Sidebar"
           title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
@@ -1510,7 +1666,7 @@
          <div class="flex items-center flex-1 min-w-0 h-full gap-1 pt-2 relative">
             {#if showScrollButtons}
               <button 
-                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] z-10"
+                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--muted)] z-10"
                 on:click={() => scrollTabs('left')}
                 aria-label="Scroll tabs left"
               >
@@ -1530,8 +1686,8 @@
             <div 
                class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent transition-all duration-200 select-none
                {tab.id === $tabs.activeTabId 
-                  ? 'bg-[var(--tab-bg-active)] text-[var(--text-primary)] z-10 border-[var(--border-color)] border-b-0 shadow-sm' 
-                  : 'bg-[var(--tab-bg-inactive)] text-[var(--text-muted)] hover:bg-[var(--tab-bg-hover)] border-b border-[var(--border-color)] opacity-80 hover:opacity-100'}"
+                  ? 'bg-[var(--tab-bg-active)] text-[var(--text)] z-10 border-[var(--border)] border-b-0 shadow-sm' 
+                  : 'bg-[var(--tab-bg-inactive)] text-[var(--muted)] hover:bg-[var(--tab-bg-hover)] border-b border-[var(--border)] opacity-80 hover:opacity-100'}"
                draggable="true"
                role="button"
                tabindex="0"
@@ -1550,7 +1706,7 @@
                 <div class="truncate text-xs font-medium pr-5 flex-1">{tab.name}</div>
                 <button 
                   class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-[var(--bg-hover-strong)] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity
-                  {tab.id === $tabs.activeTabId ? 'opacity-100 text-[var(--text-muted)]' : 'text-[var(--text-muted)]'}"
+                  {tab.id === $tabs.activeTabId ? 'opacity-100 text-[var(--muted)]' : 'text-[var(--muted)]'}"
                   on:click={(e) => handleCloseTab(e, tab.id)}
                   aria-label={`Close ${tab.name}`}
                 >
@@ -1562,13 +1718,13 @@
           {/each}
           </div>
 
-            <div class="h-full flex items-center border-b border-[var(--border-color)] px-1 relative z-20 shrink-0">
+            <div class="h-full flex items-center border-b border-[var(--border)] px-1 relative z-20 shrink-0">
                 <button 
-                   class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--text-muted)]"
+                   class="p-1 rounded hover:bg-[var(--bg-hover-strong)] text-[var(--muted)]"
                    on:click={handleAddTab}
                    title="New Tab"
                    aria-label="New Tab"
-                >
+                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
@@ -1577,7 +1733,7 @@
           
             {#if showScrollButtons}
               <button 
-                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--text-muted)] z-10"
+                class="h-8 w-6 flex items-center justify-center hover:bg-[var(--bg-hover-strong)] rounded text-[var(--muted)] z-10"
                 on:click={() => scrollTabs('right')}
                 aria-label="Scroll tabs right"
               >
@@ -1638,25 +1794,26 @@
           </div>
         </button>
       {/if}
-      <div class="flex-1 overflow-auto p-6 bg-[var(--bg-primary)] relative">
+
+      <div class="flex-1 overflow-auto p-6 bg-[var(--bg)] relative">
         <div
-          class="prose prose-invert max-w-none prose-pre:bg-[var(--bg-tertiary)] prose-pre:border prose-pre:border-[var(--border-light)] pb-16"
+          class="prose prose-invert max-w-none prose-pre:bg-[var(--surface-2)] prose-pre:border prose-pre:border-[var(--border-light)] pb-16"
         >
           {@html mergedContent ||
-            `<div class="flex flex-col items-center justify-center h-64 text-[var(--text-muted)] italic"><span>${$t("app.noContent")}</span><span class="text-sm mt-2">${$t("app.addFilesHint")}</span></div>`}
+            `<div class="flex flex-col items-center justify-center h-64 text-[var(--muted)] italic"><span>${$t("app.noContent")}</span><span class="text-sm mt-2">${$t("app.addFilesHint")}</span></div>`}
         </div>
       </div>
     </div>
 
     <div
-      class="h-[76px] border-t border-[var(--border-color)] bg-[var(--bg-tertiary)] flex items-center px-4 justify-between"
+      class="h-[76px] border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center px-4 justify-between"
     >
-      <div class="text-xs text-[var(--text-muted)] flex items-center gap-2 flex-wrap select-none">
+      <div class="text-xs text-[var(--muted)] flex items-center gap-2 flex-wrap select-none">
         <span>{$t("app.characters")}: {plainTextContent.length.toLocaleString()}</span>
         <span>|</span>
         <button 
           type="button" 
-          class="hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] px-1.5 py-0.5 rounded transition-all cursor-pointer flex items-center focus:outline-none text-xs font-normal"
+          class="hover:text-[var(--text)] hover:bg-[var(--bg-hover)] px-1.5 py-0.5 rounded transition-all cursor-pointer flex items-center focus:outline-none text-xs font-normal"
           on:click={openTokenizerSettings}
           title={$locale === 'it' ? 'Clicca per modificare il tokenizer nelle impostazioni' : 'Click to change the tokenizer in settings'}
         >
@@ -1743,156 +1900,182 @@
 
 {#if contextMenu.show}
   <div
-    class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[180px]"
-    style="top: {contextMenu.y}px; left: {contextMenu.x}px"
+    class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
+    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
   >
-    <div class="px-4 py-2 text-xs font-bold text-[var(--text-muted)] border-b border-[var(--border-light)] mb-1 select-text truncate max-w-[280px]" title={contextMenu.name}>
-      {contextMenu.name}
+    <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
+      <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.name}>
+        {truncatePath(contextMenu.name, 50)}
+      </div>
+      {#if contextMenuStats}
+        <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-[var(--text-secondary)] select-none">
+          <div class="flex items-center gap-1.5 text-[var(--muted)] whitespace-nowrap">
+            <span>{$t("app.characters") || "Characters"}: <span class="font-mono text-[var(--text)]">{formatNumber(contextMenuStats.chars)}</span></span>
+            <span>|</span>
+            <span>
+              {$t("app.tokens") || "Tokens"}: 
+              <span class="font-mono text-[var(--text)]">
+                {#if contextMenuStats.isLoaded}
+                  {formatNumber(contextMenuStats.tokens)}
+                {:else}
+                  <span class="animate-pulse text-[var(--muted)]">loading...</span>
+                {/if}
+              </span>
+            </span>
+          </div>
+          {#if !contextMenu.isFile}
+            <div class="flex justify-between gap-4 text-[10px] text-[var(--muted)] mt-0.5 pt-0.5 border-t border-[var(--border-light)]">
+              <span>Files:</span>
+              <span>{contextMenuStats.fileCount}</span>
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
       on:click={copyPath}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
       </svg>
       <span class="flex-1">{$t("contextMenu.copyPath")}</span>
-      <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyPath)}</span>
+      <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyPath)}</span>
     </button>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
       on:click={copyFilename}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
       </svg>
       <span class="flex-1">{$t("contextMenu.copyFilename")}</span>
-      <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyFilename)}</span>
+      <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFilename)}</span>
     </button>
     
     <div class="border-t border-[var(--border-light)] my-1"></div>
     
     {#if contextMenu.isFile}
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={copyFileContent}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
         </svg>
         <span class="flex-1">{$t("contextMenu.copyFileContent")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.copyFileContent)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFileContent)}</span>
       </button>
       {#if showTruncateOption}
         <button
-          class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+          class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
           on:click={revealFullContent}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
           </svg>
           <span class="flex-1">{forceFullLoadPaths.has(contextMenu.path) ? $t("contextMenu.truncateFile") : $t("contextMenu.revealFullContent")}</span>
-          <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.revealFullContent)}</span>
+          <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.revealFullContent)}</span>
         </button>
       {/if}
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={toggleFileVisibility}
       >
         {#if isCurrentFileHidden}
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
             <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
           </svg>
         {/if}
         <span class="flex-1">{isCurrentFileHidden ? $t("contextMenu.showContent") : $t("contextMenu.hideContent")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.toggleVisibility)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.toggleVisibility)}</span>
       </button>
     {:else}
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={() => refreshDirectory(false)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
         <span class="flex-1">{$t("contextMenu.refreshFolderOnly")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolder)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolder)}</span>
       </button>
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={() => refreshDirectory(true)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)] relative">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)] relative">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v6m-3-3h6" />
         </svg>
         <span class="flex-1">{$t("contextMenu.refreshFolderRecursive")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolderRecursive)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolderRecursive)}</span>
       </button>
       
       <div class="border-t border-[var(--border-light)] my-1"></div>
       
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={hideDirectoryContent}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
         </svg>
         <span class="flex-1">{$t("contextMenu.hideContent")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.hideDirContent)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.hideDirContent)}</span>
       </button>
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={showDirectoryContentNonRecursive}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         <span class="flex-1">{$t("contextMenu.showContent")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.showDirContent)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.showDirContent)}</span>
       </button>
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={showDirectoryContentRecursive}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 17v4m-2-2h4" />
         </svg>
         <span class="flex-1">{$t("contextMenu.showRecursive")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.showDirRecursive)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.showDirRecursive)}</span>
       </button>
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={revealFullContentRecursive}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 9v4m-2-2h4" />
         </svg>
         <span class="flex-1">{$t("contextMenu.revealFullContentRecursive")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.revealDirRecursive)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.revealDirRecursive)}</span>
       </button>
       <button
-        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors flex items-center gap-2"
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
         on:click={truncateDirRecursive}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--text-muted)]">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11h4" />
         </svg>
         <span class="flex-1">{$t("contextMenu.truncateDirRecursive")}</span>
-        <span class="ml-4 text-[10px] text-[var(--text-muted)] tracking-wider">{$tShortcut($shortcuts.truncateDirRecursive)}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.truncateDirRecursive)}</span>
       </button>
     {/if}
   </div>
@@ -1900,30 +2083,30 @@
 
 {#if tabContextMenu.show}
   <div
-    class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"
-    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px"
+    class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[150px]"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
   >
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"
       on:click={openRenameModal}
     >
       Rename Tab
     </button>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"
       on:click={duplicateContextTab}
     >
       Duplicate Tab
     </button>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       on:click={closeTabsToRight}
       disabled={getTabsToRightCount(tabContextMenu.tabId) === 0}
     >
       Close Tabs to the Right
     </button>
     <button
-      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text-primary)] transition-colors"
+      class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"
       on:click={openMergeModal}
     >
       Merge with...

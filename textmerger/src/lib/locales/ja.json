@@ -21,7 +21,8 @@
     "sortCharacters": "文字数",
     "outputsHidden": "Notebook 出力非表示",
     "outputsReduced": "Notebook 出力縮小表示",
-    "outputsFull": "Notebook 出力全画面表示"
+    "outputsFull": "Notebook 出力全画面表示",
+    "tokens": "トークン"
   },
   "settings": {
     "title": "設定",

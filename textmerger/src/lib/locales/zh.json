@@ -21,7 +21,8 @@
     "sortCharacters": "字符数",
     "outputsHidden": "笔记本输出已隐藏",
     "outputsReduced": "笔记本输出已精简",
-    "outputsFull": "笔记本输出已完整"
+    "outputsFull": "笔记本输出已完整",
+    "tokens": "Token"
   },
   "settings": {
     "title": "设置",

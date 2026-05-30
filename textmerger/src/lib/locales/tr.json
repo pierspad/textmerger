@@ -21,7 +21,8 @@
     "sortCharacters": "Karakterler",
     "outputsHidden": "Notebook çıktıları gizlendi",
     "outputsReduced": "Notebook çıktıları kısaltıldı",
-    "outputsFull": "Notebook çıktıları tam"
+    "outputsFull": "Notebook çıktıları tam",
+    "tokens": "Token"
   },
   "settings": {
     "title": "Ayarlar",

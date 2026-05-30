@@ -42,7 +42,11 @@ const defaultExcludedPatterns = [
     '*.7z',
     '*.iso',
     '*.img',
-    '*.dmg'
+    '*.dmg',
+    'LICENSE',
+    'LICENSE.*',
+    'license',
+    'license.*'
 ];
 
 const defaultHiddenPatterns = [

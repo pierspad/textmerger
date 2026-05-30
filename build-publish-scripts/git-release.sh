@@ -32,8 +32,14 @@ open_file_blocking() {
         exit 1
     fi
 
-    echo -e "${YELLOW}Apro ${title}... salva e chiudi per continuare${NC}"
-    code --wait "$file"
+    if command -v code >/dev/null 2>&1; then
+        echo -e "${YELLOW}Apro ${title}... salva e chiudi per continuare${NC}"
+        code --wait "$file"
+    else
+        echo -e "${YELLOW}Puoi modificare il file con il tuo editor preferito: $file${NC}"
+        echo -e "${YELLOW}👉 Modifica il file, SALVALO e poi premi [INVIO] in questo terminale per continuare...${NC}"
+        read -r
+    fi
 }
 
 if [ ! -f "$PKGBUILD" ]; then
@@ -48,11 +54,6 @@ fi
 
 if [ ! -f "$RELEASE_NOTES_FILE" ]; then
     echo -e "${RED}Error: release notes non trovate in $RELEASE_NOTES_FILE${NC}"
-    exit 1
-fi
-
-if ! command -v code >/dev/null 2>&1; then
-    echo -e "${RED}Error: comando 'code' non disponibile. Installa/abilita VS Code CLI.${NC}"
     exit 1
 fi
 
@@ -144,8 +145,7 @@ if [ -z "$BRANCH" ]; then
     exit 1
 fi
 
-git push origin "$BRANCH"
-git push origin "$TAG_VERSION"
+git push --atomic origin "$BRANCH" "$TAG_VERSION"
 
 echo -e "${GREEN}Tag ${TAG_VERSION} pubblicato con successo${NC}"
 echo -e "${BLUE}La GitHub Action creera la release usando solo la sezione ${TAG_VERSION} di docs/release-notes.md.${NC}"

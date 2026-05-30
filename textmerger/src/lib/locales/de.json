@@ -21,7 +21,8 @@
     "sortCharacters": "Zeichen",
     "outputsHidden": "Notebook-Ausgaben ausgeblendet",
     "outputsReduced": "Notebook-Ausgaben reduziert",
-    "outputsFull": "Notebook-Ausgaben vollständig"
+    "outputsFull": "Notebook-Ausgaben vollständig",
+    "tokens": "Token"
   },
   "settings": {
     "title": "Einstellungen",

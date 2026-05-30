@@ -4,6 +4,7 @@
   import type { FileNode } from "./stores/tabs";
 
   export let files: FileNode[] = [];
+  export let fileTokensCache: Record<string, number> = {};
   export let selectedFiles: Set<string> = new Set();
   export let focusedFilePath: string | null = null;
   export let maxCharCount = 0;
@@ -22,6 +23,7 @@
     isOpen?: boolean;
     charCount?: number;
     sizeBytes?: number;
+    tokenCount?: number;
     extension?: string;
     hidden?: boolean;
   }
@@ -31,10 +33,10 @@
   let nodeMap: Record<string, TreeNode> = {};
 
   $: {
-    updateTree(files, sortType, sortAscending);
+    updateTree(files, sortType, sortAscending, fileTokensCache);
   }
 
-  function updateTree(currentFiles: FileNode[], currentSortType: string, currentSortAsc: boolean) {
+  function updateTree(currentFiles: FileNode[], currentSortType: string, currentSortAsc: boolean, currentTokensCache: Record<string, number>) {
     nodeMap = {};
     tree = {};
     rootNodes = [];
@@ -96,11 +98,49 @@
                     leaf.extension = file.extension;
                     leaf.path = file.path;
                     leaf.hidden = file.hidden;
+                    leaf.tokenCount = currentTokensCache[file.path];
                 }
             }
             
             currentPath = myPath;
         });
+    });
+
+    // Recursively aggregate statistics (post-order traversal)
+    const aggregateStats = (node: TreeNode): { charCount: number; sizeBytes: number; tokenCount: number } => {
+        if (node.isFile) {
+            return {
+                charCount: node.charCount || 0,
+                sizeBytes: node.sizeBytes || 0,
+                tokenCount: node.tokenCount || 0
+            };
+        }
+
+        let charSum = 0;
+        let sizeSum = 0;
+        let tokenSum = 0;
+
+        if (node.children) {
+            Object.values(node.children).forEach(child => {
+                const stats = aggregateStats(child);
+                charSum += stats.charCount;
+                sizeSum += stats.sizeBytes;
+                tokenSum += stats.tokenCount;
+            });
+        }
+
+        node.charCount = charSum;
+        node.sizeBytes = sizeSum;
+        node.tokenCount = tokenSum;
+
+        return { charCount: charSum, sizeBytes: sizeSum, tokenCount: tokenSum };
+    };
+
+    // Run aggregation for all root nodes
+    rootNodes.forEach(key => {
+        if (tree[key]) {
+            aggregateStats(tree[key]);
+        }
     });
 
     const compactNode = (node: TreeNode) => {

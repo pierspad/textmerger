@@ -21,7 +21,8 @@
     "sortCharacters": "अक्षर",
     "outputsHidden": "Notebook आउटपुट छिपे हुए",
     "outputsReduced": "Notebook आउटपुट कम किए गए",
-    "outputsFull": "Notebook आउटपुट पूरे"
+    "outputsFull": "Notebook आउटपुट पूरे",
+    "tokens": "टोकन"
   },
   "settings": {
     "title": "सेटिंग्स",

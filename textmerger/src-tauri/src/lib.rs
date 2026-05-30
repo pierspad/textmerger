@@ -229,18 +229,31 @@ fn get_merged_content(
 }
 
 #[tauri::command]
+fn get_file_content(path: String, ipynb_output_mode: String) -> Result<String, String> {
+    match file_ops::read_and_check_file(&path, &ipynb_output_mode) {
+        Ok((content, _size)) => Ok(content),
+        Err(e) => Err(e),
+    }
+}
+
+#[tauri::command]
 fn exit_app() {
     std::process::exit(0);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_log::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![add_files, get_merged_content, scan_directory, exit_app])
+        .invoke_handler(tauri::generate_handler![add_files, get_merged_content, scan_directory, exit_app, get_file_content])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

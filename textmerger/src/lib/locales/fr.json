@@ -21,7 +21,8 @@
     "sortCharacters": "Caractères",
     "outputsHidden": "Sorties Notebook masquées",
     "outputsReduced": "Sorties Notebook réduites",
-    "outputsFull": "Sorties Notebook entières"
+    "outputsFull": "Sorties Notebook entières",
+    "tokens": "Tokens"
   },
   "settings": {
     "title": "Paramètres",

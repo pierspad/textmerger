@@ -5,7 +5,7 @@
   "identifier": "com.textmerger.app",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:5174",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
@@ -15,8 +15,8 @@
         "title": "TextMerger",
         "width": 1100,
         "height": 800,
-        "minWidth": 1100,
-        "minHeight": 780,
+        "minWidth": 800,
+        "minHeight": 600,
         "resizable": true,
         "fullscreen": false
       }

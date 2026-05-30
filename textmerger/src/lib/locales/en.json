@@ -21,7 +21,8 @@
     "sortCharacters": "Characters",
     "outputsHidden": "Notebook outputs hidden",
     "outputsReduced": "Notebook outputs reduced",
-    "outputsFull": "Notebook outputs full"
+    "outputsFull": "Notebook outputs full",
+    "tokens": "Tokens"
   },
   "settings": {
     "title": "Settings",
