@@ -194,7 +194,7 @@ Never use raw `<select>` tags for styled select boxes.
 *   Backdrop: Glassmorphic backdrop `position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);` with `fade` Svelte transition.
 *   Dialog card: `border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); box-shadow: var(--shadow);` with `scale` entry transition (`duration: 150, start: 0.96`).
 *   **CRITICAL**: The dialog card must stop event propagation (`on:click|stopPropagation` or Svelte equivalent) to prevent backdrop click dismissals from triggering on inner clicks.
-*   **Dialog Collision Guard**: Per prevenire crash da doppie aperture simultanee o stuttering visivi, non chiamare mai direttamente `open` o `save` da `@tauri-apps/plugin-dialog`. Importa e usa sempre le funzioni protette `guardedOpen` e `guardedSave` esposte da `src/lib/utils/dialogGuard.ts` (o `src/lib/dialogGuard.ts` in Vesta).
+*   **Dialog Collision Guard**: Per prevenire crash da doppie aperture simultanee o stuttering visivi, non chiamare mai direttamente `open` o `save` da `@tauri-apps/plugin-dialog`. Importa e usa sempre le funzioni protette `guardedOpen` e `guardedSave` esposte da `src/lib/utils/dialogGuard.ts`.
 
 ### 3.9 skeleton Loading States
 Instead of simple spinning wheels, use pure CSS shimmering skeletons:

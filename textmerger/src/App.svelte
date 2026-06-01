@@ -166,7 +166,7 @@
   let snackbarVariant: SnackbarVariant = "success";
   let snackbarTimeout: any;
   let snackbarAnimationKey = 0;
-  const snackbarDuration = 2200;
+  const snackbarDuration = 2500;
   let showSettings = false;
   let settingsActiveTab = "general";
   let highlightTokenizer = false;
