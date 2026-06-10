@@ -21,7 +21,8 @@
     "sortCharacters": "Caracteres",
     "outputsHidden": "Salidas de Notebook ocultas",
     "outputsReduced": "Salidas de Notebook reducidas",
-    "outputsFull": "Salidas de Notebook completas"
+    "outputsFull": "Salidas de Notebook completas",
+    "tokens": "Tokens"
   },
   "settings": {
     "title": "Configuración",

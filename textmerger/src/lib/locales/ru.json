@@ -21,7 +21,8 @@
     "sortCharacters": "Символы",
     "outputsHidden": "Выводы Notebook скрыты",
     "outputsReduced": "Выводы Notebook сокращены",
-    "outputsFull": "Выводы Notebook полные"
+    "outputsFull": "Выводы Notebook полные",
+    "tokens": "Токены"
   },
   "settings": {
     "title": "Настройки",

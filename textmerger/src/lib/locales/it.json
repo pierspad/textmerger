@@ -21,7 +21,8 @@
     "sortCharacters": "Caratteri",
     "outputsHidden": "Output Notebook nascosto",
     "outputsReduced": "Output Notebook ridotto",
-    "outputsFull": "Output Notebook intero"
+    "outputsFull": "Output Notebook intero",
+    "tokens": "Token"
   },
   "settings": {
     "title": "Impostazioni",

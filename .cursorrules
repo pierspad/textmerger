@@ -277,3 +277,43 @@ Every client-side app (Tauri/Svelte) must include a standardized, visually premi
 **Design & Shared Practice Guidelines**:
 *   **Offline/Low-Res Asset Embedding Rule**: Standardize that profile avatars or background images in attribution components must be cached and stored directly in the repository's assets directory rather than fetched dynamically from external servers.
 *   **Lexical HTML & Svelte Block Scoping Boundary**: To prevent Svelte template compilation and parsing bugs, developers must ensure all opened `div` and Svelte block tags (`{#if}`, `{#each}`, etc.) are strictly closed within their correct lexical scope.
+
+---
+
+## 9. Shared Crate / Library Architecture (Optional Heavy Features)
+
+For heavy, optional, or reusable features (such as audio transcription with Whisper, media downloading with yt-dlp, or complex translation engines), do not duplicate logic across different application workspaces. Instead:
+*   **Modular Shared Crates**: Extract the common functionality into a highly-cohesive, decoupled, and standalone Rust library crate (e.g. `whisper-common` placed in `lib/whisper-common` of each repository, or as a relative path dependency).
+*   **Decoupled & Portable APIs**: Expose generic interfaces using standard callbacks (e.g., progress percentages or stages) and optional cancellation tokens (`CancellationToken`) instead of coupling with Tauri-specific state or handlers.
+*   **Optional & Configurable**: Heavy dependencies (like `whisper-rs`, `reqwest/stream`, `hound`) must be encapsulated inside these crates, keeping the main application workspaces clean, light, and easy to build if these features are not utilized or are optional.
+
+---
+
+## 10. Development Speed & Compilation Optimizations (MANDATORY)
+
+To keep iteration times extremely fast and avoid resource locks during parallel development, all developers and AI assistants must follow these build-speed practices:
+
+### 10.1 Fast Linker (mold)
+On Linux systems, the Rust toolchain is configured to use the `mold` linker, which is significantly faster than standard GNU `ld` or `gold`.
+*   Ensure `.cargo/config.toml` contains target-specific configurations using `mold` as the linker for both `x86_64` and `aarch64` Linux targets.
+*   Do not overwrite or disable these configurations unless building for release on non-Linux hosts.
+
+### 10.2 Development Profiles & Optimized Dependencies
+Keep the development compilation profiles in `Cargo.toml` optimized:
+*   Use `[profile.dev]` with `opt-level = 0`, `debug = 0` (or `1` if debugging is strictly required), and `strip = "debuginfo"` to keep debug symbols out of local builds.
+*   Optimize dependencies during development using `[profile.dev.package."*"]` with `opt-level = 1` or higher, which prevents dependencies from running slowly while keeping recompilations fast.
+
+### 10.3 Avoid Port Conflicts in Parallel Development
+Each application must use a unique Vite server port for its GUI frontend to allow running them concurrently:
+*   **Reaper**: Port `5173` (Tauri devUrl: `http://localhost:5173`, Vite: `5173`)
+*   **Textmerger**: Port `5174` (Tauri devUrl: `http://localhost:5174`, Vite: `5174`)
+*   **Vesta**: Port `5175` (Tauri devUrl: `http://localhost:5175`, Vite: `5175`)
+
+### 10.4 Skip Compilations with `cargo check`
+*   Use `cargo check` instead of `cargo build` when validating code correctness. It runs 2x-3x faster by skipping binary generation.
+*   Consider running `cargo watch -c -x check` in the background during active coding.
+
+### 10.5 Sparse Registry & Crate Pruning
+*   Always configure `[registries.crates-io]` with `protocol = "sparse"` in `.cargo/config.toml` to download registry indices instantly.
+*   Regularly scan for and prune unused dependencies using `cargo machete` or `cargo-shear` to keep the dependency tree lightweight and minimize build times.
+

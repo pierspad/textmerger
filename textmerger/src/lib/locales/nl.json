@@ -21,7 +21,8 @@
     "sortCharacters": "Tekens",
     "outputsHidden": "Notebook-uitvoeren verborgen",
     "outputsReduced": "Notebook-uitvoeren gereduceerd",
-    "outputsFull": "Notebook-uitvoeren volledig"
+    "outputsFull": "Notebook-uitvoeren volledig",
+    "tokens": "Tokens"
   },
   "settings": {
     "title": "Instellingen",

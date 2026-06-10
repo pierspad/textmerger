@@ -67,6 +67,15 @@
 
   const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '');
 
+  function truncatePath(path: string, limit = 50): string {
+    if (!path) return "";
+    if (path.length <= limit) return path;
+    const charsToShow = limit - 3;
+    const frontChars = Math.ceil(charsToShow / 2);
+    const backChars = Math.floor(charsToShow / 2);
+    return path.substring(0, frontChars) + "..." + path.substring(path.length - backChars);
+  }
+
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
   let mergedContent = "";
@@ -128,15 +137,19 @@
     }
   }
 
-  $: {
-    if (mergedContent && typeof document !== "undefined") {
-      const temp = document.createElement("div");
-      temp.innerHTML = mergedContent;
-      plainTextContent = temp.textContent || temp.innerText || "";
-    } else {
-      plainTextContent = "";
-    }
+  // Highly optimized HTML plain-text extraction to avoid DOM layout overhead and browser freezes
+  function extractPlainText(html: string): string {
+    if (!html) return "";
+    return html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&amp;/g, "&");
   }
+
+  $: plainTextContent = extractPlainText(mergedContent);
 
   $: {
     if (plainTextContent) {
@@ -182,7 +195,130 @@
   $: showTruncateOption = contextMenu.isFile && contextMenuFile && $settings.largeFileThreshold > 0 && contextMenuFile.char_count > $settings.largeFileThreshold;
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
-  
+
+  // Caches for file contents and tokens
+  let fileContentsCache: Record<string, string> = {};
+  let fileTokensCache: Record<string, number> = {};
+
+  // Track the active model and active ipynb mode to know when to clear caches
+  let lastCachedModel = "";
+  let lastCachedIpynbMode = "";
+
+  $: {
+    const currentModel = $settings.tokenizerModel;
+    const currentIpynbMode = ipynbOutputMode;
+    const isReady = isGeminiLoaded || currentModel !== "gemini";
+
+    if (isReady && (currentModel !== lastCachedModel || currentIpynbMode !== lastCachedIpynbMode)) {
+      if (currentIpynbMode !== lastCachedIpynbMode) {
+        // Clear all cached contents and tokens because ipynb mode changed
+        fileContentsCache = {};
+        fileTokensCache = {};
+      } else if (currentModel !== lastCachedModel) {
+        // Only clear tokens cache, keep file contents cache!
+        fileTokensCache = {};
+      }
+      lastCachedModel = currentModel;
+      lastCachedIpynbMode = currentIpynbMode;
+    }
+  }
+
+  // Reactive trigger to load contents and calculate tokens for any new/missing files
+  $: {
+    const currentModel = $settings.tokenizerModel;
+    const currentIpynbMode = ipynbOutputMode;
+    const isReady = isGeminiLoaded || currentModel !== "gemini";
+
+    if (isReady && files && files.length > 0) {
+      void loadMissingFileStats(files, currentModel, currentIpynbMode);
+    }
+  }
+
+  async function loadMissingFileStats(currentFiles: FileNode[], model: string, ipynbMode: string) {
+    const pathsToFetch = currentFiles.filter(f => fileContentsCache[f.path] === undefined).map(f => f.path);
+    
+    // Fetch missing file contents
+    if (pathsToFetch.length > 0) {
+      await Promise.all(pathsToFetch.map(async (path) => {
+        try {
+          const content: string = await invoke("get_file_content", { path, ipynbOutputMode: ipynbMode });
+          fileContentsCache[path] = content;
+        } catch (e) {
+          console.error(`Failed to fetch content for ${path}:`, e);
+          fileContentsCache[path] = ""; // Set to empty to avoid repeated failing attempts
+        }
+      }));
+      fileContentsCache = { ...fileContentsCache };
+    }
+
+    // Compute missing token counts
+    let tokensChanged = false;
+    currentFiles.forEach(f => {
+      if (fileTokensCache[f.path] === undefined) {
+        const content = fileContentsCache[f.path] || "";
+        fileTokensCache[f.path] = calculateTokenCount(content, model);
+        tokensChanged = true;
+      }
+    });
+
+    if (tokensChanged) {
+      fileTokensCache = { ...fileTokensCache };
+    }
+  }
+
+  $: contextMenuStats = (() => {
+      if (!contextMenu.show || !contextMenu.path) return null;
+      if (contextMenu.isFile) {
+          const path = contextMenu.path;
+          const content = fileContentsCache[path];
+          const file = files.find(f => f.path === path);
+          const chars = content !== undefined ? content.length : (file ? file.char_count : 0);
+          const tokens = fileTokensCache[path];
+          return {
+              chars,
+              tokens,
+              isLoaded: content !== undefined && tokens !== undefined
+          };
+      } else {
+          // Folder
+          const normFolder = normalize(contextMenu.path);
+          let charSum = 0;
+          let tokenSum = 0;
+          let fileCount = 0;
+          let loadedCount = 0;
+          
+          files.forEach(f => {
+              const normPath = normalize(f.path);
+              if (normPath === normFolder || normPath.startsWith(normFolder + '/')) {
+                  fileCount++;
+                  const content = fileContentsCache[f.path];
+                  charSum += content !== undefined ? content.length : f.char_count;
+                  
+                  const tokens = fileTokensCache[f.path];
+                  if (tokens !== undefined) {
+                      tokenSum += tokens;
+                      loadedCount++;
+                  }
+              }
+          });
+          
+          return {
+              chars: charSum,
+              tokens: tokenSum,
+              fileCount,
+              isLoaded: fileCount === loadedCount
+          };
+      }
+  })();
+
+  // Clear selected files when active tab changes
+  $: {
+    if ($tabs.activeTabId) {
+      selectedFiles.clear();
+      selectedFiles = selectedFiles;
+    }
+  }
+
   let showRenameModal = false;
   let showMergeModal = false;
   let newTabName = "";
@@ -490,9 +626,7 @@
 
   async function copyToClipboard() {
     try {
-      const temp = document.createElement("div");
-      temp.innerHTML = mergedContent;
-      const text = temp.textContent || temp.innerText || "";
+      const text = extractPlainText(mergedContent);
 
       await navigator.clipboard.writeText(text);
       showSnackbar($t("messages.copied"), "copy");
@@ -770,6 +904,8 @@
       copyToClipboard();
     } else if (isShortcut($shortcuts.refresh)) {
       event.preventDefault();
+      fileContentsCache = {};
+      fileTokensCache = {};
       updateContent();
       showSnackbar($t("messages.refreshed"));
     } else if (isShortcut($shortcuts.newTab)) {
@@ -886,7 +1022,7 @@
     event.preventDefault();
     
     // Viewport boundary check
-    const menuWidth = 240;
+    const menuWidth = 340;
     const menuHeight = isFile !== false ? 260 : 320;
     let x = event.clientX;
     let y = event.clientY;
@@ -936,6 +1072,15 @@
           });
 
           const updatedFiles = [...unchangedFiles, ...newFiles];
+
+          // Invalidate caches for updated files
+          newFiles.forEach(f => {
+              delete fileContentsCache[f.path];
+              delete fileTokensCache[f.path];
+          });
+          fileContentsCache = { ...fileContentsCache };
+          fileTokensCache = { ...fileTokensCache };
+
           tabs.setFilesForTab($tabs.activeTabId, updatedFiles);
 
           if (errors.length > 0) {
@@ -1426,6 +1571,7 @@
           <FileTree
             bind:this={fileTreeRef}
             {files}
+            {fileTokensCache}
             bind:selectedFiles
             bind:focusedFilePath
             {sortType}
@@ -1479,54 +1625,6 @@
         </button>
       </div>
 
-      <!-- Attribution/Footer Dock (Standardized & Cached) -->
-      <div class="p-3 border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center select-none">
-        <div class="flex items-center justify-between w-full">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              class="flex-shrink-0 transition-transform hover:scale-110 active:scale-95 duration-150 focus:outline-none cursor-pointer"
-              title="Pierpaolo Spadafora"
-              on:click={() => openExternal(authorUrl)}
-            >
-              <img src={authorIconUrl} alt="Pierpaolo Spadafora" class="w-8 h-8 rounded-full border border-[var(--border)] shadow-sm" />
-            </button>
-            <div class="flex flex-col gap-0.5 min-w-0">
-              <button
-                type="button"
-                class="text-xs font-semibold text-[var(--text)] hover:text-blue-400 transition-colors truncate leading-none text-left focus:outline-none cursor-pointer"
-                title="Releases"
-                on:click={() => openExternal(releasesUrl)}
-              >
-                {appVersionNum}
-              </button>
-              <button
-                type="button"
-                class="text-[10px] text-[var(--muted)] hover:text-blue-400 transition-colors leading-none text-left focus:outline-none cursor-pointer"
-                title="License"
-                on:click={() => openExternal(licenseUrl)}
-              >
-                {appLicense}
-              </button>
-            </div>
-          </div>
-          
-          <button
-            type="button"
-            class="flex items-center gap-2 px-2 py-1 rounded hover:bg-[var(--surface-3)] text-[var(--muted)] hover:text-[var(--text)] transition-all duration-150 border border-transparent hover:border-[var(--border)] focus:outline-none text-left cursor-pointer"
-            title="Repository"
-            on:click={() => openExternal(repoUrl)}
-          >
-            <div class="flex flex-col text-[9px] font-bold leading-tight uppercase tracking-wider text-right">
-              <span>GitHub</span>
-              <span class="opacity-75">Repo</span>
-            </div>
-            <svg class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.05A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      </div>
     </aside>
   {/if}
 
@@ -1802,11 +1900,37 @@
 
 {#if contextMenu.show}
   <div
-    class="fixed bg-[var(--surface-2)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[180px]"
-    style="top: {contextMenu.y}px; left: {contextMenu.x}px"
+    class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
+    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
   >
-    <div class="px-4 py-2 text-xs font-bold text-[var(--muted)] border-b border-[var(--border-light)] mb-1 select-text truncate max-w-[280px]" title={contextMenu.name}>
-      {contextMenu.name}
+    <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
+      <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.name}>
+        {truncatePath(contextMenu.name, 50)}
+      </div>
+      {#if contextMenuStats}
+        <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-[var(--text-secondary)] select-none">
+          <div class="flex items-center gap-1.5 text-[var(--muted)] whitespace-nowrap">
+            <span>{$t("app.characters") || "Characters"}: <span class="font-mono text-[var(--text)]">{formatNumber(contextMenuStats.chars)}</span></span>
+            <span>|</span>
+            <span>
+              {$t("app.tokens") || "Tokens"}: 
+              <span class="font-mono text-[var(--text)]">
+                {#if contextMenuStats.isLoaded}
+                  {formatNumber(contextMenuStats.tokens)}
+                {:else}
+                  <span class="animate-pulse text-[var(--muted)]">loading...</span>
+                {/if}
+              </span>
+            </span>
+          </div>
+          {#if !contextMenu.isFile}
+            <div class="flex justify-between gap-4 text-[10px] text-[var(--muted)] mt-0.5 pt-0.5 border-t border-[var(--border-light)]">
+              <span>Files:</span>
+              <span>{contextMenuStats.fileCount}</span>
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
@@ -1959,8 +2083,8 @@
 
 {#if tabContextMenu.show}
   <div
-    class="fixed bg-[var(--surface-2)] border border-[var(--border-light)] shadow-xl rounded py-1 z-50 text-sm min-w-[150px]"
-    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px"
+    class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[150px]"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
   >
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"

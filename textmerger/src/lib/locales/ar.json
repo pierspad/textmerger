@@ -21,7 +21,8 @@
     "sortCharacters": "الأحرف",
     "outputsHidden": "مخرجات Notebook مخفية",
     "outputsReduced": "مخرجات Notebook مصغرة",
-    "outputsFull": "مخرجات Notebook كاملة"
+    "outputsFull": "مخرجات Notebook كاملة",
+    "tokens": "الرموز"
   },
   "settings": {
     "title": "الإعدادات",

@@ -21,7 +21,8 @@
     "sortCharacters": "Znaki",
     "outputsHidden": "Wyjścia Notebooka ukryte",
     "outputsReduced": "Wyjścia Notebooka zredukowane",
-    "outputsFull": "Wyjścia Notebooka pełne"
+    "outputsFull": "Wyjścia Notebooka pełne",
+    "tokens": "Tokeny"
   },
   "settings": {
     "title": "Ustawienia",

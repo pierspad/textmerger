@@ -21,7 +21,8 @@
     "sortCharacters": "문자 수",
     "outputsHidden": "Notebook 출력 숨김",
     "outputsReduced": "Notebook 출력 축소 표시",
-    "outputsFull": "Notebook 출력 전체 표시"
+    "outputsFull": "Notebook 출력 전체 표시",
+    "tokens": "토큰"
   },
   "settings": {
     "title": "설정",
