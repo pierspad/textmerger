@@ -27,6 +27,7 @@
   /* gray-300 */
   --muted: #9ca3af;
   /* gray-400 */
+  --text-muted: #9ca3af;
 
   --border: #333333;
   --border-light: #444444;
@@ -34,6 +35,41 @@
   --accent: #0e639c;
   --accent-strong: #007acc;
   --accent-text: #ffffff;
+
+  /* Theme-aware File Icon Colors - Dark Mode */
+  --icon-default: var(--text-secondary);
+  --icon-py: #3b82f6;
+  --icon-js: #fbbf24;
+  --icon-ts: #3178c6;
+  --icon-svelte: #ff3e00;
+  --icon-vue: #4fc08d;
+  --icon-rs: #dea584;
+  --icon-html: #e34f26;
+  --icon-css: #3b82f6;
+  --icon-json: #fbbf24;
+  --icon-md: #0ea5e9;
+  --icon-git: #f14e32;
+  --icon-go: #00add8;
+  --icon-c: #cbd5e1;
+  --icon-cpp: #60a5fa;
+  --icon-h: #a78bfa;
+  --icon-sh: #4ade80;
+  --icon-cmd: #4ade80;
+  --icon-docker: #0db7ed;
+  --icon-java: #f87171;
+  --icon-kotlin: #c084fc;
+  --icon-csharp: #4ade80;
+  --icon-ruby: #f87171;
+  --icon-php: #a78bfa;
+  --icon-yaml: #fbbf24;
+  --icon-xml: #fbbf24;
+  --icon-sql: #22d3ee;
+  --icon-csv: #34d399;
+  --icon-pdf: #f87171;
+  --icon-txt: #f472b6;
+  --icon-asp: #c084fc;
+  --icon-lock: #9ca3af;
+  --icon-image: #34d399;
 }
 
 /* Light Theme Overrides */
@@ -54,6 +90,7 @@
   /* gray-700 */
   --muted: #6b7280;
   /* gray-500 */
+  --text-muted: #6b7280;
 
   --border: #e5e7eb;
   /* gray-200 */
@@ -67,6 +104,41 @@
   --tab-bg-active: var(--bg);
   --tab-bg-inactive: transparent;
   --tab-bg-hover: var(--bg-hover);
+
+  /* Theme-aware File Icon Colors - Light Mode (High Contrast) */
+  --icon-default: var(--text-secondary);
+  --icon-py: #1d4ed8;
+  --icon-js: #d97706;
+  --icon-ts: #1d4ed8;
+  --icon-svelte: #c22d00;
+  --icon-vue: #15803d;
+  --icon-rs: #9a3412;
+  --icon-html: #c2410c;
+  --icon-css: #1d4ed8;
+  --icon-json: #b45309;
+  --icon-md: #0369a1;
+  --icon-git: #b91c1c;
+  --icon-go: #0369a1;
+  --icon-c: #475569;
+  --icon-cpp: #0369a1;
+  --icon-h: #6d28d9;
+  --icon-sh: #15803d;
+  --icon-cmd: #15803d;
+  --icon-docker: #0369a1;
+  --icon-java: #b91c1c;
+  --icon-kotlin: #7e22ce;
+  --icon-csharp: #15803d;
+  --icon-ruby: #b91c1c;
+  --icon-php: #6d28d9;
+  --icon-yaml: #b45309;
+  --icon-xml: #b45309;
+  --icon-sql: #0e7490;
+  --icon-csv: #047857;
+  --icon-pdf: #b91c1c;
+  --icon-txt: #be185d;
+  --icon-asp: #7e22ce;
+  --icon-lock: #4b5563;
+  --icon-image: #047857;
 }
 
 :root {
