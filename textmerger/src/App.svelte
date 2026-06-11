@@ -314,8 +314,7 @@
   // Clear selected files when active tab changes
   $: {
     if ($tabs.activeTabId) {
-      selectedFiles.clear();
-      selectedFiles = selectedFiles;
+      selectedFiles = new Set();
     }
   }
 
@@ -614,13 +613,13 @@
     const remaining = files.filter(f => !filesToRemove.has(f.path));
     tabs.setFilesForTab($tabs.activeTabId, remaining);
 
-    selectedFiles.clear();
-    selectedFiles = selectedFiles;
+    selectedFiles = new Set();
     showSnackbar($t("messages.selectedRemoved"));
   }
 
   async function removeAll() {
     tabs.setFilesForTab($tabs.activeTabId, []);
+    selectedFiles = new Set();
     showSnackbar($t("messages.allRemoved"));
   }
 

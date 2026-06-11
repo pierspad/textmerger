@@ -6,7 +6,7 @@ export default defineConfig({
   base: './',
   clearScreen: false,
   server: {
-    port: 5174,
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5174,
     strictPort: true,
     watch: {
       ignored: ["**/src-tauri/**"],

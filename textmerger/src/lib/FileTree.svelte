@@ -237,6 +237,9 @@
         window.getSelection()?.removeAllRanges();
       }
 
+      // Create a copy of the selectedFiles Set to change reference and trigger reactivity in Svelte 5
+      const newSelectedFiles = new Set(selectedFiles);
+
       if (e.shiftKey && lastSelectedPath) {
           const visiblePaths = getVisiblePaths();
           const startIdx = visiblePaths.indexOf(lastSelectedPath);
@@ -249,26 +252,26 @@
               const range = visiblePaths.slice(start, end + 1);
               
               if (!e.ctrlKey && !e.metaKey) {
-                   selectedFiles.clear();
+                   newSelectedFiles.clear();
               }
               
-              range.forEach(p => selectedFiles.add(p));
+              range.forEach(p => newSelectedFiles.add(p));
           }
       } else if (e.ctrlKey || e.metaKey) {
-          if (selectedFiles.has(path)) {
-              selectedFiles.delete(path);
+          if (newSelectedFiles.has(path)) {
+              newSelectedFiles.delete(path);
               lastSelectedPath = path; 
           } else {
-              selectedFiles.add(path);
+              newSelectedFiles.add(path);
               lastSelectedPath = path;
           }
       } else {
-          selectedFiles.clear();
-          selectedFiles.add(path);
+          newSelectedFiles.clear();
+          newSelectedFiles.add(path);
           lastSelectedPath = path;
       }
       
-      selectedFiles = selectedFiles;
+      selectedFiles = newSelectedFiles;
   }
 
   export function navigate(direction: 1 | -1) {
@@ -298,9 +301,7 @@
       focusedFilePath = nextPath;
       
       if (selectedFiles.size <= 1) {
-          selectedFiles.clear();
-          selectedFiles.add(nextPath);
-          selectedFiles = selectedFiles;
+          selectedFiles = new Set([nextPath]);
       }
       
       setTimeout(() => {
