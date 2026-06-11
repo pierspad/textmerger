@@ -1,5 +1,5 @@
-## Release Notes v2.8.1
+## Release Notes v2.8.2
 
 ### Fixes
 
-* **UI fixes**: File icons fixed and proper counting
+* Fixed a bug of the selection in the list of files
