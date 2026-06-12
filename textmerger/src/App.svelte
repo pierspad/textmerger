@@ -149,13 +149,24 @@
       .replace(/&amp;/g, "&");
   }
 
-  $: plainTextContent = extractPlainText(mergedContent);
+  $: {
+    const _cache = fileContentsCache;
+    plainTextContent = getFilesPlainText(files);
+  }
 
+  let tokenCountTimeout: any;
   $: {
     if (plainTextContent) {
-      const _dummy = isGeminiLoaded; // Reference to force reactive update when loaded
-      tokenCount = calculateTokenCount(plainTextContent, $settings.tokenizerModel);
+      const _dummy = isGeminiLoaded;
+      const currentModel = $settings.tokenizerModel;
+      const text = plainTextContent;
+      
+      if (tokenCountTimeout) clearTimeout(tokenCountTimeout);
+      tokenCountTimeout = setTimeout(() => {
+        tokenCount = calculateTokenCount(text, currentModel);
+      }, 100);
     } else {
+      if (tokenCountTimeout) clearTimeout(tokenCountTimeout);
       tokenCount = 0;
     }
   }
@@ -251,60 +262,116 @@
       fileContentsCache = { ...fileContentsCache };
     }
 
-    // Compute missing token counts
+    // Compute missing token counts progressively in the background, yielding to the event loop
     let tokensChanged = false;
-    currentFiles.forEach(f => {
+    let lastYield = performance.now();
+    
+    for (const f of currentFiles) {
       if (fileTokensCache[f.path] === undefined) {
         const content = fileContentsCache[f.path] || "";
         fileTokensCache[f.path] = calculateTokenCount(content, model);
         tokensChanged = true;
+        
+        // Yield if we have run for more than 10ms
+        if (performance.now() - lastYield > 10) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          lastYield = performance.now();
+        }
       }
-    });
+    }
 
     if (tokensChanged) {
       fileTokensCache = { ...fileTokensCache };
     }
   }
 
-  $: contextMenuStats = (() => {
-      if (!contextMenu.show || !contextMenu.path) return null;
-      if (contextMenu.isFile) {
-          const path = contextMenu.path;
-          const content = fileContentsCache[path];
-          const file = files.find(f => f.path === path);
-          if (!file) return null;
-          const plainText = getFilesPlainText([file]);
-          const chars = plainText.length;
-          const tokens = content !== undefined ? calculateTokenCount(plainText, $settings.tokenizerModel) : 0;
-          return {
-              chars,
-              tokens,
-              isLoaded: content !== undefined
-          };
+  let contextMenuStats: { chars: number, tokens: number, fileCount?: number, isLoaded: boolean } | null = null;
+  let contextMenuStatsTimeout: any;
+
+  async function updateContextMenuStats(menu: typeof contextMenu, currentFiles: FileNode[], cache: typeof fileContentsCache, model: string) {
+    if (!menu.show || !menu.path) {
+      contextMenuStats = null;
+      return;
+    }
+    
+    // Set initial loading state
+    contextMenuStats = { chars: 0, tokens: 0, isLoaded: false };
+    
+    // Debounce the calculation by 50ms so right-click is instant
+    if (contextMenuStatsTimeout) clearTimeout(contextMenuStatsTimeout);
+    contextMenuStatsTimeout = setTimeout(async () => {
+      if (menu.isFile) {
+        const path = menu.path;
+        const content = cache[path];
+        const file = currentFiles.find(f => f.path === path);
+        if (!file) return;
+        
+        const plainText = getFilesPlainText([file]);
+        const chars = plainText.length;
+        
+        let tokens = 0;
+        if (content !== undefined) {
+          if (fileTokensCache[path] !== undefined) {
+            tokens = fileTokensCache[path];
+          } else {
+            tokens = calculateTokenCount(plainText, model);
+          }
+        }
+        
+        contextMenuStats = {
+          chars,
+          tokens,
+          isLoaded: content !== undefined
+        };
       } else {
-          // Folder
-          const normFolder = normalize(contextMenu.path);
-          const folderFiles = files.filter(f => {
-              const normPath = normalize(f.path);
-              return normPath === normFolder || normPath.startsWith(normFolder + '/');
-          });
+        const normFolder = normalize(menu.path);
+        const folderFiles = currentFiles.filter(f => {
+          const normPath = normalize(f.path);
+          return normPath === normFolder || normPath.startsWith(normFolder + '/');
+        });
+        
+        const plainText = getFilesPlainText(folderFiles);
+        const chars = plainText.length;
+        
+        const loadedCount = folderFiles.filter(f => cache[f.path] !== undefined).length;
+        const isLoaded = folderFiles.length === loadedCount;
+        
+        let tokens = 0;
+        if (isLoaded) {
+          // Check if all files in the folder have cached token counts
+          let allTokensCached = true;
+          let sumTokens = 0;
+          for (const f of folderFiles) {
+            if (fileTokensCache[f.path] !== undefined) {
+              sumTokens += fileTokensCache[f.path];
+            } else {
+              allTokensCached = false;
+              break;
+            }
+          }
           
-          const plainText = getFilesPlainText(folderFiles);
-          const chars = plainText.length;
-          
-          const loadedCount = folderFiles.filter(f => fileContentsCache[f.path] !== undefined).length;
-          const isLoaded = folderFiles.length === loadedCount;
-          
-          const tokens = isLoaded ? calculateTokenCount(plainText, $settings.tokenizerModel) : 0;
-          
-          return {
-              chars,
-              tokens,
-              fileCount: folderFiles.length,
-              isLoaded
-          };
+          if (allTokensCached) {
+            tokens = sumTokens;
+          } else {
+            // Yield to the event loop before counting tokens to prevent UI stutters
+            await new Promise(r => setTimeout(r, 0));
+            tokens = calculateTokenCount(plainText, model);
+          }
+        }
+        
+        contextMenuStats = {
+          chars,
+          tokens,
+          fileCount: folderFiles.length,
+          isLoaded
+        };
       }
-  })();
+    }, 50);
+  }
+
+  $: {
+    void updateContextMenuStats(contextMenu, files, fileContentsCache, $settings.tokenizerModel);
+  }
 
   // Clear selected files when active tab changes
   $: {
@@ -1383,11 +1450,30 @@
   }
 
   function getFilesPlainText(matchingFiles: any[]): string {
-    const htmlBlocks = matchingFiles.map(f => {
-      const idx = files.findIndex(file => file.path === f.path);
-      return getFileHtml(f.path, idx, f, fileContentsCache[f.path]);
-    });
-    return extractPlainText(htmlBlocks.join("\n"));
+    if (!matchingFiles || matchingFiles.length === 0) return "";
+    return matchingFiles.map(f => {
+      const path = f.path;
+      if (f.hidden) {
+        return `-------------------\n${path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`;
+      }
+      
+      let fileContent = fileContentsCache[path] || "";
+      
+      if ($settings.largeFileThreshold > 0 && f.char_count > $settings.largeFileThreshold) {
+        const isForced = forceFullLoadPaths.has(path) || Array.from(forceFullLoadPaths).some(p => {
+          return path.startsWith(p) && (
+            path.charAt(p.length) === '/' || path.charAt(p.length) === '\\'
+          );
+        });
+        if (!isForced) {
+          if (fileContent.length > $settings.largeFileThreshold) {
+            fileContent = fileContent.slice(0, $settings.largeFileThreshold) + "\n\n[... The rest of the file was truncated due to its length ...]";
+          }
+        }
+      }
+      
+      return `-------------------\n${path} \n-------------------\n${fileContent}\n`;
+    }).join("\n");
   }
 
   async function copyFileContentWithHeader() {
@@ -2025,11 +2111,11 @@
 {#if contextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
-    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 99999; background-color: var(--surface-2);"
+    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 0); will-change: transform;"
   >
     <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
       <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.name}>
-        {truncatePath(contextMenu.name, 50)}
+        {truncatePath(contextMenu.name, 70)}
       </div>
       {#if contextMenuStats}
         <div class="mt-1.5 text-[11px] select-none w-full">
@@ -2245,7 +2331,7 @@
 {#if tabContextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[150px]"
-    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 99999; background-color: var(--surface-2);"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 0); will-change: transform;"
   >
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"
