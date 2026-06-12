@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=2.8.2
+Version=2.9.0
 Type=Application
 Name=TextMerger
 Comment=A Rust/Tauri GTK3 application for merging text files
