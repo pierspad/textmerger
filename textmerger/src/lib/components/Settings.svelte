@@ -192,13 +192,33 @@
         if (!matches) return false;
       }
       
-      // Second, filter by search keys
-      if (searchKeys.length > 0) {
-        const shortcutParts = keybind.split("+").map(k => k.trim().toUpperCase());
-        return searchKeys.every(searchKey => {
-          const upperSearchKey = searchKey.toUpperCase();
-          return shortcutParts.includes(upperSearchKey);
-        });
+      // Second, filter by search query / keys
+      if (searchMode === 'text') {
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const desc = getLabel(actionKey) || "";
+          const actionKeyLower = actionKey.toLowerCase();
+          const keybindLower = keybind.toLowerCase();
+          
+          if (
+            desc.toLowerCase().includes(q) || 
+            actionKeyLower.includes(q) || 
+            keybindLower.includes(q) ||
+            fuzzyMatch(desc, q) ||
+            fuzzyMatch(keybind, q)
+          ) {
+            return true;
+          }
+          return false;
+        }
+      } else {
+        if (searchKeys.length > 0) {
+          const shortcutParts = keybind.split("+").map(k => k.trim().toUpperCase());
+          return searchKeys.every(searchKey => {
+            const upperSearchKey = searchKey.toUpperCase();
+            return shortcutParts.includes(upperSearchKey);
+          });
+        }
       }
       
       return true;
@@ -475,8 +495,51 @@
   }
 
   // Shortcut search state and handlers
+  let searchMode: 'text' | 'keys' = 'text';
+  let searchQuery = "";
   let searchKeys: string[] = [];
   let isListeningForSearchKeys = false;
+
+  $: labels = (() => {
+    const lang = $locale || "en";
+    const dict = {
+      it: { text: "TESTO", keys: "TASTI", textPlaceholder: "Cerca per testo...", keysPlaceholder: "Cerca per tasti...", pressKeys: "Premi i tasti..." },
+      es: { text: "TEXTO", keys: "TECLAS", textPlaceholder: "Buscar por texto...", keysPlaceholder: "Buscar por teclas...", pressKeys: "Presiona las teclas..." },
+      fr: { text: "TEXTE", keys: "TOUCHES", textPlaceholder: "Rechercher par texte...", keysPlaceholder: "Rechercher par touches...", pressKeys: "Appuyez sur les touches..." },
+      pt: { text: "TEXTO", keys: "TECLAS", textPlaceholder: "Pesquisar por texto...", keysPlaceholder: "Pesquisar por teclas...", pressKeys: "Pressione as teclas..." },
+      de: { text: "TEXT", keys: "TASTEN", textPlaceholder: "Nach Text suchen...", keysPlaceholder: "Nach Tasten suchen...", pressKeys: "Tasten drücken..." },
+      en: { text: "TEXT", keys: "KEYS", textPlaceholder: "Search by text...", keysPlaceholder: "Search by keys...", pressKeys: "Press keys..." }
+    };
+    return (dict as Record<string, typeof dict.en>)[lang] || dict["en"];
+  })();
+
+  function fuzzyMatch(text: string, query: string): boolean {
+    if (!query) return true;
+    if (!text) return false;
+    
+    const q = query.toLowerCase().replace(/\s+/g, "");
+    const t = text.toLowerCase();
+    
+    let queryIdx = 0;
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === q[queryIdx]) {
+        queryIdx++;
+        if (queryIdx === q.length) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function setSearchMode(mode: 'text' | 'keys') {
+    searchMode = mode;
+    if (mode === 'text') {
+      clearSearchKeys();
+    } else {
+      searchQuery = "";
+    }
+  }
 
   function startSearchListening() {
     isListeningForSearchKeys = true;
@@ -902,61 +965,115 @@
           </div>
 
           <!-- Search Bar -->
-          <div class="relative flex items-center min-w-[280px]">
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div class="relative flex items-center w-96 max-w-full">
             <div 
-              class="flex items-center gap-2 px-3 py-1.5 w-full bg-[var(--surface)] border {isListeningForSearchKeys ? 'border-[#0e639c] ring-1 ring-[#0e639c]' : 'border-[var(--border)]'} rounded text-sm cursor-pointer hover:bg-[var(--bg-hover)] transition-all select-none"
-              on:click|stopPropagation={() => {
-                if (isListeningForSearchKeys) {
-                  stopSearchListening();
-                } else {
-                  startSearchListening();
-                }
-              }}
+              class="flex items-center gap-2 p-0.5 w-full bg-[var(--surface)] border {isListeningForSearchKeys ? 'border-[#0e639c] ring-1 ring-[#0e639c]' : 'border-[var(--border)] focus-within:border-[#0e639c] focus-within:ring-1 focus-within:ring-[#0e639c]'} rounded text-sm transition-all select-none"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)] shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
-              </svg>
+              <!-- Search Icon (Left) -->
+              <div class="pl-2 pr-1 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)] shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
+                </svg>
+              </div>
 
-              <div class="flex-1 flex flex-wrap items-center gap-1.5 min-h-[20px]">
-                {#if searchKeys.length > 0}
-                  <div class="flex items-center gap-1.5">
-                    {#each searchKeys as key, i}
-                      {#if i > 0}
-                        <span class="text-[var(--muted)] text-xs font-semibold select-none">+</span>
+              <!-- Middle input area -->
+              <div class="flex-1 min-w-0 pr-6 relative">
+                {#if searchMode === "text"}
+                  <input
+                    type="text"
+                    bind:value={searchQuery}
+                    placeholder={labels.textPlaceholder}
+                    class="w-full py-1 bg-transparent border-0 text-sm text-[var(--text)] focus:outline-none placeholder-[var(--muted)]"
+                  />
+                  {#if searchQuery}
+                    <button
+                      type="button"
+                      on:click={() => (searchQuery = "")}
+                      class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-red-500 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      ✕
+                    </button>
+                  {/if}
+                {:else}
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div
+                    on:click|stopPropagation={() => {
+                      if (isListeningForSearchKeys) {
+                        stopSearchListening();
+                      } else {
+                        startSearchListening();
+                      }
+                    }}
+                    class="w-full py-1 text-sm text-[var(--text)] flex items-center cursor-pointer select-none min-h-[28px]"
+                  >
+                    <div class="flex-1 flex flex-wrap items-center gap-1 min-w-0">
+                      {#if searchKeys.length > 0}
+                        <div class="flex items-center gap-1 flex-wrap">
+                          {#each searchKeys as key, i}
+                            {#if i > 0}
+                              <span class="text-[var(--muted)] text-[10px] font-semibold">+</span>
+                            {/if}
+                            <kbd class="px-1.5 py-0.5 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[10px] text-[var(--text)] font-mono font-semibold shadow-sm tracking-wide whitespace-nowrap">
+                              {key}
+                            </kbd>
+                          {/each}
+                          {#if isListeningForSearchKeys}
+                            <span class="w-[1.5px] h-3.5 bg-[#0e639c] animate-pulse ml-0.5 shrink-0"></span>
+                          {/if}
+                        </div>
+                      {:else if isListeningForSearchKeys}
+                        <span class="text-xs text-[#0e639c] font-medium animate-pulse">{labels.pressKeys}</span>
+                      {:else}
+                        <span class="text-[var(--muted)] text-xs">{labels.keysPlaceholder}</span>
                       {/if}
-                      <kbd class="px-1.5 py-0.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-mono text-xs font-semibold shadow-sm">
-                        {key}
-                      </kbd>
-                    {/each}
-                    {#if isListeningForSearchKeys}
-                      <span class="w-[1.5px] h-[15px] bg-[#0e639c] animate-caret ml-0.5 shrink-0 self-center"></span>
+                    </div>
+                    {#if searchKeys.length > 0 || isListeningForSearchKeys}
+                      <button
+                        type="button"
+                        on:click|stopPropagation={clearSearchKeys}
+                        class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-red-500 transition-colors"
+                        aria-label="Clear search keys"
+                      >
+                        ✕
+                      </button>
                     {/if}
                   </div>
-                {:else}
-                  {#if isListeningForSearchKeys}
-                    <span class="w-[1.5px] h-[15px] bg-[#0e639c] animate-caret shrink-0 self-center"></span>
-                  {:else}
-                    <span class="text-[var(--muted)] text-xs flex items-center gap-0.5">
-                      {$locale === 'it' ? 'Cerca' : 'Search'}
-                    </span>
-                  {/if}
                 {/if}
               </div>
 
-              {#if searchKeys.length > 0 || isListeningForSearchKeys}
+              <!-- Switch Buttons (Right side inside the search input) -->
+              <div class="flex items-center bg-[var(--surface-2)] border border-[var(--border)] rounded p-0.5 shrink-0 select-none mr-0.5">
                 <button
                   type="button"
-                  class="p-0.5 text-[var(--muted)] hover:text-red-500 hover:bg-[var(--bg-hover-strong)] rounded transition-colors shrink-0"
-                  on:click|stopPropagation={clearSearchKeys}
-                  title={$locale === 'it' ? 'Cancella ricerca' : 'Clear search'}
+                  on:click|stopPropagation={() => setSearchMode("text")}
+                  class="px-2 py-0.5 rounded text-[9px] font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer
+                    {searchMode === 'text'
+                      ? 'bg-[#0e639c] text-white shadow shadow-[#0e639c]/20'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]'}"
+                  title={labels.textPlaceholder}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
-                    <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
                   </svg>
+                  <span>{labels.text}</span>
                 </button>
-              {/if}
+                <button
+                  type="button"
+                  on:click|stopPropagation={() => setSearchMode("keys")}
+                  class="px-2 py-0.5 rounded text-[9px] font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer
+                    {searchMode === 'keys'
+                      ? 'bg-[#0e639c] text-white shadow shadow-[#0e639c]/20'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]'}"
+                  title={labels.keysPlaceholder}
+                >
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1-4m8 0h1m-9 0H3m18 0h-3M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                  </svg>
+                  <span>{labels.keys}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
