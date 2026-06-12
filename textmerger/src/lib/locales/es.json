@@ -124,7 +124,10 @@
     "showDirContent": "Mostrar contenido",
     "showDirRecursive": "Mostrar recursivamente",
     "revealDirRecursive": "Mostrar contenido completo recursivamente",
-    "truncateDirRecursive": "Truncar contenido recursivamente"
+    "truncateDirRecursive": "Truncar contenido recursivamente",
+    "copyFileContentWithHeader": "Copiar contenido con encabezado",
+    "copyFolderContent": "Copiar contenido de la carpeta",
+    "copyFolderContentRecursive": "Copiar contenido de la carpeta recursivamente"
   },
   "contextMenu": {
     "copyPath": "Copiar ruta absoluta",
@@ -138,7 +141,10 @@
     "revealFullContent": "Revelar contenido completo del archivo",
     "revealFullContentRecursive": "Mostrar contenido completo recursivamente",
     "truncateFile": "Truncar archivo",
-    "truncateDirRecursive": "Truncar contenido recursivamente"
+    "truncateDirRecursive": "Truncar contenido recursivamente",
+    "copyFileContentWithHeader": "Copiar contenido con encabezado",
+    "copyFolderContent": "Copiar contenido de la carpeta",
+    "copyFolderContentRecursive": "Copiar contenido de la carpeta recursivamente"
   },
   "messages": {
     "showingOutputs": "Mostrando salidas",

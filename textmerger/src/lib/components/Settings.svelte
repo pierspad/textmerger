@@ -169,7 +169,7 @@
 
   const shortcutCategories = [
     { id: 'general', key: 'settings.categoryGeneral', actions: ['open', 'save', 'exit', 'refresh'] },
-    { id: 'clipboard', key: 'settings.categoryClipboard', actions: ['copyText', 'copyPath', 'copyFilename', 'copyFileContent'] },
+    { id: 'clipboard', key: 'settings.categoryClipboard', actions: ['copyText', 'copyPath', 'copyFilename', 'copyFileContent', 'copyFileContentWithHeader', 'copyFolderContent', 'copyFolderContentRecursive'] },
     { id: 'tabs', key: 'settings.categoryTabs', actions: ['newTab', 'closeTab', 'previousTab', 'nextTab', 'tab1', 'tab2', 'tab3', 'tab4', 'tab5', 'tab6', 'tab7', 'tab8', 'tab9'] },
     { id: 'fileActions', key: 'settings.categoryFileActions', actions: ['remove', 'removeAll', 'toggleVisibility', 'refreshFolder', 'refreshFolderRecursive', 'revealFullContent'] }
   ];

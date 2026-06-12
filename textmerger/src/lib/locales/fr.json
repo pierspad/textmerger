@@ -124,7 +124,10 @@
     "showDirContent": "Afficher le contenu",
     "showDirRecursive": "Afficher récursivement",
     "revealDirRecursive": "Afficher le contenu complet récursivement",
-    "truncateDirRecursive": "Tronquer le contenu récursivement"
+    "truncateDirRecursive": "Tronquer le contenu récursivement",
+    "copyFileContentWithHeader": "Copier le contenu avec en-tête",
+    "copyFolderContent": "Copier le contenu du dossier",
+    "copyFolderContentRecursive": "Copier le contenu du dossier récursivement"
   },
   "contextMenu": {
     "copyPath": "Copier le chemin absolu",
@@ -138,7 +141,10 @@
     "revealFullContent": "Révéler le contenu complet du fichier",
     "revealFullContentRecursive": "Afficher le contenu complet récursivement",
     "truncateFile": "Tronquer le fichier",
-    "truncateDirRecursive": "Tronquer le contenu récursivement"
+    "truncateDirRecursive": "Tronquer le contenu récursivement",
+    "copyFileContentWithHeader": "Copier le contenu avec en-tête",
+    "copyFolderContent": "Copier le contenu du dossier",
+    "copyFolderContentRecursive": "Copier le contenu du dossier récursivement"
   },
   "messages": {
     "showingOutputs": "Affichage des sorties",

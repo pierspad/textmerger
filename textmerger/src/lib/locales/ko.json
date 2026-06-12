@@ -124,7 +124,10 @@
     "showDirContent": "콘텐츠 표시",
     "showDirRecursive": "재귀적으로 표시",
     "revealDirRecursive": "전체 콘텐츠 재귀적으로 표시",
-    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기"
+    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기",
+    "copyFileContentWithHeader": "헤더와 함께 복사",
+    "copyFolderContent": "폴더 내용 복사",
+    "copyFolderContentRecursive": "폴더 내용 재귀적으로 복사"
   },
   "contextMenu": {
     "copyPath": "절대 경로 복사",
@@ -138,7 +141,10 @@
     "revealFullContent": "파일 전체 내용 표시",
     "revealFullContentRecursive": "전체 콘텐츠 재귀적으로 표시",
     "truncateFile": "파일 자르기",
-    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기"
+    "truncateDirRecursive": "콘텐츠 재귀적으로 자르기",
+    "copyFileContentWithHeader": "헤더와 함께 복사",
+    "copyFolderContent": "폴더 내용 복사",
+    "copyFolderContentRecursive": "폴더 내용 재귀적으로 복사"
   },
   "messages": {
     "showingOutputs": "출력 표시 중",

@@ -124,7 +124,10 @@
     "showDirContent": "عرض المحتوى",
     "showDirRecursive": "عرض بشكل متكرر",
     "revealDirRecursive": "كشف المحتوى الكامل بشكل متكرر",
-    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر"
+    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر",
+    "copyFileContentWithHeader": "نسخ المحتوى مع الترويسة",
+    "copyFolderContent": "نسخ محتوى المجلد",
+    "copyFolderContentRecursive": "نسخ محتوى المجلد بشكل متكرر"
   },
   "contextMenu": {
     "copyPath": "نسخ المسار المطلق",
@@ -138,7 +141,10 @@
     "revealFullContent": "كشف محتوى الملف بالكامل",
     "revealFullContentRecursive": "كشف المحتوى الكامل بشكل متكرر",
     "truncateFile": "اقتطاع الملف",
-    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر"
+    "truncateDirRecursive": "اقتصاص المحتوى بشكل متكرر",
+    "copyFileContentWithHeader": "نسخ المحتوى مع الترويسة",
+    "copyFolderContent": "نسخ محتوى المجلد",
+    "copyFolderContentRecursive": "نسخ محتوى المجلد بشكل متكرر"
   },
   "messages": {
     "showingOutputs": "يتم إظهار المخرجات",

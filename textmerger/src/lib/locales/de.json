@@ -124,7 +124,10 @@
     "showDirContent": "Inhalt anzeigen",
     "showDirRecursive": "Rekursiv anzeigen",
     "revealDirRecursive": "Vollständigen Inhalt rekursiv anzeigen",
-    "truncateDirRecursive": "Inhalt rekursiv kürzen"
+    "truncateDirRecursive": "Inhalt rekursiv kürzen",
+    "copyFileContentWithHeader": "Inhalt mit Header kopieren",
+    "copyFolderContent": "Ordnerinhalt kopieren",
+    "copyFolderContentRecursive": "Ordnerinhalt rekursiv kopieren"
   },
   "contextMenu": {
     "copyPath": "Absoluten Pfad kopieren",
@@ -138,7 +141,10 @@
     "revealFullContent": "Gesamten Dateiinhalt anzeigen",
     "revealFullContentRecursive": "Vollständigen Inhalt rekursiv anzeigen",
     "truncateFile": "Datei kürzen",
-    "truncateDirRecursive": "Inhalt rekursiv kürzen"
+    "truncateDirRecursive": "Inhalt rekursiv kürzen",
+    "copyFileContentWithHeader": "Inhalt mit Header kopieren",
+    "copyFolderContent": "Ordnerinhalt kopieren",
+    "copyFolderContentRecursive": "Ordnerinhalt rekursiv kopieren"
   },
   "messages": {
     "showingOutputs": "Ausgaben werden angezeigt",

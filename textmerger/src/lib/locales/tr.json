@@ -124,7 +124,10 @@
     "showDirContent": "İçeriği göster",
     "showDirRecursive": "Yinelemeli olarak göster",
     "revealDirRecursive": "Tüm içeriği yinelemeli olarak göster",
-    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt"
+    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt",
+    "copyFileContentWithHeader": "Başlıkla içeriği kopyala",
+    "copyFolderContent": "Klasör içeriğini kopyala",
+    "copyFolderContentRecursive": "Klasör içeriğini yinelemeli kopyala"
   },
   "contextMenu": {
     "copyPath": "Mutlak yolu kopyala",
@@ -138,7 +141,10 @@
     "revealFullContent": "Dosyanın tüm içeriğini göster",
     "revealFullContentRecursive": "Tüm içeriği yinelemeli olarak göster",
     "truncateFile": "Dosyayı kırp",
-    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt"
+    "truncateDirRecursive": "İçeriği yinelemeli olarak kısalt",
+    "copyFileContentWithHeader": "Başlıkla içeriği kopyala",
+    "copyFolderContent": "Klasör içeriğini kopyala",
+    "copyFolderContentRecursive": "Klasör içeriğini yinelemeli kopyala"
   },
   "messages": {
     "showingOutputs": "Çıktılar gösteriliyor",

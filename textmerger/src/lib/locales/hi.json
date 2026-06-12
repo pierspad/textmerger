@@ -124,7 +124,10 @@
     "showDirContent": "सामग्री दिखाएँ",
     "showDirRecursive": "पुनरावर्ती रूप से दिखाएँ",
     "revealDirRecursive": "पूर्ण सामग्री को पुनरावर्ती रूप से प्रकट करें",
-    "truncateDirRecursive": "सामग्री को पुनरावर्ती रूप से छोटा करें"
+    "truncateDirRecursive": "सामग्री को पुनरावर्ती रूप से छोटा करें",
+    "copyFileContentWithHeader": "हेडर के साथ सामग्री कॉपी करें",
+    "copyFolderContent": "फ़ोल्डर सामग्री कॉपी करें",
+    "copyFolderContentRecursive": "फ़ोल्डर सामग्री पुनरावर्ती रूप से कॉपी करें"
   },
   "contextMenu": {
     "copyPath": "पूर्ण पथ कॉपी करें",
@@ -138,7 +141,10 @@
     "revealFullContent": "फाइल की पूरी सामग्री दिखाएं",
     "revealFullContentRecursive": "पूर्ण सामग्री को पुनरावर्ती रूप से प्रकट करें",
     "truncateFile": "फाइल काटें",
-    "truncateDirRecursive": "सामग्री को पुनरावर्ती रूप से छोटा करें"
+    "truncateDirRecursive": "सामग्री को पुनरावर्ती रूप से छोटा करें",
+    "copyFileContentWithHeader": "हेडर के साथ सामग्री कॉपी करें",
+    "copyFolderContent": "फ़ोल्डर सामग्री कॉपी करें",
+    "copyFolderContentRecursive": "फ़ोल्डर सामग्री पुनरावर्ती रूप से कॉपी करें"
   },
   "messages": {
     "showingOutputs": "आउटपुट दिखाए जा रहे हैं",

@@ -124,7 +124,10 @@
     "showDirContent": "Показать содержимое",
     "showDirRecursive": "Показать рекурсивно",
     "revealDirRecursive": "Показать полное содержимое рекурсивно",
-    "truncateDirRecursive": "Обрезать содержимое рекурсивно"
+    "truncateDirRecursive": "Обрезать содержимое рекурсивно",
+    "copyFileContentWithHeader": "Копировать содержимое с заголовком",
+    "copyFolderContent": "Копировать содержимое папки",
+    "copyFolderContentRecursive": "Рекурсивно копировать содержимое папки"
   },
   "contextMenu": {
     "copyPath": "Копировать полный путь",
@@ -138,7 +141,10 @@
     "revealFullContent": "Показать полное содержимое файла",
     "revealFullContentRecursive": "Показать полное содержимое рекурсивно",
     "truncateFile": "Обрезать файл",
-    "truncateDirRecursive": "Обрезать содержимое рекурсивно"
+    "truncateDirRecursive": "Обрезать содержимое рекурсивно",
+    "copyFileContentWithHeader": "Копировать содержимое с заголовком",
+    "copyFolderContent": "Копировать содержимое папки",
+    "copyFolderContentRecursive": "Рекурсивно копировать содержимое папки"
   },
   "messages": {
     "showingOutputs": "Вывод показан",

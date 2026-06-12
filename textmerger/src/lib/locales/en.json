@@ -124,12 +124,18 @@
     "showDirContent": "Show content",
     "showDirRecursive": "Show recursively",
     "revealDirRecursive": "Reveal full content recursively",
-    "truncateDirRecursive": "Truncate content recursively"
+    "truncateDirRecursive": "Truncate content recursively",
+    "copyFileContentWithHeader": "Copy content with header",
+    "copyFolderContent": "Copy folder content",
+    "copyFolderContentRecursive": "Copy folder content recursively"
   },
   "contextMenu": {
     "copyPath": "Copy absolute path",
     "copyFilename": "Copy filename",
     "copyFileContent": "Copy file content",
+    "copyFileContentWithHeader": "Copy content with header",
+    "copyFolderContent": "Copy folder content",
+    "copyFolderContentRecursive": "Copy folder content recursively",
     "refreshFolderOnly": "Refresh this folder only",
     "refreshFolderRecursive": "Refresh folder recursively",
     "hideContent": "Hide content",

@@ -124,7 +124,10 @@
     "showDirContent": "Inhoud tonen",
     "showDirRecursive": "Recursief tonen",
     "revealDirRecursive": "Volledige inhoud recursief tonen",
-    "truncateDirRecursive": "Inhoud recursief afkappen"
+    "truncateDirRecursive": "Inhoud recursief afkappen",
+    "copyFileContentWithHeader": "Inhoud met header kopiëren",
+    "copyFolderContent": "Mapinhoud kopiëren",
+    "copyFolderContentRecursive": "Mapinhoud recursief kopiëren"
   },
   "contextMenu": {
     "copyPath": "Absoluut pad kopieren",
@@ -138,7 +141,10 @@
     "revealFullContent": "Volledige bestandsinhoud tonen",
     "revealFullContentRecursive": "Volledige inhoud recursief tonen",
     "truncateFile": "Bestand afkappen",
-    "truncateDirRecursive": "Inhoud recursief afkappen"
+    "truncateDirRecursive": "Inhoud recursief afkappen",
+    "copyFileContentWithHeader": "Inhoud met header kopiëren",
+    "copyFolderContent": "Mapinhoud kopiëren",
+    "copyFolderContentRecursive": "Mapinhoud recursief kopiëren"
   },
   "messages": {
     "showingOutputs": "Uitvoer wordt getoond",

@@ -272,41 +272,36 @@
           const path = contextMenu.path;
           const content = fileContentsCache[path];
           const file = files.find(f => f.path === path);
-          const chars = content !== undefined ? content.length : (file ? file.char_count : 0);
-          const tokens = fileTokensCache[path];
+          if (!file) return null;
+          const plainText = getFilesPlainText([file]);
+          const chars = plainText.length;
+          const tokens = content !== undefined ? calculateTokenCount(plainText, $settings.tokenizerModel) : 0;
           return {
               chars,
               tokens,
-              isLoaded: content !== undefined && tokens !== undefined
+              isLoaded: content !== undefined
           };
       } else {
           // Folder
           const normFolder = normalize(contextMenu.path);
-          let charSum = 0;
-          let tokenSum = 0;
-          let fileCount = 0;
-          let loadedCount = 0;
-          
-          files.forEach(f => {
+          const folderFiles = files.filter(f => {
               const normPath = normalize(f.path);
-              if (normPath === normFolder || normPath.startsWith(normFolder + '/')) {
-                  fileCount++;
-                  const content = fileContentsCache[f.path];
-                  charSum += content !== undefined ? content.length : f.char_count;
-                  
-                  const tokens = fileTokensCache[f.path];
-                  if (tokens !== undefined) {
-                      tokenSum += tokens;
-                      loadedCount++;
-                  }
-              }
+              return normPath === normFolder || normPath.startsWith(normFolder + '/');
           });
           
+          const plainText = getFilesPlainText(folderFiles);
+          const chars = plainText.length;
+          
+          const loadedCount = folderFiles.filter(f => fileContentsCache[f.path] !== undefined).length;
+          const isLoaded = folderFiles.length === loadedCount;
+          
+          const tokens = isLoaded ? calculateTokenCount(plainText, $settings.tokenizerModel) : 0;
+          
           return {
-              chars: charSum,
-              tokens: tokenSum,
-              fileCount,
-              isLoaded: fileCount === loadedCount
+              chars,
+              tokens,
+              fileCount: folderFiles.length,
+              isLoaded
           };
       }
   })();
@@ -930,6 +925,15 @@
     } else if (isShortcut($shortcuts.copyFileContent)) {
       event.preventDefault();
       copyFileContent();
+    } else if (isShortcut($shortcuts.copyFileContentWithHeader)) {
+      event.preventDefault();
+      copyFileContentWithHeader();
+    } else if (isShortcut($shortcuts.copyFolderContent)) {
+      event.preventDefault();
+      copyFolderContent(false);
+    } else if (isShortcut($shortcuts.copyFolderContentRecursive)) {
+      event.preventDefault();
+      copyFolderContent(true);
     } else if (isShortcut($shortcuts.toggleVisibility)) {
       event.preventDefault();
       toggleFileVisibility();
@@ -1022,7 +1026,7 @@
     
     // Viewport boundary check
     const menuWidth = 340;
-    const menuHeight = isFile !== false ? 260 : 320;
+    const menuHeight = isFile !== false ? 300 : 410;
     let x = event.clientX;
     let y = event.clientY;
     
@@ -1315,6 +1319,127 @@
           showSnackbar($t("messages.copyFailed"), "error");
       }
       closeContextMenu();
+  }
+
+  function truncateToBytes(str: string, maxBytes: number): { truncated: string; isTruncated: boolean } {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    if (bytes.length <= maxBytes) {
+      return { truncated: str, isTruncated: false };
+    }
+    let end = maxBytes;
+    while (end > 0 && bytes[end] >= 128 && bytes[end] <= 191) {
+      end--;
+    }
+    const slicedBytes = bytes.slice(0, end);
+    const decoder = new TextDecoder("utf-8");
+    return { truncated: decoder.decode(slicedBytes), isTruncated: true };
+  }
+
+  function getFileHtml(path: string, index: number, file: any, content: string | undefined): string {
+    const escapedPath = path
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+
+    if (file && file.hidden) {
+      return `<div id="file-${index}" class="file-header" data-path="${escapedPath}">\n-------------------\n${path} \n-------------------\n</div>\n<pre><code>####il contenuto del file è stato temporaneamente omesso####</code></pre>\n<hr/>\n`;
+    }
+
+    const filename = path.replace(/\\/g, '/').split('/').pop() || "";
+    const dotIdx = filename.lastIndexOf('.');
+    const ext = dotIdx > 0 ? filename.slice(dotIdx + 1) : "";
+    
+    let fileContent = content || "";
+    let isTruncated = false;
+
+    if (file && $settings.largeFileThreshold > 0 && file.char_count > $settings.largeFileThreshold) {
+      const isForced = forceFullLoadPaths.has(path) || Array.from(forceFullLoadPaths).some(p => {
+        return path.startsWith(p) && (
+          path.charAt(p.length) === '/' || path.charAt(p.length) === '\\'
+        );
+      });
+      if (!isForced) {
+        const encoder = new TextEncoder();
+        const byteLen = encoder.encode(fileContent).length;
+        if (byteLen > $settings.largeFileThreshold) {
+          const { truncated, isTruncated: truncatedFlag } = truncateToBytes(fileContent, $settings.largeFileThreshold);
+          fileContent = truncated + "\n\n[... The rest of the file was truncated due to its length ...]";
+          isTruncated = truncatedFlag;
+        }
+      }
+    }
+
+    const escapedContent = fileContent
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
+
+    return `<div id="file-${index}" class="file-header" data-path="${escapedPath}" data-truncated="${isTruncated}">\n-------------------\n${path} \n-------------------\n</div>\n<pre><code class="language-${ext}">${escapedContent}</code></pre>\n<hr/>\n`;
+  }
+
+  function getFilesPlainText(matchingFiles: any[]): string {
+    const htmlBlocks = matchingFiles.map(f => {
+      const idx = files.findIndex(file => file.path === f.path);
+      return getFileHtml(f.path, idx, f, fileContentsCache[f.path]);
+    });
+    return extractPlainText(htmlBlocks.join("\n"));
+  }
+
+  async function copyFileContentWithHeader() {
+    const targetPath = contextMenu.path || focusedFilePath;
+    if (!targetPath) return;
+    const file = files.find(f => f.path === targetPath);
+    if (!file) return;
+
+    try {
+      const plainText = getFilesPlainText([file]);
+      await navigator.clipboard.writeText(plainText);
+      showSnackbar($t("messages.copied"), "copy");
+    } catch (e) {
+      console.error(e);
+      showSnackbar($t("messages.copyFailed"), "error");
+    }
+    closeContextMenu();
+  }
+
+  async function copyFolderContent(recursive: boolean) {
+    const dirPath = contextMenu.path;
+    if (!dirPath) return;
+
+    try {
+      const normFolder = normalize(dirPath);
+      const folderFiles = files.filter(f => {
+        const normPath = normalize(f.path);
+        if (recursive) {
+          return normPath === normFolder || normPath.startsWith(normFolder + '/');
+        } else {
+          if (normPath.startsWith(normFolder + '/')) {
+            const relPath = normPath.slice(normFolder.length + 1);
+            return !relPath.includes('/');
+          }
+          return false;
+        }
+      });
+
+      if (folderFiles.length === 0) {
+        showSnackbar($t("messages.noContent") || "No files to copy", "info");
+        closeContextMenu();
+        return;
+      }
+
+      const combinedText = getFilesPlainText(folderFiles);
+      await navigator.clipboard.writeText(combinedText);
+      showSnackbar($t("messages.copied"), "copy");
+    } catch (e) {
+      console.error(e);
+      showSnackbar($t("messages.copyFailed"), "error");
+    }
+    closeContextMenu();
   }
 
   function handleFileDblClick(e: CustomEvent) {
@@ -1895,12 +2020,11 @@
       </div>
     </div>
   </section>
-</main>
 
-{#if contextMenu.show}
+  {#if contextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
-    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
+    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 99999; background-color: var(--surface-2);"
   >
     <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
       <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.name}>
@@ -1965,6 +2089,17 @@
         <span class="flex-1">{$t("contextMenu.copyFileContent")}</span>
         <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFileContent)}</span>
       </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
+        on:click={copyFileContentWithHeader}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v6m-3-3h6" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.copyFileContentWithHeader")}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFileContentWithHeader)}</span>
+      </button>
       {#if showTruncateOption}
         <button
           class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
@@ -2015,6 +2150,30 @@
         </svg>
         <span class="flex-1">{$t("contextMenu.refreshFolderRecursive")}</span>
         <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.refreshFolderRecursive)}</span>
+      </button>
+      
+      <div class="border-t border-[var(--border-light)] my-1"></div>
+      
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
+        on:click={() => copyFolderContent(false)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.copyFolderContent")}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFolderContent)}</span>
+      </button>
+      <button
+        class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors flex items-center gap-2"
+        on:click={() => copyFolderContent(true)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-[var(--muted)]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9 10.5h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v6m-3-3h6" />
+        </svg>
+        <span class="flex-1">{$t("contextMenu.copyFolderContentRecursive")}</span>
+        <span class="ml-4 text-[10px] text-[var(--muted)] tracking-wider">{$tShortcut($shortcuts.copyFolderContentRecursive)}</span>
       </button>
       
       <div class="border-t border-[var(--border-light)] my-1"></div>
@@ -2083,7 +2242,7 @@
 {#if tabContextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[150px]"
-    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999; background-color: var(--surface-2);"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 99999; background-color: var(--surface-2);"
   >
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"
@@ -2112,5 +2271,6 @@
     </button>
   </div>
 {/if}
+</main>
 
 

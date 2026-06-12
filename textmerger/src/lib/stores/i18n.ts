@@ -106,7 +106,34 @@ export const tShortcut = derived(locale, ($locale) => {
         if (!keybind) return '';
         let formatted = keybind;
         if ($locale === 'de') {
-            formatted = formatted.replace(/\bCtrl\b/g, 'Strg');
+            formatted = formatted
+                .replace(/\bctrl\b/gi, 'Strg')
+                .replace(/\bshift\b/gi, 'Umschalt')
+                .replace(/\barrowleft\b/gi, 'Pfeil links')
+                .replace(/\barrowright\b/gi, 'Pfeil rechts')
+                .replace(/\barrowup\b/gi, 'Pfeil oben')
+                .replace(/\barrowdown\b/gi, 'Pfeil unten');
+        } else if ($locale === 'it') {
+            formatted = formatted
+                .replace(/\bshift\b/gi, 'Maiusc')
+                .replace(/\barrowleft\b/gi, 'Freccia sinistra')
+                .replace(/\barrowright\b/gi, 'Freccia destra')
+                .replace(/\barrowup\b/gi, 'Freccia su')
+                .replace(/\barrowdown\b/gi, 'Freccia giù');
+        } else if ($locale === 'es') {
+            formatted = formatted
+                .replace(/\bshift\b/gi, 'Mayús')
+                .replace(/\barrowleft\b/gi, 'Flecha izquierda')
+                .replace(/\barrowright\b/gi, 'Flecha derecha')
+                .replace(/\barrowup\b/gi, 'Flecha arriba')
+                .replace(/\barrowdown\b/gi, 'Flecha abajo');
+        } else if ($locale === 'fr') {
+            formatted = formatted
+                .replace(/\bshift\b/gi, 'Maj')
+                .replace(/\barrowleft\b/gi, 'Flèche gauche')
+                .replace(/\barrowright\b/gi, 'Flèche droite')
+                .replace(/\barrowup\b/gi, 'Flèche haut')
+                .replace(/\barrowdown\b/gi, 'Flèche bas');
         }
         return formatted;
     };

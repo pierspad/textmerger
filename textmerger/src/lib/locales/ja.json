@@ -124,7 +124,10 @@
     "showDirContent": "コンテンツを表示",
     "showDirRecursive": "再帰的に表示",
     "revealDirRecursive": "フルコンテンツを再帰的に表示",
-    "truncateDirRecursive": "コンテンツを再帰的に切り詰める"
+    "truncateDirRecursive": "コンテンツを再帰的に切り詰める",
+    "copyFileContentWithHeader": "ヘッダー付きでコピー",
+    "copyFolderContent": "フォルダ内容をコピー",
+    "copyFolderContentRecursive": "フォルダ内容を再帰的にコピー"
   },
   "contextMenu": {
     "copyPath": "絶対パスをコピー",
@@ -138,7 +141,10 @@
     "revealFullContent": "ファイルの全内容を表示",
     "revealFullContentRecursive": "フルコンテンツを再帰的に表示",
     "truncateFile": "ファイルを切り詰める",
-    "truncateDirRecursive": "コンテンツを再帰的に切り詰める"
+    "truncateDirRecursive": "コンテンツを再帰的に切り詰める",
+    "copyFileContentWithHeader": "ヘッダー付きでコピー",
+    "copyFolderContent": "フォルダ内容をコピー",
+    "copyFolderContentRecursive": "フォルダ内容を再帰的にコピー"
   },
   "messages": {
     "showingOutputs": "出力を表示中",

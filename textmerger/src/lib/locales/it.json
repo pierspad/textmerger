@@ -124,12 +124,18 @@
     "showDirContent": "Mostra contenuto",
     "showDirRecursive": "Mostra ricorsivamente",
     "revealDirRecursive": "Mostra per intero ricorsivamente",
-    "truncateDirRecursive": "Tronca contenuto ricorsivamente"
+    "truncateDirRecursive": "Tronca contenuto ricorsivamente",
+    "copyFileContentWithHeader": "Copia contenuto con intestazione",
+    "copyFolderContent": "Copia contenuto cartella",
+    "copyFolderContentRecursive": "Copia contenuto cartella ricorsivamente"
   },
   "contextMenu": {
     "copyPath": "Copia percorso assoluto",
     "copyFilename": "Copia nome file",
     "copyFileContent": "Copia contenuto file",
+    "copyFileContentWithHeader": "Copia contenuto con intestazione",
+    "copyFolderContent": "Copia contenuto cartella",
+    "copyFolderContentRecursive": "Copia contenuto cartella ricorsivamente",
     "refreshFolderOnly": "Aggiorna solo questa cartella",
     "refreshFolderRecursive": "Aggiorna cartella ricorsivamente",
     "hideContent": "Nascondi contenuto",
