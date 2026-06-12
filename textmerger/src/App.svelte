@@ -2020,8 +2020,9 @@
       </div>
     </div>
   </section>
+</main>
 
-  {#if contextMenu.show}
+{#if contextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
     style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 99999; background-color: var(--surface-2);"
@@ -2031,27 +2032,29 @@
         {truncatePath(contextMenu.name, 50)}
       </div>
       {#if contextMenuStats}
-        <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-[var(--text-secondary)] select-none">
-          <div class="flex items-center gap-1.5 text-[var(--muted)] whitespace-nowrap">
-            <span>{$t("app.characters") || "Characters"}: <span class="font-mono text-[var(--text)]">{formatNumber(contextMenuStats.chars)}</span></span>
-            <span>|</span>
-            <span>
-              {$t("app.tokens") || "Tokens"}: 
-              <span class="font-mono text-[var(--text)]">
-                {#if contextMenuStats.isLoaded}
-                  {formatNumber(contextMenuStats.tokens)}
-                {:else}
-                  <span class="animate-pulse text-[var(--muted)]">loading...</span>
-                {/if}
+        <div class="mt-1.5 text-[11px] select-none w-full">
+          <div class="flex items-center justify-between text-[var(--muted)] whitespace-nowrap w-full">
+            <div class="flex items-center gap-1.5">
+              <span>{$t("app.characters") || "Characters"}: <span class="font-mono text-[var(--text)]">{formatNumber(contextMenuStats.chars)}</span></span>
+              <span>|</span>
+              <span>
+                {$t("app.tokens") || "Tokens"}: 
+                <span class="font-mono text-[var(--text)]">
+                  {#if contextMenuStats.isLoaded}
+                    {formatNumber(contextMenuStats.tokens)}
+                  {:else}
+                    <span class="animate-pulse text-[var(--muted)]">loading...</span>
+                  {/if}
+                </span>
               </span>
-            </span>
-          </div>
-          {#if !contextMenu.isFile}
-            <div class="flex justify-between gap-4 text-[10px] text-[var(--muted)] mt-0.5 pt-0.5 border-t border-[var(--border-light)]">
-              <span>Files:</span>
-              <span>{contextMenuStats.fileCount}</span>
             </div>
-          {/if}
+            {#if !contextMenu.isFile}
+              <div class="flex items-center gap-1">
+                <span>Files:</span>
+                <span class="font-mono text-[var(--text)]">{contextMenuStats.fileCount}</span>
+              </div>
+            {/if}
+          </div>
         </div>
       {/if}
     </div>
@@ -2271,6 +2274,5 @@
     </button>
   </div>
 {/if}
-</main>
 
 
