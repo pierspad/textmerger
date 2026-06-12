@@ -1281,13 +1281,6 @@
 </div>
 
 <style>
-  @keyframes caret-blink {
-    50% { opacity: 0; }
-  }
-  .animate-caret {
-    animation: caret-blink 1s step-start infinite;
-  }
-
   @keyframes tokenizer-flash-anim {
     0%   { border-color: transparent; }
     20%  { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25); }

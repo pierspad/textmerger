@@ -76,10 +76,113 @@
     return path.substring(0, frontChars) + "..." + path.substring(path.length - backChars);
   }
 
+  function getCompactedRoots(paths: string[]): string[] {
+    if (paths.length === 0) return [];
+    const stdPaths = paths.map(p => p.replace(/\\/g, '/'));
+    
+    const tree: Record<string, { path: string; isFile: boolean; children: Set<string>; parent?: string }> = {};
+    
+    stdPaths.forEach(path => {
+      const parts = path.split('/');
+      let current = "";
+      parts.forEach((part, idx) => {
+        if (!part && idx === 0) {
+          current = "/";
+          return;
+        }
+        if (!part) return;
+        
+        const isLast = idx === parts.length - 1;
+        const sep = current === "/" || current === "" ? "" : "/";
+        const next = current + sep + part;
+        
+        if (!tree[next]) {
+          tree[next] = { path: next, isFile: isLast, children: new Set(), parent: current || undefined };
+          if (current && tree[current]) {
+            tree[current].children.add(next);
+          }
+        }
+        current = next;
+      });
+    });
+    
+    const roots = Object.keys(tree).filter(k => !tree[k].parent || !tree[tree[k].parent!]);
+    
+    const compactedRoots = roots.map(rootPath => {
+      let current = rootPath;
+      while (tree[current]) {
+        const children = Array.from(tree[current].children);
+        if (children.length === 1 && !tree[children[0]].isFile) {
+          current = children[0];
+        } else {
+          break;
+        }
+      }
+      return current;
+    });
+    
+    return compactedRoots;
+  }
+
+  function getRelativePathFromRoot(path: string, compactedRoots: string[]): string {
+    const stdPath = path.replace(/\\/g, '/');
+    let bestRoot = "";
+    for (const root of compactedRoots) {
+      if (stdPath === root) {
+        return "~";
+      }
+      if (stdPath.startsWith(root + '/')) {
+        if (root.length > bestRoot.length) {
+          bestRoot = root;
+        }
+      }
+    }
+    
+    if (bestRoot) {
+      const rel = stdPath.slice(bestRoot.length + 1);
+      return "~/" + rel;
+    }
+    
+    return path;
+  }
+
+  function formatRelativePath(relativePath: string): string {
+    if (!relativePath.startsWith('~/')) return relativePath;
+    
+    const rel = relativePath.slice(2);
+    const parts = rel.split('/');
+    const dirs = parts.slice(0, parts.length - 1);
+    const filename = parts[parts.length - 1];
+    
+    if (dirs.length <= 3) {
+      return relativePath;
+    }
+    
+    const keptDirs = dirs.slice(dirs.length - 3);
+    return `~/.../${keptDirs.join('/')}/${filename}`;
+  }
+
+  function getFormattedContextMenuTitle(path: string, roots: string[], defaultName: string): string {
+    if (!path) return defaultName;
+    const relPath = getRelativePathFromRoot(path, roots);
+    if (relPath === "~" || relPath.startsWith("~/")) {
+      return formatRelativePath(relPath);
+    }
+    return defaultName;
+  }
+
   $: files = $tabs.tabs.find((t) => t.id === $tabs.activeTabId)?.files || [];
 
+  let compactedRoots: string[] = [];
+  $: {
+    const paths = files.map(f => f.path);
+    compactedRoots = getCompactedRoots(paths);
+  }
+
   let mergedContent = "";
-  let plainTextContent = "";
+  let fileContentsCache: Record<string, string> = {};
+  let fileTokensCache: Record<string, number> = {};
+  let totalCharacterCount = 0;
   let tokenCount = 0;
   let currentModel = "";
   let encoder: any = null;
@@ -149,24 +252,100 @@
       .replace(/&amp;/g, "&");
   }
 
+  // Reactive total character count (instant computation using metadata)
   $: {
-    const _cache = fileContentsCache;
-    plainTextContent = getFilesPlainText(files);
+    const currentFiles = files;
+    const cache = fileContentsCache;
+    const largeFileThreshold = $settings.largeFileThreshold;
+    const forcePaths = forceFullLoadPaths;
+    
+    totalCharacterCount = currentFiles.length === 0 ? 0 : currentFiles.reduce((sum, f) => {
+      if (f.hidden) {
+        return sum + `-------------------\n${f.path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`.length;
+      }
+      const headerLen = `-------------------\n${f.path} \n-------------------\n`.length + 1;
+      let fileContent = cache[f.path];
+      let len = fileContent !== undefined ? fileContent.length : f.char_count;
+      if (largeFileThreshold > 0 && f.char_count > largeFileThreshold) {
+        const isForced = forcePaths.has(f.path) || Array.from(forcePaths).some(p => {
+          return f.path.startsWith(p) && (
+            f.path.charAt(p.length) === '/' || f.path.charAt(p.length) === '\\'
+          );
+        });
+        if (!isForced) {
+          if (len > largeFileThreshold) {
+            len = largeFileThreshold + 61; // 61 is truncation notice length
+          }
+        }
+      }
+      return sum + headerLen + len;
+    }, 0) - (currentFiles.length > 0 ? 1 : 0);
   }
 
-  let tokenCountTimeout: any;
+  // Cache for header tokens
+  let headerTokensCache: Record<string, number> = {};
+  function getHeaderTokens(path: string, model: string): number {
+    const cacheKey = `${model}:${path}`;
+    if (headerTokensCache[cacheKey] !== undefined) {
+      return headerTokensCache[cacheKey];
+    }
+    const headerText = `-------------------\n${path} \n-------------------\n`;
+    const tokens = calculateTokenCount(headerText, model) + 1; // +1 for newline join
+    headerTokensCache[cacheKey] = tokens;
+    return tokens;
+  }
+
+  function getFileTokenCount(
+    f: any,
+    cache: Record<string, string>,
+    tokensCache: Record<string, number>,
+    model: string,
+    largeFileThreshold: number,
+    forceFullLoadPaths: Set<string>
+  ): number {
+    if (f.hidden) {
+      const headerText = `-------------------\n${f.path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`;
+      return calculateTokenCount(headerText, model);
+    }
+
+    const headerTokens = getHeaderTokens(f.path, model);
+
+    if (tokensCache[f.path] !== undefined) {
+      return headerTokens + tokensCache[f.path];
+    }
+
+    // Estimate:
+    let contentLen = f.char_count;
+    if (largeFileThreshold > 0 && f.char_count > largeFileThreshold) {
+      const isForced = forceFullLoadPaths.has(f.path) || Array.from(forceFullLoadPaths).some(p => {
+        return f.path.startsWith(p) && (
+          f.path.charAt(p.length) === '/' || f.path.charAt(p.length) === '\\'
+        );
+      });
+      if (!isForced) {
+        contentLen = largeFileThreshold + 61; // 61 is truncation notice length
+      }
+    }
+    return headerTokens + Math.round(contentLen / 4);
+  }
+
+  // Reactive total token count
   $: {
-    if (plainTextContent) {
-      const _dummy = isGeminiLoaded;
-      const currentModel = $settings.tokenizerModel;
-      const text = plainTextContent;
-      
-      if (tokenCountTimeout) clearTimeout(tokenCountTimeout);
-      tokenCountTimeout = setTimeout(() => {
-        tokenCount = calculateTokenCount(text, currentModel);
-      }, 100);
+    const currentModel = $settings.tokenizerModel;
+    const currentFiles = files;
+    const cache = fileContentsCache;
+    const tokensCache = fileTokensCache;
+    const largeFileThreshold = $settings.largeFileThreshold;
+    const forcePaths = forceFullLoadPaths;
+    const isReady = isGeminiLoaded || currentModel !== "gemini";
+
+    if (isReady && currentFiles.length > 0) {
+      let total = 0;
+      for (const f of currentFiles) {
+        total += getFileTokenCount(f, cache, tokensCache, currentModel, largeFileThreshold, forcePaths);
+      }
+      tokenCount = total;
     } else {
-      if (tokenCountTimeout) clearTimeout(tokenCountTimeout);
       tokenCount = 0;
     }
   }
@@ -207,10 +386,6 @@
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
 
-  // Caches for file contents and tokens
-  let fileContentsCache: Record<string, string> = {};
-  let fileTokensCache: Record<string, number> = {};
-
   // Track the active model and active ipynb mode to know when to clear caches
   let lastCachedModel = "";
   let lastCachedIpynbMode = "";
@@ -241,47 +416,65 @@
     const isReady = isGeminiLoaded || currentModel !== "gemini";
 
     if (isReady && files && files.length > 0) {
-      void loadMissingFileStats(files, currentModel, currentIpynbMode);
+      void loadMissingFileStatsProgressively(files, currentModel, currentIpynbMode);
     }
   }
 
-  async function loadMissingFileStats(currentFiles: FileNode[], model: string, ipynbMode: string) {
-    const pathsToFetch = currentFiles.filter(f => fileContentsCache[f.path] === undefined).map(f => f.path);
-    
-    // Fetch missing file contents
-    if (pathsToFetch.length > 0) {
-      await Promise.all(pathsToFetch.map(async (path) => {
-        try {
-          const content: string = await invoke("get_file_content", { path, ipynbOutputMode: ipynbMode });
-          fileContentsCache[path] = content;
-        } catch (e) {
-          console.error(`Failed to fetch content for ${path}:`, e);
-          fileContentsCache[path] = ""; // Set to empty to avoid repeated failing attempts
+  async function loadMissingFileStatsProgressively(currentFiles: FileNode[], model: string, ipynbMode: string) {
+    const batchSize = 3;
+    let cacheChanged = false;
+    let tokensChanged = false;
+
+    // Filter files that actually need loading or tokenizing
+    const filesToProcess = currentFiles.filter(
+      f => fileContentsCache[f.path] === undefined || fileTokensCache[f.path] === undefined
+    );
+
+    for (let i = 0; i < filesToProcess.length; i += batchSize) {
+      // Abort if context changed while waiting for next batch
+      if ($settings.tokenizerModel !== model || ipynbOutputMode !== ipynbMode || files !== currentFiles) {
+        return;
+      }
+
+      const batch = filesToProcess.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (f) => {
+        const path = f.path;
+        
+        // 1. Load content if missing
+        let content = fileContentsCache[path];
+        if (content === undefined) {
+          try {
+            content = await invoke("get_file_content", { path, ipynbOutputMode: ipynbMode });
+            fileContentsCache[path] = content;
+            cacheChanged = true;
+          } catch (e) {
+            console.error(`Failed to fetch content for ${path}:`, e);
+            fileContentsCache[path] = "";
+            content = "";
+            cacheChanged = true;
+          }
+        }
+
+        // 2. Compute token count if missing
+        if (fileTokensCache[path] === undefined) {
+          fileTokensCache[path] = calculateTokenCount(content || "", model);
+          tokensChanged = true;
         }
       }));
-      fileContentsCache = { ...fileContentsCache };
-    }
 
-    // Compute missing token counts progressively in the background, yielding to the event loop
-    let tokensChanged = false;
-    let lastYield = performance.now();
-    
-    for (const f of currentFiles) {
-      if (fileTokensCache[f.path] === undefined) {
-        const content = fileContentsCache[f.path] || "";
-        fileTokensCache[f.path] = calculateTokenCount(content, model);
-        tokensChanged = true;
-        
-        // Yield if we have run for more than 10ms
-        if (performance.now() - lastYield > 10) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-          lastYield = performance.now();
-        }
+      // Trigger reactive updates
+      if (cacheChanged) {
+        fileContentsCache = { ...fileContentsCache };
+        cacheChanged = false;
       }
-    }
+      if (tokensChanged) {
+        fileTokensCache = { ...fileTokensCache };
+        tokensChanged = false;
+      }
 
-    if (tokensChanged) {
-      fileTokensCache = { ...fileTokensCache };
+      // Yield to the event loop
+      await new Promise(resolve => setTimeout(resolve, 15));
     }
   }
 
@@ -1550,7 +1743,7 @@
 />
 
 <main
-  class="flex h-full w-full overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans relative"
+  class="flex h-full w-full overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans relative z-10"
 >
   {#if snackbarMessage}
     {#key snackbarAnimationKey}
@@ -2019,7 +2212,7 @@
       class="h-[76px] border-t border-[var(--border)] bg-[var(--surface-2)] flex items-center px-4 justify-between"
     >
       <div class="text-xs text-[var(--muted)] flex items-center gap-2 flex-wrap select-none">
-        <span>{$t("app.characters")}: {plainTextContent.length.toLocaleString()}</span>
+        <span>{$t("app.characters")}: {totalCharacterCount.toLocaleString()}</span>
         <span>|</span>
         <button 
           type="button" 
@@ -2114,8 +2307,8 @@
     style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 0); will-change: transform;"
   >
     <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
-      <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.name}>
-        {truncatePath(contextMenu.name, 70)}
+      <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.path}>
+        {getFormattedContextMenuTitle(contextMenu.path, compactedRoots, contextMenu.name)}
       </div>
       {#if contextMenuStats}
         <div class="mt-1.5 text-[11px] select-none w-full">
