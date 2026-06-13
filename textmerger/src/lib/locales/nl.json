@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook-uitvoeren verborgen",
     "outputsReduced": "Notebook-uitvoeren gereduceerd",
     "outputsFull": "Notebook-uitvoeren volledig",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "sortAscending": "Oplopend",
+    "sortDescending": "Aflopend"
   },
   "settings": {
     "title": "Instellingen",
@@ -161,6 +163,12 @@
     "pathCopied": "Pad gekopieerd",
     "filenameCopied": "Bestandsnaam gekopieerd",
     "scrolledTo": "Gesprongen naar",
-    "openLinkFailed": "Kan link niet openen"
+    "openLinkFailed": "Kan link niet openen",
+    "fileOmitted": "####de inhoud van het bestand is tijdelijk weggelaten####",
+    "duplicatedTab": "{name} gedupliceerd",
+    "tabsMerged": "Tabbladen succesvol samengevoegd",
+    "closedTabToRight": "1 tabblad aan de rechterkant gesloten",
+    "closedTabsToRight": "{count} tabbladen aan de rechterkant gesloten",
+    "refreshError": "Fout bij vernieuwen: {error}"
   }
 }

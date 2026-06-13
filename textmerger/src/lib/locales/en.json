@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook outputs hidden",
     "outputsReduced": "Notebook outputs reduced",
     "outputsFull": "Notebook outputs full",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "sortAscending": "Ascending",
+    "sortDescending": "Descending"
   },
   "settings": {
     "title": "Settings",
@@ -161,6 +163,12 @@
     "pathCopied": "Path copied",
     "filenameCopied": "Filename copied",
     "scrolledTo": "Scrolled to",
-    "openLinkFailed": "Could not open link"
+    "openLinkFailed": "Could not open link",
+    "fileOmitted": "####file content temporarily omitted####",
+    "duplicatedTab": "Duplicated {name}",
+    "tabsMerged": "Tabs merged successfully",
+    "closedTabToRight": "Closed 1 tab to the right",
+    "closedTabsToRight": "Closed {count} tabs to the right",
+    "refreshError": "Error refreshing: {error}"
   }
 }

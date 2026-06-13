@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook-Ausgaben ausgeblendet",
     "outputsReduced": "Notebook-Ausgaben reduziert",
     "outputsFull": "Notebook-Ausgaben vollständig",
-    "tokens": "Token"
+    "tokens": "Token",
+    "sortAscending": "Aufsteigend",
+    "sortDescending": "Absteigend"
   },
   "settings": {
     "title": "Einstellungen",
@@ -161,6 +163,12 @@
     "pathCopied": "Pfad kopiert",
     "filenameCopied": "Dateiname kopiert",
     "scrolledTo": "Gescrollt zu",
-    "openLinkFailed": "Link konnte nicht geöffnet werden"
+    "openLinkFailed": "Link konnte nicht geöffnet werden",
+    "fileOmitted": "####Dateiinhalt vorübergehend ausgelassen####",
+    "duplicatedTab": "{name} dupliziert",
+    "tabsMerged": "Tabs erfolgreich zusammengeführt",
+    "closedTabToRight": "1 Tab rechts geschlossen",
+    "closedTabsToRight": "{count} Tabs rechts geschlossen",
+    "refreshError": "Fehler beim Aktualisieren: {error}"
   }
 }

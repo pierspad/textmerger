@@ -110,7 +110,9 @@ fn process_paths_parallel(paths: Vec<String>, filter: &FilterPatterns) -> AddFil
                     Ok(FileNode {
                         path,
                         name: name.clone(),
-                        char_count: content.len(),
+                        // chars().count(), not len(): len() is bytes and diverges
+                        // from JS string lengths on non-ASCII content.
+                        char_count: content.chars().count(),
                         size_bytes,
                         extension,
                         hidden: filter.is_hidden(&name),
@@ -168,7 +170,8 @@ fn get_merged_content(
     ipynb_output_mode: String, 
     load_full_large_files: bool, 
     force_full_load_paths: Vec<String>,
-    large_file_threshold: usize
+    large_file_threshold: usize,
+    hidden_placeholder: String
 ) -> Result<String, String> {
     let hidden_set: HashSet<&str> = hidden_paths.iter().map(|s| s.as_str()).collect();
     let force_set: HashSet<&str> = force_full_load_paths.iter().map(|s| s.as_str()).collect();
@@ -183,14 +186,15 @@ fn get_merged_content(
                     index,
                     escape_html(path_str),
                     path_str, 
-                    "####il contenuto del file è stato temporaneamente omesso####"
+                    hidden_placeholder
                 );
             }
             
             match file_ops::read_and_check_file(path, &ipynb_output_mode) {
                 Ok((mut content, _size)) => {
                     let ext = std::path::Path::new(path).extension().and_then(|s| s.to_str()).unwrap_or("");
-                    let char_count = content.len();
+                    // Count chars (not bytes) for consistency with the frontend
+                    let char_count = content.chars().count();
                     let mut is_truncated = false;
                     
                     let is_forced = force_set.contains(path_str) || force_set.iter().any(|&p| {
@@ -201,10 +205,12 @@ fn get_merged_content(
                     });
                     
                     if !load_full_large_files && char_count > large_file_threshold && !is_forced {
-                        let mut end = large_file_threshold;
-                        while end > 0 && !content.is_char_boundary(end) {
-                            end -= 1;
-                        }
+                        // Truncate at the Nth character (not byte) boundary
+                        let end = content
+                            .char_indices()
+                            .nth(large_file_threshold)
+                            .map(|(i, _)| i)
+                            .unwrap_or(content.len());
                         content.truncate(end);
                         content.push_str("\n\n[... The rest of the file was truncated due to its length ...]");
                         is_truncated = true;
@@ -220,7 +226,7 @@ fn get_merged_content(
                         escape_html(&content)
                     )
                 },
-                Err(e) => format!("<div class=\"error\">Error reading {}: {}</div>", path, e),
+                Err(e) => format!("<div class=\"error\">Error reading {}: {}</div>", escape_html(path), escape_html(&e)),
             }
         })
         .collect();

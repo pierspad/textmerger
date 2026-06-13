@@ -104,9 +104,32 @@ fn read_metadata(path: &str) -> Result<(String, u64), String> {
     Ok((output, size))
 }
 
+// PDF text extraction is CPU-expensive and get_merged_content re-reads every
+// file on each refresh: cache extracted text keyed by path, invalidated by
+// (mtime, size).
+static PDF_CACHE: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, (std::time::SystemTime, u64, String)>>> = std::sync::OnceLock::new();
+
 fn read_pdf(path: &str) -> Result<(String, u64), String> {
+    let meta = fs::metadata(path).map_err(|e| e.to_string())?;
+    let size = meta.len();
+    let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+    let cache = PDF_CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+    if let Ok(map) = cache.lock() {
+        if let Some((cached_mtime, cached_size, text)) = map.get(path) {
+            if *cached_mtime == mtime && *cached_size == size {
+                return Ok((text.clone(), size));
+            }
+        }
+    }
+
     let text = pdf_extract::extract_text(path).map_err(|e| e.to_string())?;
-    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+
+    if let Ok(mut map) = cache.lock() {
+        map.insert(path.to_string(), (mtime, size, text.clone()));
+    }
+
     Ok((text, size))
 }
 

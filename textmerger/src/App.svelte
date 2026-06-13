@@ -6,7 +6,6 @@
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import authorAvatar from "./assets/avatar.png";
   import { onMount, onDestroy, tick } from "svelte";
-  import { getEncoding } from "js-tiktoken";
   import FileTree from "./lib/FileTree.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import Modal from "./lib/components/Modal.svelte";
@@ -165,7 +164,10 @@
   function getFormattedContextMenuTitle(path: string, roots: string[], defaultName: string): string {
     if (!path) return defaultName;
     const relPath = getRelativePathFromRoot(path, roots);
-    if (relPath === "~" || relPath.startsWith("~/")) {
+    if (relPath === "~") {
+      return path; // Return the full absolute path for root folders
+    }
+    if (relPath.startsWith("~/")) {
       return formatRelativePath(relPath);
     }
     return defaultName;
@@ -184,12 +186,51 @@
   let fileTokensCache: Record<string, number> = {};
   let totalCharacterCount = 0;
   let tokenCount = 0;
-  let currentModel = "";
   let encoder: any = null;
+  let loadedTiktokenModel = "";
 
   let geminiTokenizer: any = null;
   let isGeminiLoading = false;
   let isGeminiLoaded = false;
+
+  // Lazy-load tiktoken BPE ranks per model: avoids bundling ~6MB of rank
+  // tables into the startup chunk (each rank becomes its own lazy chunk).
+  const tiktokenRankLoaders: Record<string, () => Promise<any>> = {
+    o200k_base: () => import("js-tiktoken/ranks/o200k_base"),
+    cl100k_base: () => import("js-tiktoken/ranks/cl100k_base"),
+    p50k_base: () => import("js-tiktoken/ranks/p50k_base"),
+    r50k_base: () => import("js-tiktoken/ranks/r50k_base"),
+  };
+
+  async function loadTiktokenEncoder(model: string) {
+    if (loadedTiktokenModel === model) return;
+    const loader = tiktokenRankLoaders[model];
+    if (!loader) return;
+    try {
+      const [{ Tiktoken }, ranks] = await Promise.all([
+        import("js-tiktoken/lite"),
+        loader(),
+      ]);
+      // The user may have switched model while the chunk was loading
+      if ($settings.tokenizerModel !== model) return;
+      encoder = new Tiktoken(ranks.default);
+      loadedTiktokenModel = model;
+    } catch (e) {
+      console.error("Failed to load tokenizer:", model, e);
+    }
+  }
+
+  $: if (tiktokenRankLoaders[$settings.tokenizerModel]) {
+    void loadTiktokenEncoder($settings.tokenizerModel);
+  }
+
+  // True when the currently selected tokenizer can produce exact counts
+  $: isTokenizerReady =
+    $settings.tokenizerModel === "chars_ratio"
+      ? true
+      : $settings.tokenizerModel === "gemini"
+        ? isGeminiLoaded
+        : loadedTiktokenModel === $settings.tokenizerModel;
 
   async function loadGeminiTokenizer() {
     if (isGeminiLoaded || isGeminiLoading) return;
@@ -229,9 +270,9 @@
     }
 
     try {
-      if (!encoder || currentModel !== model) {
-        encoder = getEncoding(model as any);
-        currentModel = model;
+      if (!encoder || loadedTiktokenModel !== model) {
+        // Encoder chunk not loaded yet: fall back to estimate
+        return Math.round(plainText.length / 4);
       }
       return encoder.encode(plainText).length;
     } catch (e) {
@@ -252,35 +293,58 @@
       .replace(/&amp;/g, "&");
   }
 
-  // Reactive total character count (instant computation using metadata)
-  $: {
-    const currentFiles = files;
-    const cache = fileContentsCache;
-    const largeFileThreshold = $settings.largeFileThreshold;
-    const forcePaths = forceFullLoadPaths;
-    
-    totalCharacterCount = currentFiles.length === 0 ? 0 : currentFiles.reduce((sum, f) => {
-      if (f.hidden) {
-        return sum + `-------------------\n${f.path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`.length;
-      }
-      const headerLen = `-------------------\n${f.path} \n-------------------\n`.length + 1;
-      let fileContent = cache[f.path];
-      let len = fileContent !== undefined ? fileContent.length : f.char_count;
-      if (largeFileThreshold > 0 && f.char_count > largeFileThreshold) {
-        const isForced = forcePaths.has(f.path) || Array.from(forcePaths).some(p => {
-          return f.path.startsWith(p) && (
-            f.path.charAt(p.length) === '/' || f.path.charAt(p.length) === '\\'
-          );
-        });
-        if (!isForced) {
-          if (len > largeFileThreshold) {
-            len = largeFileThreshold + 61; // 61 is truncation notice length
-          }
-        }
-      }
-      return sum + headerLen + len;
-    }, 0) - (currentFiles.length > 0 ? 1 : 0);
+  // Truncation notice appended to oversized files. Single source of truth so
+  // char/token accounting everywhere matches getFilesPlainText exactly.
+  const TRUNCATION_NOTICE = "\n\n[... The rest of the file was truncated due to its length ...]";
+
+  function isForcedFullLoad(path: string, forcePaths: Set<string>): boolean {
+    return forcePaths.has(path) || Array.from(forcePaths).some(p =>
+      path.startsWith(p) && (path.charAt(p.length) === '/' || path.charAt(p.length) === '\\')
+    );
   }
+
+  // Length of a single file's section in the merged output, EXCLUDING the "\n"
+  // join separator between sections. Used by every char total (bottom bar,
+  // folder, single file) so they stay perfectly consistent.
+  function getFileSectionCharLen(
+    f: any,
+    cache: Record<string, string>,
+    largeFileThreshold: number,
+    forcePaths: Set<string>
+  ): number {
+    if (f.hidden) {
+      return `-------------------\n${f.path} \n-------------------\n${$t("messages.fileOmitted")}\n`.length;
+    }
+    // header + trailing "\n" after the content
+    const headerLen = `-------------------\n${f.path} \n-------------------\n`.length + 1;
+    const fileContent = cache[f.path];
+    let len = fileContent !== undefined ? fileContent.length : f.char_count;
+    if (
+      largeFileThreshold > 0 &&
+      f.char_count > largeFileThreshold &&
+      !isForcedFullLoad(f.path, forcePaths) &&
+      len > largeFileThreshold
+    ) {
+      len = largeFileThreshold + TRUNCATION_NOTICE.length;
+    }
+    return headerLen + len;
+  }
+
+  // Sum of section lengths + the "\n" separators joining the sections.
+  function getTotalCharLen(
+    fileList: any[],
+    cache: Record<string, string>,
+    largeFileThreshold: number,
+    forcePaths: Set<string>
+  ): number {
+    if (fileList.length === 0) return 0;
+    let sum = 0;
+    for (const f of fileList) sum += getFileSectionCharLen(f, cache, largeFileThreshold, forcePaths);
+    return sum + (fileList.length - 1);
+  }
+
+  // Reactive total character count (instant computation using metadata)
+  $: totalCharacterCount = getTotalCharLen(files, fileContentsCache, $settings.largeFileThreshold, forceFullLoadPaths);
 
   // Cache for header tokens
   let headerTokensCache: Record<string, number> = {};
@@ -304,7 +368,7 @@
     forceFullLoadPaths: Set<string>
   ): number {
     if (f.hidden) {
-      const headerText = `-------------------\n${f.path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`;
+      const headerText = `-------------------\n${f.path} \n-------------------\n${$t("messages.fileOmitted")}\n`;
       return calculateTokenCount(headerText, model);
     }
 
@@ -316,15 +380,8 @@
 
     // Estimate:
     let contentLen = f.char_count;
-    if (largeFileThreshold > 0 && f.char_count > largeFileThreshold) {
-      const isForced = forceFullLoadPaths.has(f.path) || Array.from(forceFullLoadPaths).some(p => {
-        return f.path.startsWith(p) && (
-          f.path.charAt(p.length) === '/' || f.path.charAt(p.length) === '\\'
-        );
-      });
-      if (!isForced) {
-        contentLen = largeFileThreshold + 61; // 61 is truncation notice length
-      }
+    if (largeFileThreshold > 0 && f.char_count > largeFileThreshold && !isForcedFullLoad(f.path, forceFullLoadPaths)) {
+      contentLen = largeFileThreshold + TRUNCATION_NOTICE.length;
     }
     return headerTokens + Math.round(contentLen / 4);
   }
@@ -337,7 +394,7 @@
     const tokensCache = fileTokensCache;
     const largeFileThreshold = $settings.largeFileThreshold;
     const forcePaths = forceFullLoadPaths;
-    const isReady = isGeminiLoaded || currentModel !== "gemini";
+    const isReady = isTokenizerReady;
 
     if (isReady && currentFiles.length > 0) {
       let total = 0;
@@ -386,6 +443,13 @@
   let tabContextMenu = { show: false, x: 0, y: 0, tabId: "" };
   let isLoading = false;
 
+  // WebKitGTK (with compositing disabled) paints element scrollbars ABOVE
+  // position:fixed content regardless of z-index. Workaround: make scrollbar
+  // thumbs transparent while a context menu is open (no layout shift).
+  $: if (typeof document !== "undefined") {
+    document.body.classList.toggle("ctx-menu-open", contextMenu.show || tabContextMenu.show);
+  }
+
   // Track the active model and active ipynb mode to know when to clear caches
   let lastCachedModel = "";
   let lastCachedIpynbMode = "";
@@ -393,7 +457,7 @@
   $: {
     const currentModel = $settings.tokenizerModel;
     const currentIpynbMode = ipynbOutputMode;
-    const isReady = isGeminiLoaded || currentModel !== "gemini";
+    const isReady = isTokenizerReady;
 
     if (isReady && (currentModel !== lastCachedModel || currentIpynbMode !== lastCachedIpynbMode)) {
       if (currentIpynbMode !== lastCachedIpynbMode) {
@@ -413,7 +477,7 @@
   $: {
     const currentModel = $settings.tokenizerModel;
     const currentIpynbMode = ipynbOutputMode;
-    const isReady = isGeminiLoaded || currentModel !== "gemini";
+    const isReady = isTokenizerReady;
 
     if (isReady && files && files.length > 0) {
       void loadMissingFileStatsProgressively(files, currentModel, currentIpynbMode);
@@ -421,7 +485,7 @@
   }
 
   async function loadMissingFileStatsProgressively(currentFiles: FileNode[], model: string, ipynbMode: string) {
-    const batchSize = 3;
+    const batchSize = 16;
     let cacheChanged = false;
     let tokensChanged = false;
 
@@ -474,97 +538,77 @@
       }
 
       // Yield to the event loop
-      await new Promise(resolve => setTimeout(resolve, 15));
+      await new Promise(resolve => setTimeout(resolve, 5));
     }
   }
 
   let contextMenuStats: { chars: number, tokens: number, fileCount?: number, isLoaded: boolean } | null = null;
-  let contextMenuStatsTimeout: any;
+  let contextMenuStatsPath = "";
 
-  async function updateContextMenuStats(menu: typeof contextMenu, currentFiles: FileNode[], cache: typeof fileContentsCache, model: string) {
-    if (!menu.show || !menu.path) {
-      contextMenuStats = null;
-      return;
-    }
-    
-    // Set initial loading state
-    contextMenuStats = { chars: 0, tokens: 0, isLoaded: false };
-    
-    // Debounce the calculation by 50ms so right-click is instant
-    if (contextMenuStatsTimeout) clearTimeout(contextMenuStatsTimeout);
-    contextMenuStatsTimeout = setTimeout(async () => {
-      if (menu.isFile) {
-        const path = menu.path;
-        const content = cache[path];
-        const file = currentFiles.find(f => f.path === path);
-        if (!file) return;
-        
-        const plainText = getFilesPlainText([file]);
-        const chars = plainText.length;
-        
-        let tokens = 0;
-        if (content !== undefined) {
-          if (fileTokensCache[path] !== undefined) {
-            tokens = fileTokensCache[path];
-          } else {
-            tokens = calculateTokenCount(plainText, model);
-          }
-        }
-        
-        contextMenuStats = {
-          chars,
-          tokens,
-          isLoaded: content !== undefined
-        };
-      } else {
-        const normFolder = normalize(menu.path);
-        const folderFiles = currentFiles.filter(f => {
-          const normPath = normalize(f.path);
-          return normPath === normFolder || normPath.startsWith(normFolder + '/');
-        });
-        
-        const plainText = getFilesPlainText(folderFiles);
-        const chars = plainText.length;
-        
-        const loadedCount = folderFiles.filter(f => cache[f.path] !== undefined).length;
-        const isLoaded = folderFiles.length === loadedCount;
-        
-        let tokens = 0;
-        if (isLoaded) {
-          // Check if all files in the folder have cached token counts
-          let allTokensCached = true;
-          let sumTokens = 0;
-          for (const f of folderFiles) {
-            if (fileTokensCache[f.path] !== undefined) {
-              sumTokens += fileTokensCache[f.path];
-            } else {
-              allTokensCached = false;
-              break;
-            }
-          }
-          
-          if (allTokensCached) {
-            tokens = sumTokens;
-          } else {
-            // Yield to the event loop before counting tokens to prevent UI stutters
-            await new Promise(r => setTimeout(r, 0));
-            tokens = calculateTokenCount(plainText, model);
-          }
-        }
-        
-        contextMenuStats = {
-          chars,
-          tokens,
-          fileCount: folderFiles.length,
-          isLoaded
-        };
+  // Computes the chars/tokens shown in the context-menu header. Uses the SAME
+  // per-file primitives (getFileSectionCharLen / getFileTokenCount) as the
+  // bottom-bar totals, so a folder's recursive count always matches the sum of
+  // its files in the bottom bar. Crucially it never tokenizes the whole
+  // concatenated text (BPE is not additive, so that would diverge from the sum).
+  function updateContextMenuStats(
+    menu: typeof contextMenu,
+    currentFiles: FileNode[],
+    cache: typeof fileContentsCache,
+    tokensCache: typeof fileTokensCache,
+    model: string,
+    largeFileThreshold: number,
+    forcePaths: Set<string>
+  ) {
+    // When the menu is closed, KEEP the last stats so reopening at the same
+    // item shows the numbers instantly with no loading flash.
+    if (!menu.show || !menu.path) return;
+
+    if (menu.isFile) {
+      const file = currentFiles.find(f => f.path === menu.path);
+      if (!file) {
+        contextMenuStats = null;
+        contextMenuStatsPath = "";
+        return;
       }
-    }, 50);
+      contextMenuStats = {
+        chars: getFileSectionCharLen(file, cache, largeFileThreshold, forcePaths),
+        tokens: getFileTokenCount(file, cache, tokensCache, model, largeFileThreshold, forcePaths),
+        isLoaded: file.hidden || tokensCache[file.path] !== undefined,
+      };
+      contextMenuStatsPath = menu.path;
+    } else {
+      const normFolder = normalize(menu.path);
+      const folderFiles = currentFiles.filter(f => {
+        const normPath = normalize(f.path);
+        return normPath === normFolder || normPath.startsWith(normFolder + '/');
+      });
+
+      let tokens = 0;
+      let allTokensReady = true;
+      for (const f of folderFiles) {
+        tokens += getFileTokenCount(f, cache, tokensCache, model, largeFileThreshold, forcePaths);
+        if (!f.hidden && tokensCache[f.path] === undefined) allTokensReady = false;
+      }
+
+      contextMenuStats = {
+        chars: getTotalCharLen(folderFiles, cache, largeFileThreshold, forcePaths),
+        tokens,
+        fileCount: folderFiles.length,
+        isLoaded: allTokensReady,
+      };
+      contextMenuStatsPath = menu.path;
+    }
   }
 
-  $: {
-    void updateContextMenuStats(contextMenu, files, fileContentsCache, $settings.tokenizerModel);
-  }
+  $: updateContextMenuStats(
+    contextMenu,
+    files,
+    fileContentsCache,
+    fileTokensCache,
+    $settings.tokenizerModel,
+    $settings.largeFileThreshold,
+    forceFullLoadPaths
+  );
 
   // Clear selected files when active tab changes
   $: {
@@ -694,11 +738,13 @@
         ipynbOutputMode,
         loadFullLargeFiles: $settings.largeFileThreshold === 0,
         forceFullLoadPaths: Array.from(forceFullLoadPaths),
-        largeFileThreshold: $settings.largeFileThreshold
+        largeFileThreshold: $settings.largeFileThreshold,
+        hiddenPlaceholder: $t("messages.fileOmitted")
       });
     } catch (e) {
       console.error(e);
-      mergedContent = `<div class='error'>Error: ${e}</div>`;
+      const msg = String(e).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      mergedContent = `<div class='error'>Error: ${msg}</div>`;
     }
   }
 
@@ -763,13 +809,10 @@
     return text.substring(0, lastSpaceIdx) + '\n' + text.substring(lastSpaceIdx + 1);
   }
 
+  // Note: sortType/sortAscending only affect the sidebar tree, not the merged
+  // content, so they must NOT trigger a re-merge (which re-reads files from disk).
   $: {
-    if (
-      $settings ||
-      sortType ||
-      sortAscending ||
-      ipynbOutputMode
-    ) {
+    if ($settings || ipynbOutputMode) {
       debouncedUpdateContent();
     }
   }
@@ -905,9 +948,9 @@
       });
 
       if (path) {
-        const temp = document.createElement("div");
-        temp.innerHTML = mergedContent;
-        const text = temp.textContent || temp.innerText || "";
+        // Fast regex-based extraction (same as copyToClipboard): avoids
+        // building a huge DOM which can freeze the UI on large merges.
+        const text = extractPlainText(mergedContent);
 
         await writeTextFile(path, text);
         showSnackbar($t("messages.saved"));
@@ -1017,7 +1060,7 @@
       }
 
       tabs.duplicateTab(tab.id);
-      showSnackbar(`Duplicated ${tab.name}`);
+      showSnackbar($t("messages.duplicatedTab").replace("{name}", tab.name));
       closeContextMenu();
   }
 
@@ -1029,7 +1072,10 @@
       }
 
       tabs.closeTabsToRight(tabContextMenu.tabId);
-      showSnackbar(`Closed ${count} ${count === 1 ? "tab" : "tabs"} to the right`, "warning");
+      const msg = count === 1 
+          ? $t("messages.closedTabToRight") 
+          : $t("messages.closedTabsToRight").replace("{count}", String(count));
+      showSnackbar(msg, "warning");
       closeContextMenu();
   }
   
@@ -1048,8 +1094,8 @@
   
   function confirmMerge() {
       if (selectedMergeSourceId && selectedMergeSourceId !== tabContextMenu.tabId) {
-           tabs.uniteTabs(tabContextMenu.tabId, selectedMergeSourceId);
-           showSnackbar("Tabs merged successfully");
+            tabs.uniteTabs(tabContextMenu.tabId, selectedMergeSourceId);
+            showSnackbar($t("messages.tabsMerged"));
       }
       showMergeModal = false;
   }
@@ -1357,7 +1403,7 @@
       }
     } catch (e) {
       console.error("Failed to refresh directory", e);
-      showSnackbar("Errore nel refresh: " + e, "error");
+      showSnackbar($t("messages.refreshError").replace("{error}", String(e)), "error");
     } finally {
       isLoading = false;
     }
@@ -1581,86 +1627,20 @@
       closeContextMenu();
   }
 
-  function truncateToBytes(str: string, maxBytes: number): { truncated: string; isTruncated: boolean } {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);
-    if (bytes.length <= maxBytes) {
-      return { truncated: str, isTruncated: false };
-    }
-    let end = maxBytes;
-    while (end > 0 && bytes[end] >= 128 && bytes[end] <= 191) {
-      end--;
-    }
-    const slicedBytes = bytes.slice(0, end);
-    const decoder = new TextDecoder("utf-8");
-    return { truncated: decoder.decode(slicedBytes), isTruncated: true };
-  }
-
-  function getFileHtml(path: string, index: number, file: any, content: string | undefined): string {
-    const escapedPath = path
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#x27;");
-
-    if (file && file.hidden) {
-      return `<div id="file-${index}" class="file-header" data-path="${escapedPath}">\n-------------------\n${path} \n-------------------\n</div>\n<pre><code>####il contenuto del file è stato temporaneamente omesso####</code></pre>\n<hr/>\n`;
-    }
-
-    const filename = path.replace(/\\/g, '/').split('/').pop() || "";
-    const dotIdx = filename.lastIndexOf('.');
-    const ext = dotIdx > 0 ? filename.slice(dotIdx + 1) : "";
-    
-    let fileContent = content || "";
-    let isTruncated = false;
-
-    if (file && $settings.largeFileThreshold > 0 && file.char_count > $settings.largeFileThreshold) {
-      const isForced = forceFullLoadPaths.has(path) || Array.from(forceFullLoadPaths).some(p => {
-        return path.startsWith(p) && (
-          path.charAt(p.length) === '/' || path.charAt(p.length) === '\\'
-        );
-      });
-      if (!isForced) {
-        const encoder = new TextEncoder();
-        const byteLen = encoder.encode(fileContent).length;
-        if (byteLen > $settings.largeFileThreshold) {
-          const { truncated, isTruncated: truncatedFlag } = truncateToBytes(fileContent, $settings.largeFileThreshold);
-          fileContent = truncated + "\n\n[... The rest of the file was truncated due to its length ...]";
-          isTruncated = truncatedFlag;
-        }
-      }
-    }
-
-    const escapedContent = fileContent
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#x27;");
-
-    return `<div id="file-${index}" class="file-header" data-path="${escapedPath}" data-truncated="${isTruncated}">\n-------------------\n${path} \n-------------------\n</div>\n<pre><code class="language-${ext}">${escapedContent}</code></pre>\n<hr/>\n`;
-  }
-
   function getFilesPlainText(matchingFiles: any[]): string {
     if (!matchingFiles || matchingFiles.length === 0) return "";
     return matchingFiles.map(f => {
       const path = f.path;
       if (f.hidden) {
-        return `-------------------\n${path} \n-------------------\n####il contenuto del file è stato temporaneamente omesso####\n`;
+        return `-------------------\n${path} \n-------------------\n${$t("messages.fileOmitted")}\n`;
       }
       
       let fileContent = fileContentsCache[path] || "";
       
       if ($settings.largeFileThreshold > 0 && f.char_count > $settings.largeFileThreshold) {
-        const isForced = forceFullLoadPaths.has(path) || Array.from(forceFullLoadPaths).some(p => {
-          return path.startsWith(p) && (
-            path.charAt(p.length) === '/' || path.charAt(p.length) === '\\'
-          );
-        });
-        if (!isForced) {
+        if (!isForcedFullLoad(path, forceFullLoadPaths)) {
           if (fileContent.length > $settings.largeFileThreshold) {
-            fileContent = fileContent.slice(0, $settings.largeFileThreshold) + "\n\n[... The rest of the file was truncated due to its length ...]";
+            fileContent = fileContent.slice(0, $settings.largeFileThreshold) + TRUNCATION_NOTICE;
           }
         }
       }
@@ -1854,7 +1834,7 @@
 
   {#if isSidebarExpanded}
     <aside
-      class="flex flex-col border-r border-[var(--border)] bg-[var(--surface)]"
+      class="flex flex-col border-r border-[var(--border)] bg-[var(--surface)] relative z-[1]"
       style="width: {sidebarWidth}px; min-width: 250px;"
     >
       <div
@@ -1929,7 +1909,7 @@
           <button 
             class="p-1 hover:bg-[var(--bg-hover-strong)] hover:text-[var(--text)] rounded text-[var(--muted)] transition-colors"
             on:click={() => sortAscending = !sortAscending}
-            title={sortAscending ? "Crescente" : "Decrescente"}
+            title={sortAscending ? $t("app.sortAscending") : $t("app.sortDescending")}
           >
             {#if sortAscending}
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -1945,7 +1925,7 @@
       </div>
 
       <div
-        class="flex-1 overflow-y-auto p-2"
+        class="flex-1 overflow-y-auto p-2 relative z-[1]"
         role="list"
         on:drop={handleDrop}
         on:dragover={handleDragOver}
@@ -2198,7 +2178,7 @@
         </button>
       {/if}
 
-      <div class="flex-1 overflow-auto p-6 bg-[var(--bg)] relative">
+      <div class="flex-1 overflow-auto p-6 bg-[var(--bg)] relative z-[1]">
         <div
           class="prose prose-invert max-w-none prose-pre:bg-[var(--surface-2)] prose-pre:border prose-pre:border-[var(--border-light)] pb-16"
         >
@@ -2220,7 +2200,7 @@
           on:click={openTokenizerSettings}
           title={$locale === 'it' ? 'Clicca per modificare il tokenizer nelle impostazioni' : 'Click to change the tokenizer in settings'}
         >
-          {$locale === 'it' ? 'Token' : 'Tokens'}: {isGeminiLoading ? ($locale === 'it' ? 'Caricamento...' : 'Loading...') : tokenCount.toLocaleString()}
+          {$locale === 'it' ? 'Token' : 'Tokens'}: {!isTokenizerReady ? ($locale === 'it' ? 'Caricamento...' : 'Loading...') : tokenCount.toLocaleString()}
         </button>
       </div>
       <div class="flex gap-3">
@@ -2304,7 +2284,7 @@
 {#if contextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[340px] max-w-[420px]"
-    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 0); will-change: transform;"
+    style="top: {contextMenu.y}px; left: {contextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 9999px); will-change: transform;"
   >
     <div class="px-4 py-2 border-b border-[var(--border-light)] mb-1 select-text max-w-[420px]">
       <div class="text-xs font-bold text-[var(--muted)] truncate" title={contextMenu.path}>
@@ -2524,7 +2504,7 @@
 {#if tabContextMenu.show}
   <div
     class="fixed border border-[var(--border-light)] shadow-xl rounded py-1 text-sm min-w-[150px]"
-    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 0); will-change: transform;"
+    style="top: {tabContextMenu.y}px; left: {tabContextMenu.x}px; z-index: 9999999; background-color: var(--surface-2); transform: translate3d(0, 0, 9999px); will-change: transform;"
   >
     <button
       class="w-full text-left px-4 py-2 hover:bg-[var(--bg-hover-strong)] text-[var(--text)] transition-colors"

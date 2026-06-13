@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook 出力非表示",
     "outputsReduced": "Notebook 出力縮小表示",
     "outputsFull": "Notebook 出力全画面表示",
-    "tokens": "トークン"
+    "tokens": "トークン",
+    "sortAscending": "昇順",
+    "sortDescending": "降順"
   },
   "settings": {
     "title": "設定",
@@ -161,6 +163,12 @@
     "pathCopied": "パスをコピーしました",
     "filenameCopied": "ファイル名をコピーしました",
     "scrolledTo": "スクロール先",
-    "openLinkFailed": "リンクを開けませんでした"
+    "openLinkFailed": "リンクを開けませんでした",
+    "fileOmitted": "####ファイルの内容は一時的に省略されました####",
+    "duplicatedTab": "{name} を複製しました",
+    "tabsMerged": "タブが正常に結合されました",
+    "closedTabToRight": "右側の 1 つのタブを閉じました",
+    "closedTabsToRight": "右側の {count} つのタブを閉じました",
+    "refreshError": "更新エラー: {error}"
   }
 }

@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook 출력 숨김",
     "outputsReduced": "Notebook 출력 축소 표시",
     "outputsFull": "Notebook 출력 전체 표시",
-    "tokens": "토큰"
+    "tokens": "토큰",
+    "sortAscending": "오름차순",
+    "sortDescending": "내림차순"
   },
   "settings": {
     "title": "설정",
@@ -161,6 +163,12 @@
     "pathCopied": "경로가 복사되었습니다",
     "filenameCopied": "파일 이름이 복사되었습니다",
     "scrolledTo": "이동:",
-    "openLinkFailed": "링크를 열 수 없습니다"
+    "openLinkFailed": "링크를 열 수 없습니다",
+    "fileOmitted": "####파일 콘텐츠가 일시적으로 생략되었습니다####",
+    "duplicatedTab": "{name} 복제됨",
+    "tabsMerged": "탭이 성공적으로 병합되었습니다",
+    "closedTabToRight": "오른쪽의 1개 탭이 닫혔습니다",
+    "closedTabsToRight": "오른쪽의 {count}개 탭이 닫혔습니다",
+    "refreshError": "새로 고침 오류: {error}"
   }
 }

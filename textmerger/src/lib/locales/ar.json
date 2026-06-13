@@ -22,7 +22,9 @@
     "outputsHidden": "مخرجات Notebook مخفية",
     "outputsReduced": "مخرجات Notebook مصغرة",
     "outputsFull": "مخرجات Notebook كاملة",
-    "tokens": "الرموز"
+    "tokens": "الرموز",
+    "sortAscending": "تصاعدي",
+    "sortDescending": "تنازلي"
   },
   "settings": {
     "title": "الإعدادات",
@@ -161,6 +163,12 @@
     "pathCopied": "تم نسخ المسار",
     "filenameCopied": "تم نسخ اسم الملف",
     "scrolledTo": "تم الانتقال إلى",
-    "openLinkFailed": "تعذر فتح الرابط"
+    "openLinkFailed": "تعذر فتح الرابط",
+    "fileOmitted": "####تم حذف محتوى الملف مؤقتًا####",
+    "duplicatedTab": "تم تكرار {name}",
+    "tabsMerged": "تم دمج علامات التبويب بنجاح",
+    "closedTabToRight": "تم إغلاق علامة تبويب واحدة إلى اليمين",
+    "closedTabsToRight": "تم إغلاق {count} علامات تبويب إلى اليمين",
+    "refreshError": "خطأ أثناء التحديث: {error}"
   }
 }

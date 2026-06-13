@@ -22,7 +22,9 @@
     "outputsHidden": "笔记本输出已隐藏",
     "outputsReduced": "笔记本输出已精简",
     "outputsFull": "笔记本输出已完整",
-    "tokens": "Token"
+    "tokens": "Token",
+    "sortAscending": "升序",
+    "sortDescending": "降序"
   },
   "settings": {
     "title": "设置",
@@ -161,6 +163,12 @@
     "pathCopied": "路径已复制",
     "filenameCopied": "文件名已复制",
     "scrolledTo": "已滚动到",
-    "openLinkFailed": "无法打开链接"
+    "openLinkFailed": "无法打开链接",
+    "fileOmitted": "####文件内容已暂时省略####",
+    "duplicatedTab": "已复制 {name}",
+    "tabsMerged": "标签页合并成功",
+    "closedTabToRight": "已关闭右侧的 1 个标签页",
+    "closedTabsToRight": "已关闭右侧的 {count} 个标签页",
+    "refreshError": "刷新时出错: {error}"
   }
 }

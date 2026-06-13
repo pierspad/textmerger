@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook आउटपुट छिपे हुए",
     "outputsReduced": "Notebook आउटपुट कम किए गए",
     "outputsFull": "Notebook आउटपुट पूरे",
-    "tokens": "टोकन"
+    "tokens": "टोकन",
+    "sortAscending": "आरोही",
+    "sortDescending": "अवरोही"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -161,6 +163,12 @@
     "pathCopied": "पथ कॉपी किया गया",
     "filenameCopied": "फाइल नाम कॉपी किया गया",
     "scrolledTo": "यहां स्क्रोल किया गया",
-    "openLinkFailed": "लिंक नहीं खोला जा सका"
+    "openLinkFailed": "लिंक नहीं खोला जा सका",
+    "fileOmitted": "####फ़ाइल सामग्री अस्थायी रूप से छोड़ दी गई है####",
+    "duplicatedTab": "{name} को डुप्लिकेट किया गया",
+    "tabsMerged": "टैब सफलतापूर्वक मर्ज किए गए",
+    "closedTabToRight": "दाहिनी ओर 1 टैब बंद किया गया",
+    "closedTabsToRight": "दाहिनी ओर {count} टैब बंद किए गए",
+    "refreshError": "रिफ्रेश करने में त्रुटि: {error}"
   }
 }

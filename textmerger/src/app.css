@@ -235,3 +235,34 @@ h1 {
   scrollbar-color: var(--border-light) transparent;
 }
 
+/* WebKitGTK bug workaround: element scrollbars are painted ABOVE position:fixed
+   overlays (context menus) when compositing is disabled, regardless of z-index.
+   While a context menu is open, make scrollbars invisible (transparent, NOT
+   display:none, so no layout shift/reflow happens).
+
+   The thumb keeps a 2px border (see ::-webkit-scrollbar-thumb above). Making the
+   background transparent hides the capsule fill, but that border still paints a
+   visible ring/outline on top of the menu. So we also collapse the border to 0
+   width here (border-color:transparent alone isn't enough on WebKitGTK). */
+body.ctx-menu-open ::-webkit-scrollbar,
+body.ctx-menu-open ::-webkit-scrollbar-track,
+body.ctx-menu-open ::-webkit-scrollbar-track-piece,
+body.ctx-menu-open ::-webkit-scrollbar-thumb,
+body.ctx-menu-open ::-webkit-scrollbar-thumb:hover,
+body.ctx-menu-open ::-webkit-scrollbar-button,
+body.ctx-menu-open ::-webkit-scrollbar-corner {
+  visibility: hidden !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 none transparent !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 none transparent !important;
+  outline-color: transparent !important;
+}
+
+body.ctx-menu-open * {
+  scrollbar-color: transparent transparent;
+}
+

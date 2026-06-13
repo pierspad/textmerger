@@ -22,7 +22,9 @@
     "outputsHidden": "Sorties Notebook masquées",
     "outputsReduced": "Sorties Notebook réduites",
     "outputsFull": "Sorties Notebook entières",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "sortAscending": "Croissant",
+    "sortDescending": "Décroissant"
   },
   "settings": {
     "title": "Paramètres",
@@ -161,6 +163,12 @@
     "pathCopied": "Chemin copié",
     "filenameCopied": "Nom de fichier copié",
     "scrolledTo": "Défilé vers",
-    "openLinkFailed": "Impossible d'ouvrir le lien"
+    "openLinkFailed": "Impossible d'ouvrir le lien",
+    "fileOmitted": "####le contenu du fichier a été temporairement omis####",
+    "duplicatedTab": "Onglet {name} dupliqué",
+    "tabsMerged": "Onglets fusionnés avec succès",
+    "closedTabToRight": "1 onglet fermé sur la droite",
+    "closedTabsToRight": "{count} onglets fermés sur la droite",
+    "refreshError": "Erreur lors de l'actualisation: {error}"
   }
 }

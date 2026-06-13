@@ -22,7 +22,9 @@
     "outputsHidden": "Выводы Notebook скрыты",
     "outputsReduced": "Выводы Notebook сокращены",
     "outputsFull": "Выводы Notebook полные",
-    "tokens": "Токены"
+    "tokens": "Токены",
+    "sortAscending": "По возрастанию",
+    "sortDescending": "По убыванию"
   },
   "settings": {
     "title": "Настройки",
@@ -161,6 +163,12 @@
     "pathCopied": "Путь скопирован",
     "filenameCopied": "Имя файла скопировано",
     "scrolledTo": "Прокручено к",
-    "openLinkFailed": "Не удалось открыть ссылку"
+    "openLinkFailed": "Не удалось открыть ссылку",
+    "fileOmitted": "####содержимое файла временно опущено####",
+    "duplicatedTab": "Дубликат {name}",
+    "tabsMerged": "Вкладки успешно объединены",
+    "closedTabToRight": "Закрыта 1 вкладка справа",
+    "closedTabsToRight": "Закрыто {count} вкладок справа",
+    "refreshError": "Ошибка обновления: {error}"
   }
 }

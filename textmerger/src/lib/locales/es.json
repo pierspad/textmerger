@@ -22,7 +22,9 @@
     "outputsHidden": "Salidas de Notebook ocultas",
     "outputsReduced": "Salidas de Notebook reducidas",
     "outputsFull": "Salidas de Notebook completas",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "sortAscending": "Ascendente",
+    "sortDescending": "Descendente"
   },
   "settings": {
     "title": "Configuración",
@@ -161,6 +163,12 @@
     "pathCopied": "Ruta copiada",
     "filenameCopied": "Nombre de archivo copiado",
     "scrolledTo": "Desplazado a",
-    "openLinkFailed": "No se pudo abrir el enlace"
+    "openLinkFailed": "No se pudo abrir el enlace",
+    "fileOmitted": "####el contenido del archivo ha sido omitido temporalmente####",
+    "duplicatedTab": "Duplicado {name}",
+    "tabsMerged": "Pestañas fusionadas con éxito",
+    "closedTabToRight": "Cerrada 1 pestaña a la derecha",
+    "closedTabsToRight": "Cerradas {count} pestañas a la derecha",
+    "refreshError": "Error al actualizar: {error}"
   }
 }

@@ -22,7 +22,9 @@
     "outputsHidden": "Notebook çıktıları gizlendi",
     "outputsReduced": "Notebook çıktıları kısaltıldı",
     "outputsFull": "Notebook çıktıları tam",
-    "tokens": "Token"
+    "tokens": "Token",
+    "sortAscending": "Artan",
+    "sortDescending": "Azalan"
   },
   "settings": {
     "title": "Ayarlar",
@@ -161,6 +163,12 @@
     "pathCopied": "Yol kopyalandı",
     "filenameCopied": "Dosya adı kopyalandı",
     "scrolledTo": "Şuraya kaydırıldı",
-    "openLinkFailed": "Bağlantı açılamadı"
+    "openLinkFailed": "Bağlantı açılamadı",
+    "fileOmitted": "####dosya içeriği geçici olarak atlandı####",
+    "duplicatedTab": "{name} kopyalandı",
+    "tabsMerged": "Sekmeler başarıyla birleştirildi",
+    "closedTabToRight": "Sağdaki 1 sekme kapatıldı",
+    "closedTabsToRight": "Sağdaki {count} sekme kapatıldı",
+    "refreshError": "Yenilenirken hata oluştu: {error}"
   }
 }

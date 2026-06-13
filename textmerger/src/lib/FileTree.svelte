@@ -32,11 +32,36 @@
   let rootNodes: string[] = [];
   let nodeMap: Record<string, TreeNode> = {};
 
+  // Rebuild immediately when files/sort change, but debounce rebuilds caused
+  // only by token-cache updates (which arrive in many batches while loading):
+  // avoids O(n) full tree rebuilds per batch.
+  let lastFiles: FileNode[] | null = null;
+  let lastSortKey = "";
+  let updateTreeTimeout: ReturnType<typeof setTimeout> | null = null;
+
   $: {
-    updateTree(files, sortType, sortAscending, fileTokensCache);
+    const sortKey = `${sortType}:${sortAscending}`;
+    if (files !== lastFiles || sortKey !== lastSortKey) {
+      lastFiles = files;
+      lastSortKey = sortKey;
+      if (updateTreeTimeout) {
+        clearTimeout(updateTreeTimeout);
+        updateTreeTimeout = null;
+      }
+      updateTree(files, sortType, sortAscending, fileTokensCache);
+    } else {
+      // Only fileTokensCache changed
+      if (updateTreeTimeout) clearTimeout(updateTreeTimeout);
+      updateTreeTimeout = setTimeout(() => {
+        updateTreeTimeout = null;
+        updateTree(files, sortType, sortAscending, fileTokensCache);
+      }, 80);
+    }
   }
 
   function updateTree(currentFiles: FileNode[], currentSortType: string, currentSortAsc: boolean, currentTokensCache: Record<string, number>) {
+    // Preserve open/collapsed state across rebuilds
+    const prevNodeMap = nodeMap;
     nodeMap = {};
     tree = {};
     rootNodes = [];
@@ -53,7 +78,7 @@
                 path,
                 isFile,
                 children: {},
-                isOpen: true
+                isOpen: prevNodeMap[path]?.isOpen ?? true
             };
         }
         return nodeMap[path];

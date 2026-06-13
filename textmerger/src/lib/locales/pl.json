@@ -22,7 +22,9 @@
     "outputsHidden": "Wyjścia Notebooka ukryte",
     "outputsReduced": "Wyjścia Notebooka zredukowane",
     "outputsFull": "Wyjścia Notebooka pełne",
-    "tokens": "Tokeny"
+    "tokens": "Tokeny",
+    "sortAscending": "Rosnąco",
+    "sortDescending": "Malejąco"
   },
   "settings": {
     "title": "Ustawienia",
@@ -161,6 +163,12 @@
     "pathCopied": "Ścieżka skopiowana",
     "filenameCopied": "Nazwa pliku skopiowana",
     "scrolledTo": "Przewinięto do",
-    "openLinkFailed": "Nie można otworzyć linku"
+    "openLinkFailed": "Nie można otworzyć linku",
+    "fileOmitted": "####zawartość pliku została tymczasowo pominięta####",
+    "duplicatedTab": "Zduplikowano {name}",
+    "tabsMerged": "Karty zostały pomyślnie scalone",
+    "closedTabToRight": "Zamknięto 1 kartę po prawej stronie",
+    "closedTabsToRight": "Zamknięto {count} kart po prawej stronie",
+    "refreshError": "Błąd podczas odświeżania: {error}"
   }
 }
