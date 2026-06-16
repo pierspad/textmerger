@@ -177,11 +177,16 @@
   ];
   let selectedShortcutCategories: string[] = [];
 
-  function toggleCategory(catId: string) {
-    if (selectedShortcutCategories.includes(catId)) {
-      selectedShortcutCategories = selectedShortcutCategories.filter(id => id !== catId);
+  function toggleCategory(catId: string, event: MouseEvent) {
+    const isCtrl = event.ctrlKey || event.metaKey;
+    if (isCtrl) {
+      if (selectedShortcutCategories.includes(catId)) {
+        selectedShortcutCategories = selectedShortcutCategories.filter(id => id !== catId);
+      } else {
+        selectedShortcutCategories = [...selectedShortcutCategories, catId];
+      }
     } else {
-      selectedShortcutCategories = [...selectedShortcutCategories, catId];
+      selectedShortcutCategories = [catId];
     }
   }
   
@@ -971,7 +976,7 @@
             {#each shortcutCategories as cat}
               <button
                 class="px-3 py-1 text-sm rounded font-medium transition-colors border {selectedShortcutCategories.includes(cat.id) ? 'bg-[#0e639c] border-[#0e639c] text-white' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)]'}"
-                on:click={() => toggleCategory(cat.id)}
+                on:click={(e) => toggleCategory(cat.id, e)}
               >
                 {$t(cat.key)}
               </button>
