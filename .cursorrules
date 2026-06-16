@@ -1,319 +1,459 @@
-# Agent & LLM Instructions: Principles of Excellent Software (Tauri + Svelte 5 stack)
+# Agent & LLM Instructions — Principles of Excellent Software (Tauri v2 + Svelte 5 desktop suite)
 
-All development, code generation, and AI assistance for the projects in this workspace must adhere strictly to these rules, architectural specifications, and software engineering principles. These standards ensure premium visual aesthetics, minimal boilerplate, high performance, and robust code maintainability across all applications in the suite.
+> **Purpose.** This file is the single, canonical "manual of good software" for this workspace.
+> It encodes every pattern that is already **standard, consolidated and battle-tested** across the
+> apps so that an agentic LLM can **replicate a new desktop application end-to-end, fast and consistently**:
+> the banded shell + sidebar, dark/light theming, 15-language i18n, the toast/dialog/shortcut systems,
+> the Whisper integration (including the real build fix), and the full Git + AUR release pipeline with all
+> its safety checks.
+>
+> **This exact file is copied identically** into every project (`reaper`, `vesta`, `textmerger`,
+> `effywhisper`, and the workspace root). Project-specific values (palette, Vite port, CSS framework)
+> live in the clearly-labelled per-project sub-sections — read the one that matches the repo you are in.
+>
+> **How to use it.** Treat every rule below as a hard requirement unless the user explicitly overrides it.
+> When in doubt, mirror the most mature reference implementation: **`reaper` and `vesta`** are the gold
+> standard for layout, Whisper, and the release scripts; `textmerger` is the gold standard for the simpler
+> single-crate structure. Prefer *reusing* an existing consolidated solution over inventing a new one.
 
 ---
 
-## 1. Core Tech Stack & Standards
+## 0. Golden Rules (read first)
 
-Depending on the specific project, the technology stack utilizes the following standards:
+1. **Never hardcode colors.** Every color comes from a semantic CSS variable (`--bg`, `--surface`, `--accent`, …). See §2.
+2. **No raw browser defaults.** No native `<select>`, `<input type=checkbox>`, default scrollbars, or default focus outlines in the app UI. See §5.
+3. **One source of truth per concern.** Version → `PKGBUILD` `pkgver`. Heavy logic → a shared crate in `lib/`. Translations → `en.json` (master) + per-language overrides.
+4. **Don't duplicate heavy logic across apps.** Extract it into a decoupled, callback-driven Rust crate (§12, §13).
+5. **Every change is logged.** Append a dated technical entry to `docs/list_of_things_changed.md` as you edit source.
+6. **Validate before declaring done.** `cargo check` (not full build) for Rust; run the i18n audit; for a release, run the full pipeline in §15.
+7. **Return whole files when you modify code/scripts.** Never hand back fragments of a script the user has to splice in.
+8. **Accessibility and RTL are not optional.** Keyboard handlers on every custom control; logical CSS properties everywhere (§5.12).
 
-### 1.1 Backend & App Framework
-*   **Backend**: Rust (Tauri v2) — high-performance system access, low memory footprint, strict security models.
-*   **Frontend**: Svelte 5 + TypeScript + Vite — highly reactive, fast compilation, minimal boilerplate.
-    *   *Svelte 5 Runes*: Always prefer Svelte 5 runes (`$state`, `$derived`, `$props()`) for new components. If modifying legacy components, maintain the existing Svelte 4 syntax (`export let`, reactive `$: `) or refactor them cleanly to Svelte 5 Runes.
+---
 
-### 1.2 Styling Frameworks by Project
-*   **Reaper**: Vanilla CSS only. This project does NOT use TailwindCSS. All styles must be written in scoped `<style>` blocks inside Svelte components or global classes in `src/app.css`.
-*   **Textmerger**: Vanilla CSS only (with TailwindCSS legacy in some older elements). Do NOT generate new Tailwind utility classes; write standard CSS classes or scoped `<style>` blocks.
-*   **Vesta**: Svelte 5 + Tailwind CSS v4 (`@import "tailwindcss";` in `app.css`). Tailwind utility classes are allowed and encouraged for layout and spacing, but they must utilize the custom theme variables. For complex/premium custom UI patterns (e.g. glassmorphism), write semantic CSS classes in `app.css` or scoped `<style>` blocks.
+## 1. Project Map, Tech Stack & Standards
+
+### 1.1 Per-project matrix
+
+| Project | Structure | CSS framework | Vite/Tauri dev port | Whisper | Notes |
+|---|---|---|---|---|---|
+| **reaper** | Cargo **workspace** (`apps/<app>-gui/src-tauri`, `core/*`, `lib/*`) | **Vanilla CSS only** | **5173** | yes (`lib/whisper-common`) | yt-dlp/ffmpeg music archiver. Reference for layout + release. |
+| **textmerger** | **Single crate** (`textmerger/src-tauri`) | Vanilla CSS (some legacy Tailwind — do **not** add new Tailwind) | **5174** | no | Reference for the simple single-crate setup. |
+| **vesta** | Cargo **workspace** (`apps/srt-gui/src-tauri`, `core/*`, `lib/*`, `cli/*`) | **Tailwind CSS v4** (`@import "tailwindcss";`) | **5175** | yes (`lib/whisper-common`) | Subtitles/Whisper/flashcards. Reference for Whisper + i18n tooling. |
+| **effywhisper** | SvelteKit + `src-tauri` (less stable) | Vanilla CSS | (own) | benchmarks | Treat as experimental; stabilize toward this manual. |
+
+### 1.2 Backend & framework
+* **Backend**: Rust + **Tauri v2** — system access, low memory, strict capability/security model.
+* **Frontend**: **Svelte 5 + TypeScript + Vite**.
+  * **Always prefer Svelte 5 runes** (`$state`, `$derived`, `$props()`, `$effect`) and snippets (`{#snippet}`) for new components.
+  * When touching legacy components, keep their Svelte 4 syntax (`export let`, `$:`) consistent, or refactor the whole component cleanly to runes — never mix the two styles in one file.
+
+### 1.3 Styling rules by project
+* **reaper / textmerger**: Vanilla CSS only — scoped `<style>` blocks in components or global classes in `src/app.css`. Do not introduce new Tailwind utilities.
+* **vesta**: Tailwind v4 utility classes are allowed/encouraged for layout & spacing, **but they must consume the custom theme variables**. Premium/custom patterns (glassmorphism, segmented controls, …) are written as semantic classes in `app.css` or scoped `<style>`.
 
 ---
 
 ## 2. Design Tokens & CSS Variable Architecture
 
-Do not hardcode hex colors or specific palettes directly in component styles. All styling must be driven by semantic CSS variables defined in each app's `app.css`, allowing the color scheme to be changed dynamically without modifying component logic.
+All styling is driven by semantic CSS variables defined in each app's `app.css`, so the scheme can change at runtime by flipping `:root[data-theme]` (§6) — never by editing component logic. Do not hardcode hex values in components.
 
-### Canonical Variable Names & Color Schemes by Project
+**Canonical variable set** (every app defines all of these, dark by default + a `[data-theme='light']` block):
+`--bg`, `--surface`, `--surface-2`, `--surface-3`, `--text`, `--muted`, `--border`,
+`--accent`, `--accent-strong`, `--accent-text`, `--warn`, `--danger`, `--done`, `--shadow`
+(+ `--glass-bg`, `--glass-border` where glassmorphism is used).
 
-#### Reaper (Vanilla Dark/Light)
+Semantic meaning: `--bg` base app background · `--surface` sidebar/panels · `--surface-2` cards/inputs · `--surface-3` hover/active · `--text` high-contrast text · `--muted` secondary text · `--border` thin borders · `--accent`/`--accent-strong` primary action + hover · `--accent-text` text on accent · `--warn`/`--danger`/`--done` feedback states · `--shadow` premium elevation.
+
+### Reaper — Vanilla (dark / light)
 ```css
 :root {
-  --bg: #111315;          /* Base app background */
-  --surface: #181b1f;     /* Sidebars, panels, primary containers */
-  --surface-2: #20242a;   /* Cards, input backgrounds, secondary containers */
-  --surface-3: #292f36;   /* Hover highlights, active elements */
-  --text: #f2f4f3;         /* Main readable text (high contrast) */
-  --muted: #a8b1ad;        /* Secondary/subtitle/placeholder text */
-  --border: #343b43;       /* Standard thin borders */
-  --accent: #2a9d8f;       /* Focus accent, main actions */
-  --accent-strong: #43c2ad; /* Hover state on primary actions */
-  --accent-text: #071916;  /* Text color on accent backgrounds */
-  --warn: #e9a23b;
-  --danger: #e15d64;
-  --done: #78c679;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  --bg:#111315; --surface:#181b1f; --surface-2:#20242a; --surface-3:#292f36;
+  --text:#f2f4f3; --muted:#a8b1ad; --border:#343b43;
+  --accent:#2a9d8f; --accent-strong:#43c2ad; --accent-text:#071916;
+  --warn:#e9a23b; --danger:#e15d64; --done:#78c679;
+  --shadow:0 18px 50px rgba(0,0,0,.22);
 }
 :root[data-theme='light'] {
-  --bg: #f5f4ef;
-  --surface: #ffffff;
-  --surface-2: #ece9e1;
-  --surface-3: #ded9cf;
-  --text: #20221f;
-  --muted: #626b66;
-  --border: #d2cdc2;
-  --accent: #0f7d72;
-  --accent-strong: #0c695f;
-  --accent-text: #ffffff;
-  --warn: #9a640d;
-  --danger: #b53d46;
-  --done: #3f7f46;
-  --shadow: 0 18px 38px rgba(55, 48, 38, 0.12);
+  --bg:#f5f4ef; --surface:#ffffff; --surface-2:#ece9e1; --surface-3:#ded9cf;
+  --text:#20221f; --muted:#626b66; --border:#d2cdc2;
+  --accent:#0f7d72; --accent-strong:#0c695f; --accent-text:#ffffff;
+  --warn:#9a640d; --danger:#b53d46; --done:#3f7f46;
+  --shadow:0 18px 38px rgba(55,48,38,.12);
 }
 ```
 
-#### Vesta (Tailwind v4 - Dark/Light)
+### Vesta — Tailwind v4 (dark / light)
 ```css
 :root {
-  --bg: #1a1a2e;          /* Base app background */
-  --surface: #16213e;     /* Sidebars, panels, primary containers */
-  --surface-2: #0f172a;   /* Cards, input backgrounds, secondary containers */
-  --surface-3: #1e293b;   /* Hover highlights, active elements */
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --text: #ffffff;         /* Main readable text (high contrast) */
-  --muted: #94a3b8;        /* Secondary/subtitle/placeholder text */
-  --border: rgba(255, 255, 255, 0.1);
-  --accent: #667eea;       /* Focus accent, main actions */
-  --accent-strong: #764ba2; /* Hover state on primary actions */
-  --accent-text: #ffffff;  /* Text color on accent backgrounds */
-  --warn: #fbbf24;
-  --danger: #ff416c;
-  --done: #38ef7d;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+  --bg:#1a1a2e; --surface:#16213e; --surface-2:#0f172a; --surface-3:#1e293b;
+  --glass-bg:rgba(255,255,255,.05); --glass-border:rgba(255,255,255,.1);
+  --text:#ffffff; --muted:#94a3b8; --border:rgba(255,255,255,.1);
+  --accent:#667eea; --accent-strong:#764ba2; --accent-text:#ffffff;
+  --warn:#fbbf24; --danger:#ff416c; --done:#38ef7d;
+  --shadow:0 18px 50px rgba(0,0,0,.4);
 }
 :root[data-theme='light'] {
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e2e8f0;
-  --glass-bg: rgba(0, 0, 0, 0.03);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: rgba(0, 0, 0, 0.08);
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-text: #ffffff;
-  --warn: #d97706;
-  --danger: #dc2626;
-  --done: #16a34a;
-  --shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  --bg:#f8fafc; --surface:#ffffff; --surface-2:#f1f5f9; --surface-3:#e2e8f0;
+  --glass-bg:rgba(0,0,0,.03); --glass-border:rgba(0,0,0,.08);
+  --text:#0f172a; --muted:#64748b; --border:rgba(0,0,0,.08);
+  --accent:#4f46e5; --accent-strong:#4338ca; --accent-text:#ffffff;
+  --warn:#d97706; --danger:#dc2626; --done:#16a34a;
+  --shadow:0 18px 38px rgba(15,23,42,.08);
 }
 ```
 
-#### Textmerger (Vanilla - Dark/Light)
+### Textmerger — Vanilla (dark / light)
 ```css
 :root {
-  --bg: #1e1e1e;          /* Base app background */
-  --surface: #252526;     /* Sidebars, panels, primary containers */
-  --surface-2: #2d2d2d;   /* Cards, input backgrounds, secondary containers */
-  --surface-3: #3c3c3c;   /* Hover highlights, active elements */
-  --text: #e5e7eb;         /* Main readable text (high contrast) */
-  --muted: #9ca3af;        /* Secondary/subtitle/placeholder text */
-  --border: #333333;       /* Standard thin borders */
-  --accent: #007acc;       /* Focus accent, main actions */
-  --accent-strong: #0098ff; /* Hover state on primary actions */
-  --accent-text: #ffffff;  /* Text color on accent backgrounds */
-  --warn: #e9a23b;
-  --danger: #e15d64;
-  --done: #78c679;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  --bg:#1e1e1e; --surface:#252526; --surface-2:#2d2d2d; --surface-3:#3c3c3c;
+  --text:#e5e7eb; --muted:#9ca3af; --border:#333333;
+  --accent:#007acc; --accent-strong:#0098ff; --accent-text:#ffffff;
+  --warn:#e9a23b; --danger:#e15d64; --done:#78c679;
+  --shadow:0 18px 50px rgba(0,0,0,.22);
 }
 :root[data-theme="light"] {
-  --bg: #ffffff;
-  --surface: #f3f4f6;
-  --surface-2: #e5e7eb;
-  --surface-3: #d1d5db;
-  --text: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #0066b3;
-  --accent-strong: #005599;
-  --accent-text: #ffffff;
-  --warn: #9a640d;
-  --danger: #b53d46;
-  --done: #3f7f46;
-  --shadow: 0 18px 38px rgba(55, 48, 38, 0.12);
+  --bg:#ffffff; --surface:#f3f4f6; --surface-2:#e5e7eb; --surface-3:#d1d5db;
+  --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+  --accent:#0066b3; --accent-strong:#005599; --accent-text:#ffffff;
+  --warn:#9a640d; --danger:#b53d46; --done:#3f7f46;
+  --shadow:0 18px 38px rgba(55,48,38,.12);
 }
 ```
 
-### Shared Transitions
-Ensure components transition smoothly during theme changes by applying this rule globally:
+### Shared theme transition (global, in every app)
 ```css
 body, button, input, div, span, nav {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 ```
 
 ---
 
-## 3. UI/UX Visual Harmony Rules (MANDATORY)
+## 3. Repository & Directory Architecture (replicable skeleton)
 
-Every UI element created or modified must be visually consistent with the rest of the application. This is a premium desktop suite — no raw browser defaults are acceptable.
+A **workspace** app (reaper/vesta) — the default for anything non-trivial or with shared crates:
 
-### 3.1 Input Fields & Textfields
-Use `.field` as the container wrapper (handles label + input + helper text layout):
-*   Background: `var(--surface-2)`, border: `1px solid var(--border)`, border-radius: `8px` or `12px` depending on project, min-height: `40px`, padding: `0 12px`, color: `var(--text)`.
-*   Focus state: transition `border-color 0.15s ease, box-shadow 0.15s ease`. On focus: `border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);`.
-*   Labels above inputs: color `var(--muted)`, font-size `0.88rem`, displayed with `display: inline-flex; align-items: center; gap: 6px;`.
+```
+<project>/
+├─ Cargo.toml                      # [workspace] + [workspace.package].version + [workspace.dependencies]
+├─ Cargo.lock                      # committed; kept in sync via `cargo update --workspace` at release
+├─ .cargo/config.toml              # mold linker + sparse registry (§17)
+├─ apps/<name>-gui/
+│  ├─ package.json                 # version mirrors PKGBUILD pkgver
+│  ├─ src/
+│  │  ├─ app.css                   # design tokens (§2) + global classes
+│  │  ├─ App.svelte                # the banded shell (§4)
+│  │  ├─ main.ts
+│  │  ├─ assets/avatar.png         # cached <10KB attribution avatar (§11)
+│  │  └─ lib/
+│  │     ├─ i18n/{index.ts, locales/*.json}     # 15 languages (§7)
+│  │     ├─ stores/{theme.ts, snackbar.ts, shortcuts.ts, settings.ts, …}
+│  │     ├─ utils/dialogGuard.ts                # guardedOpen/guardedSave (§10)
+│  │     └─ components/ …                        # Modal, KeybindRecorder, ConfirmDialog, …
+│  ├─ scripts/check_missing_translations.py     # i18n audit used by the release (§7, §15)
+│  └─ src-tauri/{Cargo.toml, tauri.conf.json, capabilities/default.json, src/…, build.rs}
+├─ core/*  lib/*                    # pure-logic crates + shared heavy crates (e.g. whisper-common §12)
+├─ vendor/whisper-rs-sys-0.15.0/   # patched FFI crate, pinned via [patch.crates-io] (§12)
+├─ build-publish-scripts/  (vesta: build-scripts/)   # the release pipeline (§14–§16)
+├─ docs/{release-notes.md, list_of_things_changed.md, README.md}
+└─ .github/workflows/*.yml         # CI build + GitHub Release (§15)
+```
 
-### 3.2 Buttons — Standard & Icon
-Standard classes:
-*   **`.icon-text`** or **`.btn-primary`**: Action buttons with smooth transitions: `transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;`.
-*   **`.icon-only`** or **`.icon-btn`**: Square icon buttons, typically `width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2);`.
-*   Primary variants: `background: var(--accent); color: var(--accent-text); border-color: var(--accent);`. Hover: `background: var(--accent-strong);`.
+A **single-crate** app (textmerger): same `src/` frontend layout, but `src-tauri` sits directly under the project and there is no `core/`/`lib/` workspace. Everything in this manual still applies except the multi-crate version checks.
 
-### 3.3 Segmented Controls
-Use `.segmented` for exclusive multi-option selections (format, mode, auth method).
-*   Active button: `color: var(--accent-text); border-color: var(--accent); background: var(--accent);`.
-*   Inactive button: `background: var(--surface-2); color: var(--muted);` with hover `background: var(--surface-3); color: var(--text);`.
+---
 
-### 3.4 Toggle Cards & Checkboxes
-Never use native `<input type="checkbox">`. Use toggle cards:
-*   An element with `role="button"`, `tabindex="0"`, receiving `.active` class when toggled.
-*   Active state: `border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--surface-2));` with accent icon.
-*   Always include keyboard handler: `on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}`.
+## 4. Application Shell & "Band" Layout (MANDATORY structure)
 
-### 3.5 Custom Dropdowns & Selects
-Never use raw `<select>` tags for styled select boxes.
-*   Dropdown overlay: `position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden;`.
-*   Detect available screen space: if opened near the bottom, open upward (`bottom: calc(100% + 4px); top: auto;`).
-*   Close on `Escape`, backdrop click, or selection.
+Every app uses the same two-axis skeleton: a **collapsible sidebar column** + a **workspace split into horizontal bands**. This is what gives the suite its identity. Reaper's `app.css` is the canonical reference.
 
-### 3.6 Range Sliders
-*   Pass the current progress as a CSS custom property: `style="--percent: {((value - min) / (max - min) * 100)}%"`.
-*   The track fill uses `--percent` to color the active portion: `accent-color: var(--accent);`.
-
-### 3.7 Scrollbars
-*   Invisible scrollbars: `scrollbar-width: none;` + `::-webkit-scrollbar { display: none; }`.
-*   Thin scrollbars: `scrollbar-width: thin; scrollbar-color: var(--border) transparent;`.
-*   Never leave the default thick system scrollbar visible in the app UI.
-
-### 3.8 Modals & Dialogs
-*   Backdrop: Glassmorphic backdrop `position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);` with `fade` Svelte transition.
-*   Dialog card: `border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); box-shadow: var(--shadow);` with `scale` entry transition (`duration: 150, start: 0.96`).
-*   **CRITICAL**: The dialog card must stop event propagation (`on:click|stopPropagation` or Svelte equivalent) to prevent backdrop click dismissals from triggering on inner clicks.
-*   **Dialog Collision Guard**: Per prevenire crash da doppie aperture simultanee o stuttering visivi, non chiamare mai direttamente `open` o `save` da `@tauri-apps/plugin-dialog`. Importa e usa sempre le funzioni protette `guardedOpen` e `guardedSave` esposte da `src/lib/utils/dialogGuard.ts`.
-
-### 3.9 skeleton Loading States
-Instead of simple spinning wheels, use pure CSS shimmering skeletons:
+### 4.1 Outer shell — sidebar | workspace (CSS grid)
 ```css
-.skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 4px;
-  pointer-events: none;
-  user-select: none;
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);   /* sidebar | workspace */
+  height: 100vh;
+  transition: grid-template-columns 180ms ease;
 }
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+.app-shell.collapsed { grid-template-columns: 76px minmax(0, 1fr); }  /* icon-rail mode */
+```
+```svelte
+<main class="app-shell" class:collapsed={sidebarCollapsed}>
+  <aside class="sidebar"> … </aside>
+  <section class="workspace"> … </section>
+</main>
 ```
 
-### 3.10 Beautiful Empty States
-When lists, tables, or search views have no data, never display a blank space. Provide a structured empty state wrapper `.empty-state` with an SVG icon, clear header, and a clear "Call to Action" button.
+### 4.2 Sidebar anatomy (top → bottom)
+1. **Collapse toggle** (`.sidebar-collapse`) that flips `sidebarCollapsed`.
+2. **Brand / logo** row (hidden text in collapsed mode).
+3. **Primary nav** (`.main-nav`) — one button per workspace tab, `.active` on the current one, `.nav-icon` + `.nav-label` (label hidden when collapsed).
+4. **Secondary/settings nav** (`.settings-nav`) where applicable.
+5. **`.sidebar-spacer`** (flex spacer pushing the footer down).
+6. **Attribution dock** pinned at the bottom-left (§11) — hidden in collapsed mode.
 
-### 3.11 Accessibility & Focus Management
-*   **Focus Ring**: Ensure focusable elements (`button`, `a`, `[role="button"]`, `input`) show a clear `:focus-visible` state with `2px` border in `var(--accent)`.
-*   **Focus Trapping**: Inside modal dialogs, trap the focus using Svelte keydown hooks, and return it to the trigger element when the dialog closes.
+Collapsing rule: in `.app-shell.collapsed` hide `.nav-label`, brand text and `.attribution-dock`, and center the icons.
 
-### 3.12 Logical CSS Properties (RTL Support)
-Use logical properties to natively support bidirectional layouts (Arabic `ar` language):
-*   `margin-left` / `margin-right` $\rightarrow$ `margin-inline-start` / `margin-inline-end`
-*   `padding-left` / `padding-right` $\rightarrow$ `padding-inline-start` / `padding-inline-end`
-*   `border-left` / `border-right` $\rightarrow$ `border-inline-start` / `border-inline-end`
-*   `left` / `right` $\rightarrow$ `inset-inline-start` / `inset-inline-end`
+### 4.3 Workspace bands — top / content / bottom (CSS grid rows)
+The workspace owns the scroll and is split into **three bands**: an optional top command band (`auto`), the **scrollable content** (`minmax(0,1fr)`), and a **fixed bottom action band** (`auto`).
+```css
+.workspace { min-width: 0; min-height: 0; overflow: hidden; }   /* contain children, no double scroll */
 
----
+.tab-layout {                       /* per-tab container */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  height: 100%;
+  padding: 18px 18px 0 18px;
+}
 
-## 4. i18n & Localization Standard (15 Languages)
+.footer-band {                      /* the bottom "band with the buttons" */
+  display: flex; align-items: center; justify-content: space-between;
+  height: 76px; flex-shrink: 0;
+  padding: 0 18px; margin: 0 -18px;          /* bleed to the panel edges */
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+```
+* The **bottom band is 76px tall**, uses `--surface-2` with a top border, and holds the page's primary actions (Start/Download/Save/Reset…). Settings tabs use the same band centered (`.settings-footer-band`).
+* The middle band is the only scroll container: `min-height:0; overflow:auto`. Never let the whole window scroll.
+* Switch tabs by toggling visibility (`class:hidden={activeTab!==…}`) or `{#if}` — keep one `.footer-band` per tab so actions stay contextual.
 
-To minimize compiled bundle size, avoid external localization packages. Implement a lightweight reactive derived translation store.
-
-*   **Supported Languages (15)**:
-    English (`en`), Italian (`it`), Spanish (`es`), French (`fr`), German (`de`), Portuguese (`pt`), Russian (`ru`), Chinese (`zh`), Japanese (`ja`), Korean (`ko`), Arabic (`ar` - RTL), Polish (`pl`), Dutch (`nl`), Turkish (`tr`), Hindi (`hi`).
-*   **Key Merging Strategy**: Import locale JSONs and merge with English as safe key-by-key fallback:
-    `ar: { ...en, ...infoEn, ...ar, ...infoAr }`
-*   **Translation function `$locale(key)`** or **`$t(key)`**: Derived store that supports flat or nested key access and `{{paramName}}` placeholder replacement.
-
----
-
-## 5. Keyboard Shortcuts & Keybinds Engine
-
-*   **Input Protection**: Inside the global `handleKeydown` window listener, bypass shortcut logic if the target is an interactive input (`INPUT`, `TEXTAREA`, or `isContentEditable`).
-*   **Normalized Combo Detection**: Always parse in fixed sequence: `Ctrl`, `Alt`, `Shift`, `Meta`, then the uppercase key character. `SPACE` represents spacebar:
-    `const combo = keys.join("+").toUpperCase();`
-*   **Interactive Keybind Recording (`KeybindRecorder.svelte`)**: Active capture window that catches modifiers + normal keys, updates the `shortcuts` store dynamically.
-
----
-
-## 6. Snackbars & Toast Notification System
-
-*   **durata Standard**: La durata standard obbligatoria per tutte le notifiche toast comuni è impostata a **2.5 secondi (2500ms)** per bilanciare visibilità e immediatezza UX.
-*   **Store**: Exposes `snackbar.show(message, variant, duration)` and `snackbar.dismiss(id)`.
-*   **Variants**: `success` (green/`var(--done)`), `info` (blue/`var(--accent)`), `warning` (amber/`var(--warn)`), `error` (red/`var(--danger)`).
-*   **Micro-Animations**: Use a reactive `#key` block to trigger entry animation (`animate-fade-in-up` / `toastSlideIn`) on every new toast, and a progress bar with custom scaling animation.
+### 4.4 Containment checklist (prevents the classic "two scrollbars / squashed grid" bugs)
+* Every grid/flex parent that contains a scroll area sets `min-width:0` and/or `min-height:0`.
+* Panels use `height:100%; overflow:auto`; the shell itself never scrolls.
+* Use `minmax(0, 1fr)` (not `1fr`) for flexible track sizing.
 
 ---
 
-## 7. Release Notes & Versioning Governance
+## 5. UI/UX Visual Harmony Rules (MANDATORY)
 
-*   **Propagate Version Bump**: Use corresponding update scripts (e.g. `update_project_info.sh`) to sync the version across PKGBUILD/cargo config/Svelte layouts.
-*   **Immediate Change Logging**: Every single modification made to source files by an LLM or AI assistant must be recorded with technical reasons inside `docs/list_of_things_changed.md` immediately.
+Premium desktop suite — every element must look intentional and consistent.
+
+**5.1 Fields** — wrap in `.field` (label + control + helper). Control: `background:var(--surface-2); border:1px solid var(--border); border-radius:8–12px; min-height:40px; padding:0 12px; color:var(--text)`. Focus: `border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent)`. Labels: `color:var(--muted); font-size:.88rem; inline-flex; gap:6px`.
+
+**5.2 Buttons** — `.btn-primary`/`.icon-text` (text) and `.icon-btn`/`.icon-only` (40×40 square). Primary: `background:var(--accent); color:var(--accent-text); border-color:var(--accent)`, hover `var(--accent-strong)`. Always transition bg/border/color/shadow at `.15s ease`.
+
+**5.3 Segmented controls** — `.segmented` for exclusive choices (format/mode/auth). Active: accent bg + accent-text. Inactive: `--surface-2`/`--muted`, hover `--surface-3`/`--text`.
+
+**5.4 Toggle cards / checkboxes** — never native `<input type=checkbox>`. Use `role="button" tabindex="0"` cards with `.active` → `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 15%, var(--surface-2))`. Always add keydown: `Enter`/`Space` → `preventDefault()` + toggle.
+
+**5.5 Dropdowns / selects** — never raw `<select>` for styled selects. Overlay: `position:absolute; z-index:50; top:calc(100% + 4px); background:var(--surface-2); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow)`. Flip upward near the bottom edge. Close on `Escape`, backdrop click, or selection.
+
+**5.6 Range sliders** — pass progress as a custom prop `style="--percent:{(value-min)/(max-min)*100}%"` and use it to fill the track; `accent-color:var(--accent)`.
+
+**5.7 Scrollbars** — invisible: `scrollbar-width:none` + `::-webkit-scrollbar{display:none}`; or thin: `scrollbar-width:thin; scrollbar-color:var(--border) transparent`. Never the default system scrollbar.
+
+**5.8 Modals** — backdrop `position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.65); backdrop-filter:blur(8px)` with `fade`. Card `border-radius:12px; background:var(--surface-2); border:1px solid var(--border); box-shadow:var(--shadow)` with `scale` (`duration:150, start:0.96`). **The card must `stopPropagation`** so backdrop-dismiss doesn't fire on inner clicks. Close on `Escape`, confirm on `Enter`. For native file dialogs use the guard in §10.
+
+**5.9 Skeletons** — no spinners; CSS shimmer:
+```css
+.skeleton{background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite linear;border-radius:4px;pointer-events:none;user-select:none}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+```
+
+**5.10 Empty states** — never blank. `.empty-state` wrapper with SVG icon, header, description, and a clear call-to-action button.
+
+**5.11 Accessibility & focus** — clear `:focus-visible` (`2px` accent ring) on `button,a,[role=button],input`. Trap focus inside modals and return it to the trigger on close.
+
+**5.12 Logical CSS properties (RTL)** — always use logical props so Arabic (`ar`) flips natively: `margin/padding/border-inline-start|end`, `inset-inline-start|end` instead of left/right.
 
 ---
 
-## 8. Bottom-Left GitHub & Attribution Panel Practice
+## 6. Theming Engine (`stores/theme.ts`)
 
-Every client-side app (Tauri/Svelte) must include a standardized, visually premium footer in the bottom-left panel (or within the settings footer if there is no primary sidebar) featuring:
-*   **Version Number**: An active link to the repository releases page on GitHub.
-*   **License Link**: An active link to the project's license file on GitHub.
-*   **Pierpaolo Spadafora Icon**: A round profile avatar (from a local, low-resolution cached file in `assets/avatar.png` or `assets/avatar.png` under `src/assets/` at 64x64 resolution, typically under 10KB) linking directly to his personal website (`https://pierspad.com`).
-*   **GitHub Repository Link**: A two-row flex/block link labeled with "GitHub" and "Repo" alongside a standard GitHub SVG icon.
+Dark by default, persisted, applied via a single attribute on the root element. Canonical implementation:
 
-**Design & Shared Practice Guidelines**:
-*   **Offline/Low-Res Asset Embedding Rule**: Standardize that profile avatars or background images in attribution components must be cached and stored directly in the repository's assets directory rather than fetched dynamically from external servers.
-*   **Lexical HTML & Svelte Block Scoping Boundary**: To prevent Svelte template compilation and parsing bugs, developers must ensure all opened `div` and Svelte block tags (`{#if}`, `{#each}`, etc.) are strictly closed within their correct lexical scope.
+* Type `Theme = 'dark' | 'light'`; storage key `"<app>_theme"` (e.g. `reaper_theme`).
+* `applyTheme(t)` sets `document.documentElement.dataset.theme = t` (drives the `[data-theme='light']` block in §2).
+* Store exposes `setTheme(t)` and `toggle()`, both persisting to `localStorage` and re-applying.
+* Initialize from `localStorage` (fallback `'dark'`) and apply **before** the first paint.
+* Guard `typeof localStorage/document === 'undefined'` for SSR/Tauri safety.
 
----
-
-## 9. Shared Crate / Library Architecture (Optional Heavy Features)
-
-For heavy, optional, or reusable features (such as audio transcription with Whisper, media downloading with yt-dlp, or complex translation engines), do not duplicate logic across different application workspaces. Instead:
-*   **Modular Shared Crates**: Extract the common functionality into a highly-cohesive, decoupled, and standalone Rust library crate (e.g. `whisper-common` placed in `lib/whisper-common` of each repository, or as a relative path dependency).
-*   **Decoupled & Portable APIs**: Expose generic interfaces using standard callbacks (e.g., progress percentages or stages) and optional cancellation tokens (`CancellationToken`) instead of coupling with Tauri-specific state or handlers.
-*   **Optional & Configurable**: Heavy dependencies (like `whisper-rs`, `reqwest/stream`, `hound`) must be encapsulated inside these crates, keeping the main application workspaces clean, light, and easy to build if these features are not utilized or are optional.
+```ts
+function applyTheme(t: Theme){ if (typeof document!=='undefined') document.documentElement.dataset.theme = t; }
+```
 
 ---
 
-## 10. Development Speed & Compilation Optimizations (MANDATORY)
+## 7. i18n & Localization (15 languages, zero runtime deps)
 
-To keep iteration times extremely fast and avoid resource locks during parallel development, all developers and AI assistants must follow these build-speed practices:
+No external i18n package — a lightweight reactive derived store keeps the bundle small.
 
-### 10.1 Fast Linker (mold)
-On Linux systems, the Rust toolchain is configured to use the `mold` linker, which is significantly faster than standard GNU `ld` or `gold`.
-*   Ensure `.cargo/config.toml` contains target-specific configurations using `mold` as the linker for both `x86_64` and `aarch64` Linux targets.
-*   Do not overwrite or disable these configurations unless building for release on non-Linux hosts.
+* **Languages (15)**: `en, it, es, fr, de, pt, ru, zh, ja, ko, ar (RTL), pl, nl, tr, hi`.
+* **Master + override merge** — each locale is merged over English so a missing key always falls back to English (never shows a raw key):
+  ```ts
+  const translations = { en, it:{...en,...it}, ar:{...en,...ar}, /* …all 15… */ };
+  ```
+* **Store API** — a `derived` store exposing `$t(key, params?)` (a.k.a. `$locale`) that supports `{{paramName}}` placeholder replacement and flat or nested keys.
+* **Language selection** — persisted under `"<app>_language"`; auto-detect from `navigator.language`/`navigator.languages`, falling back to `en` if unsupported. Maintain an `availableUILanguages` list with `code/name/nativeName/flag`.
+* **RTL** — when the active language is `ar`, set `document.documentElement.dir = 'rtl'` (else `'ltr'`); layout already uses logical properties (§5.12).
+* **Audit gate** — `apps/<app>-gui/scripts/check_missing_translations.py` validates locale sync. It is a **release blocker** (§15): run with `--fail-on-issues --block-reasons missing_locale,missing_key,empty_value,placeholder_mismatch`. Helper tooling (`merge_translations.py`, `split_translations.py`, `translate_align.py`) lives alongside it where present (vesta).
 
-### 10.2 Development Profiles & Optimized Dependencies
-Keep the development compilation profiles in `Cargo.toml` optimized:
-*   Use `[profile.dev]` with `opt-level = 0`, `debug = 0` (or `1` if debugging is strictly required), and `strip = "debuginfo"` to keep debug symbols out of local builds.
-*   Optimize dependencies during development using `[profile.dev.package."*"]` with `opt-level = 1` or higher, which prevents dependencies from running slowly while keeping recompilations fast.
+---
 
-### 10.3 Avoid Port Conflicts in Parallel Development
-Each application must use a unique Vite server port for its GUI frontend to allow running them concurrently:
-*   **Reaper**: Port `5173` (Tauri devUrl: `http://localhost:5173`, Vite: `5173`)
-*   **Textmerger**: Port `5174` (Tauri devUrl: `http://localhost:5174`, Vite: `5174`)
-*   **Vesta**: Port `5175` (Tauri devUrl: `http://localhost:5175`, Vite: `5175`)
+## 8. Keyboard Shortcuts Engine (`stores/shortcuts.ts` + `KeybindRecorder.svelte`)
 
-### 10.4 Skip Compilations with `cargo check`
-*   Use `cargo check` instead of `cargo build` when validating code correctness. It runs 2x-3x faster by skipping binary generation.
-*   Consider running `cargo watch -c -x check` in the background during active coding.
+* **Input protection** — in the global `handleKeydown` window listener, bail out if the target is `INPUT`, `TEXTAREA`, or `isContentEditable`.
+* **Normalized combo** — parse modifiers in fixed order `Ctrl, Alt, Shift, Meta`, then the uppercased key; `SPACE` denotes spacebar: `const combo = keys.join('+').toUpperCase()`.
+* **Interactive recording** — `KeybindRecorder.svelte` captures modifiers + key live and updates the `shortcuts` store.
+* **Conflict prevention** — before saving a binding, check it against existing ones in the store and warn (toast) on duplicates.
 
-### 10.5 Sparse Registry & Crate Pruning
-*   Always configure `[registries.crates-io]` with `protocol = "sparse"` in `.cargo/config.toml` to download registry indices instantly.
-*   Regularly scan for and prune unused dependencies using `cargo machete` or `cargo-shear` to keep the dependency tree lightweight and minimize build times.
+---
 
+## 9. Snackbars & Toasts (`stores/snackbar.ts` + `Snackbar.svelte`)
+
+* **Standard duration: 2500 ms** for all common toasts (balance of visibility vs. immediacy).
+* Store API: `snackbar.show(message, variant, duration?)` and `snackbar.dismiss(id)`.
+* Variants → colors: `success`→`--done`, `info`→`--accent`, `warning`→`--warn`, `error`→`--danger`.
+* Entry micro-animation re-triggered per toast via a `{#key}` block (`slide-up`/`fade-in-up`) + a linear shrinking progress bar matching the remaining duration.
+
+---
+
+## 10. Dialogs & Dialog Collision Guard (`utils/dialogGuard.ts`)
+
+Tauri's `@tauri-apps/plugin-dialog` `open`/`save` **crash or stutter if opened twice concurrently**. Never call them directly. Always use the guarded wrappers:
+
+```ts
+import { open, save } from "@tauri-apps/plugin-dialog";
+let dialogInFlight = false;
+async function withDialogLock<T>(action:()=>Promise<T>):Promise<T|null>{
+  if (dialogInFlight) return null;
+  dialogInFlight = true;
+  try { return await action(); } finally { dialogInFlight = false; }
+}
+export const guardedOpen = (o?:Parameters<typeof open>[0]) => withDialogLock(()=>open(o));
+export const guardedSave = (o?:Parameters<typeof save>[0]) => withDialogLock(()=>save(o));
+```
+Callers must handle the `null` return (a dialog was already open).
+
+---
+
+## 11. Bottom-Left Attribution Dock (every client app)
+
+A standardized, premium footer in the bottom-left of the sidebar (or the settings footer if there's no sidebar):
+
+* **Avatar** — round, **cached locally** at `src/assets/avatar.png` (64×64, <10KB; never fetched at runtime), linking to `https://pierspad.com`.
+* **Version** — SemVer string linking to the GitHub **releases** page (ideally the exact tag `…/releases/tag/v{version}`).
+* **License** — links to the repo `LICENSE`.
+* **GitHub** — a two-row "GitHub / Repo" link with the standard GitHub SVG icon → repository.
+* Use standardized identifiers: `repoUrl`, `releasesUrl`, `licenseUrl`, `authorUrl`, `authorIconUrl`, `formattedAppVersion`.
+* Version utilities live in `utils/version.ts` (`normalizeVersion`, `compareVersions`, optional `checkGitHubRelease` for an update check against `/releases/latest`).
+* Keep every `<div>` and Svelte block (`{#if}`, `{#each}`) closed in its correct lexical scope to avoid compiler/parse bugs.
+
+---
+
+## 12. Whisper Integration (the consolidated, fixed approach)
+
+Audio transcription is shared by reaper & vesta through **one crate, `lib/whisper-common`** (identical in both). Never re-implement Whisper per app — depend on this crate. Its API is Tauri-agnostic and built around progress callbacks + `CancellationToken`.
+
+### 12.1 The build fix — THIS is why Whisper "sometimes broke" (MANDATORY)
+`whisper-rs` 0.16 pulls `whisper-rs-sys`, whose upstream `build.rs` **fails to link the split GGML static libs**, producing undefined-reference linker errors on recent whisper.cpp. The consolidated fix:
+
+* **Vendor** the crate at `vendor/whisper-rs-sys-0.15.0/` with a patched `build.rs`, and pin it in the workspace `Cargo.toml`:
+  ```toml
+  [patch.crates-io]
+  whisper-rs-sys = { path = "vendor/whisper-rs-sys-0.15.0" }
+  ```
+* The patch explicitly emits the static link directives for **all** GGML libraries:
+  ```rust
+  println!("cargo:rustc-link-lib=static=whisper");
+  println!("cargo:rustc-link-lib=static=ggml");
+  println!("cargo:rustc-link-lib=static=ggml-base");   // <- missing upstream
+  println!("cargo:rustc-link-lib=static=ggml-cpu");    // <- missing upstream
+  ```
+* `cmake` builds with `BUILD_SHARED_LIBS=OFF` (static), `GGML_OPENMP=OFF` unless the `openmp` feature is on, Metal off on Linux. Default build is **CPU-only** (no CUDA/Vulkan/Metal feature) for portable, dependency-free binaries.
+* If you bump `whisper-rs`, re-verify these link lines still exist in the vendored `build.rs` before trusting a green build.
+
+### 12.2 Crate API surface (`whisper-common`)
+* `audio.rs` — `convert_to_wav(ffmpeg_path, input, output, cancel)`: ffmpeg → **16 kHz mono `pcm_s16le` WAV**. **Drains stderr on a separate async task** to avoid the pipe-buffer deadlock, and supports cancellation via `tokio::select!` + `child.kill()`. `read_wav_to_f32` normalizes int/float samples and averages stereo → mono.
+* `model.rs` — model registry (`tiny/base/small/medium/large`), cache dir `~/.cache/whisper`, filenames `ggml-<id>.bin` (`large`→`ggml-large-v3.bin`). `download_model` streams from Hugging Face (`ggerganov/whisper.cpp`) to a **`.partial` file, then atomically renames** on success; progress callback is **throttled to ~150 ms**; honors cancellation (removes the partial). `list_models`/`uninstall_model`/`validate_model_id` round it out.
+* `transcribe.rs` — `transcribe_full` (greedy, `best_of:1`), `language` `auto`→`None`, threads `= min(available_parallelism, 8)`, all whisper printing disabled, timestamps are **centiseconds → ×10 for ms**. `transcribe_chunked` runs a **45 s window / 40 s step sliding** pass for long audio and **deduplicates** overlapping segments with a token+char similarity score (`>0.72`, within 2.5 s) — this removes the duplicate-line artifacts at chunk boundaries.
+
+### 12.3 Frontend orchestration
+Expose Tauri commands that call the crate, stream progress via events, and keep a cancellation token in app state. Model picker + download progress live in the relevant tab; ffmpeg path is resolved from settings/PATH.
+
+---
+
+## 13. Shared Crate / Library Architecture (heavy/optional features)
+
+For any heavy, optional, or reusable feature (Whisper, yt-dlp downloading, translation engines, SRT parsing…):
+* **Extract into a cohesive standalone crate** under `lib/` (or `core/` for pure logic), depended on by relative path.
+* **Decoupled, portable APIs** — generic callbacks (progress %, stage) and optional `CancellationToken`, never Tauri state/handlers inside the crate.
+* **Encapsulate heavy deps** (`whisper-rs`, `reqwest/stream`, `hound`, `id3`, …) so the GUI workspace stays light and the feature is trivially optional.
+* Keep all internal crates on **one shared version** (the workspace version) — enforced at release (§14).
+
+---
+
+## 14. Versioning & Release-Notes Governance
+
+* **Single source of truth: `PKGBUILD` `pkgver`.** Everything else is derived from it.
+* **Propagation** — `update_project_info.sh` writes that version into `apps/<app>-gui/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the workspace `[workspace.package].version`, every `core/*` & `lib/*` `Cargo.toml`, and the internal path-dependency `version="…"` pins.
+* **Consistency gate** — `check_version_consistency.sh` (vesta: `check_internal_crate_versions.sh`) fails the release if any of the above (incl. `Cargo.lock`'s entry for the app crate) disagrees with `pkgver`.
+* **Release notes** — `docs/release-notes.md` holds one `## v<version>` section per release; the CI publishes **only the section matching the tag** (via `extract-release-notes.sh`). If the section for the new version is missing, the release script bootstraps a clean template for you to fill.
+* **Change log** — `docs/list_of_things_changed.md`: append a dated technical entry for every source change as you make it. (On a new dev cycle, when the version already equals the release-notes version, the agent overwrites/reset notes for the next version — do **not** wipe them mid-release.)
+
+---
+
+## 15. Git Release Pipeline — `build-publish-scripts/git-release.sh` (run in this exact order)
+
+The release script is interactive and **fail-fast (`set -euo pipefail`)**. Reproduce/maintain it with all of these guards. Do not skip steps or reorder them.
+
+1. **Preconditions** — assert every required file exists: `PKGBUILD`, `update_project_info.sh`, `check_version_consistency.sh`, `extract-release-notes.sh`, `docs/release-notes.md`, the i18n audit script, and `locales/en.json`. Abort if any is missing.
+2. **Open `PKGBUILD` blocking** — open it in `$EDITOR`/`code --wait` (fallback: prompt + wait for Enter) so the human bumps `pkgver` first; then read `pkgver` → `VERSION`, abort if empty. `TAG_VERSION="v$VERSION"`.
+3. **Propagate** — run `update_project_info.sh` (sync all version fields).
+4. **Version consistency** — run `check_version_consistency.sh`; abort on any mismatch.
+5. **i18n audit** — run `check_missing_translations.py --fail-on-issues --block-reasons missing_locale,missing_key,empty_value,placeholder_mismatch`; abort on issues. (Needs `python3`/`python`.)
+6. **Bootstrap release notes** — if `docs/release-notes.md` has no `## v<version>` section, replace it with a clean template (`# Release Notes\n\n## v<version>\n\n- `).
+7. **Open release notes blocking** — let the human write the bullets, save & close. Then assert the file is **non-empty** (abort otherwise).
+8. **Extract & preview** — `extract-release-notes.sh "$TAG_VERSION" docs/release-notes.md <tmp>` validates the section exists and is non-empty; print the preview so the human sees exactly what will be published.
+9. **Regenerate `.SRCINFO`** — `makepkg --printsrcinfo > .SRCINFO` (skip gracefully if `makepkg` absent).
+10. **Sync lockfile** — `cargo update --workspace` so `Cargo.lock` matches the new versions.
+11. **Show `git status --short`** and **ask for explicit confirmation** (`[s/N]`). Abort on anything but yes.
+12. **Commit** — `git add -A`; commit `chore: release v<version>` only if there's something staged.
+13. **Tag (idempotent)** — if the local tag exists, delete & recreate it; if the **remote** tag exists (`git ls-remote --tags`), delete it remotely too. This is the "redo the release cleanly when the number is the same" rule.
+14. **Atomic push** — detect current branch (abort if detached HEAD); `git push --atomic origin "$BRANCH" "$TAG_VERSION"`.
+15. **Hand off** — the GitHub Action builds the artifacts and creates the Release from the extracted notes; afterwards run `push-aur.sh` (§16).
+
+**CI (`.github/workflows/*.yml`)** triggers on `tag: v*`: builds a matrix (Linux `ubuntu-22.04` → deb/appimage/rpm with `mold`; Windows → nsis/msi), **re-checks `pkgver == tauri.conf.json.version`** and aborts on mismatch, builds the Arch package in an `archlinux:base-devel` container from the produced `.deb`, then the `release` job publishes the GitHub Release with the tag's notes section.
+
+---
+
+## 16. AUR Publishing — `build-publish-scripts/push-aur.sh` (after the GitHub Release exists)
+
+Run **only after** the GitHub Release and its `.deb` assets are live (the `-bin` PKGBUILD downloads the released `.deb`).
+
+1. Re-run `update_project_info.sh` + `check_version_consistency.sh`.
+2. **Remote-URL guard** — if a local AUR checkout exists, assert its `origin` is exactly `ssh://aur@aur.archlinux.org/<pkgname>.git`; otherwise back up the stray dir and `git clone` fresh. Never push to the wrong remote.
+3. Clean previous artifacts (`pkg/ src/ *.pkg.*`).
+4. **`updpkgsums`** — recompute the `sha256sums` for the released `.deb` (requires `pacman-contrib`; abort if missing).
+5. **`makepkg --printsrcinfo > .SRCINFO`**.
+6. Copy `PKGBUILD` + `.SRCINFO` into the AUR checkout, `git add -A`, and commit `Update to v<version>` **only if something changed**, then `git push origin master`.
+
+PKGBUILD conventions: `pkgname=<app>-bin`, `_pkgname=<app>`, `provides`/`conflicts=(<app>)`, `options=('!debug')`, `source=("…::https://github.com/pierspad/<app>/releases/download/v${pkgver}/<Asset>_${pkgver}_amd64.deb")`, real runtime `depends` (e.g. `webkit2gtk-4.1 gtk3 libsoup3 yt-dlp ffmpeg …`). Keep the `sha256sums` placeholder of 64 zeros in the repo; `updpkgsums` fills it at publish time.
+
+---
+
+## 17. Development Speed & Compilation (MANDATORY)
+
+**17.1 mold linker** — on Linux the Rust toolchain links with `mold`. Keep `.cargo/config.toml` target configs for `x86_64`/`aarch64` Linux; don't disable them except for non-Linux release hosts.
+
+**17.2 Profiles** — `[profile.dev] opt-level=0, debug=0 (or 1 if strictly needed), strip="debuginfo"`; `[profile.dev.package."*"] opt-level=1` so deps stay fast without slowing recompiles. Release: `codegen-units=1, lto="thin", opt-level=3, panic="abort", strip=true`.
+
+**17.3 Unique Vite ports** (run all apps concurrently): reaper **5173**, textmerger **5174**, vesta **5175** (Tauri `devUrl` + Vite `server.port` must match).
+
+**17.4 `cargo check`** — use it (2–3× faster than `build`) to validate correctness; `cargo watch -c -x check` in the background during active coding.
+
+**17.5 Sparse registry & pruning** — `[registries.crates-io] protocol = "sparse"` in `.cargo/config.toml`; periodically `cargo machete`/`cargo-shear` to drop unused deps.
+
+---
+
+## 18. Definition of Done (quality gates before you stop)
+
+* No hardcoded colors; all custom controls keyboard-operable; logical CSS properties used.
+* New strings added to `en.json` (+ ideally translated); i18n audit passes.
+* Rust compiles under `cargo check`; tests touched by the change pass.
+* `docs/list_of_things_changed.md` updated.
+* For a release: §15 pipeline run to green, notes previewed, tag pushed atomically, then §16.
+* Whole modified files returned to the user; no fragments.

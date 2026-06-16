@@ -1769,15 +1769,14 @@
     </div>
   {/if}
 
-  {#if showSettings}
-    <Settings
-      {sidebarWidth}
-      bind:activeTab={settingsActiveTab}
-      bind:highlightTokenizer
-      on:close={() => (showSettings = false)}
-      on:snackbar={handleSnackbarEvent}
-    />
-  {/if}
+  <Settings
+    {sidebarWidth}
+    visible={showSettings}
+    bind:activeTab={settingsActiveTab}
+    bind:highlightTokenizer
+    on:close={() => (showSettings = false)}
+    on:snackbar={handleSnackbarEvent}
+  />
   
   {#if showRenameModal}
       <Modal 

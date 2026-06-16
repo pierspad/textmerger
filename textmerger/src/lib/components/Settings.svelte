@@ -83,12 +83,14 @@
   }
 
   function handleWindowClick() {
+    if (!visible) return;
     if (tokenizerDropdownOpen) tokenizerDropdownOpen = false;
   }
 
   type SnackbarVariant = "success" | "info" | "warning" | "error";
 
   function handleWindowKeydown(e: KeyboardEvent) {
+    if (!visible) return;
     if (showConfirmModal) {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -233,6 +235,7 @@
   }
 
   export let sidebarWidth = 300;
+  export let visible = false;
 
   const dispatch = createEventDispatcher();
 
@@ -256,6 +259,15 @@
   $: shortcutEntries = Object.entries($shortcuts) as [keyof Shortcuts, string][];
   $: releaseUrl = appVersion ? `${repoUrl}/releases/tag/v${appVersion}` : `${repoUrl}/releases`;
   $: formattedAppVersion = appVersion ? formatVersion(appVersion) : $t('settings.versionUnavailable');
+
+  $: if (!visible) {
+    if (isListeningForSearchKeys) {
+      stopSearchListening();
+    }
+    recordingAction = null;
+    showConfirmModal = false;
+    tokenizerDropdownOpen = false;
+  }
 
   onMount(async () => {
     try {
@@ -607,7 +619,9 @@
   });
 </script>
 
-<svelte:window on:keydown={handleWindowKeydown} on:click={handleWindowClick} /><div class="absolute inset-0 bg-[var(--bg)] z-40 flex overflow-hidden">
+<svelte:window on:keydown={handleWindowKeydown} on:click={handleWindowClick} />
+
+<div class="absolute inset-0 bg-[var(--bg)] z-40 flex overflow-hidden" class:hidden={!visible}>
   <aside
     class="bg-[var(--surface)] border-r border-[var(--border)] flex flex-col"
     style="width: {sidebarWidth}px; min-width: 250px;"
@@ -983,7 +997,7 @@
                     type="text"
                     bind:value={searchQuery}
                     placeholder={labels.textPlaceholder}
-                    class="w-full py-1 bg-transparent border-0 text-sm text-[var(--text)] focus:outline-none placeholder-[var(--muted)]"
+                    class="w-full h-7 bg-transparent border-0 text-sm text-[var(--text)] focus:outline-none placeholder-[var(--muted)] py-0"
                   />
                   {#if searchQuery}
                     <button
@@ -1006,16 +1020,16 @@
                         startSearchListening();
                       }
                     }}
-                    class="w-full py-1 text-sm text-[var(--text)] flex items-center cursor-pointer select-none min-h-[28px]"
+                    class="w-full h-7 text-sm text-[var(--text)] flex items-center cursor-pointer select-none"
                   >
-                    <div class="flex-1 flex flex-wrap items-center gap-1 min-w-0">
+                    <div class="flex-1 flex flex-wrap items-center gap-1 min-w-0 h-full">
                       {#if searchKeys.length > 0}
                         <div class="flex items-center gap-1 flex-wrap">
                           {#each searchKeys as key, i}
                             {#if i > 0}
-                              <span class="text-[var(--muted)] text-[10px] font-semibold">+</span>
+                              <span class="text-[var(--muted)] text-[10px] font-semibold select-none">+</span>
                             {/if}
-                            <kbd class="px-1.5 py-0.5 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[10px] text-[var(--text)] font-mono font-semibold shadow-sm tracking-wide whitespace-nowrap">
+                            <kbd class="kbd px-1.5 py-0.5 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[10px] text-[var(--text)] font-mono font-semibold shadow-sm tracking-wide whitespace-nowrap leading-none select-none">
                               {key}
                             </kbd>
                           {/each}
@@ -1023,10 +1037,14 @@
                             <span class="w-[1.5px] h-3.5 bg-[#0e639c] animate-pulse ml-0.5 shrink-0"></span>
                           {/if}
                         </div>
-                      {:else if isListeningForSearchKeys}
-                        <span class="text-xs text-[#0e639c] font-medium animate-pulse">{labels.pressKeys}</span>
                       {:else}
-                        <span class="text-[var(--muted)] text-xs">{labels.keysPlaceholder}</span>
+                        <input
+                          type="text"
+                          readonly
+                          placeholder={isListeningForSearchKeys ? labels.pressKeys : labels.keysPlaceholder}
+                          class="w-full h-full bg-transparent border-0 text-sm focus:outline-none cursor-pointer select-none pointer-events-none py-0
+                            {isListeningForSearchKeys ? 'text-[#0e639c] placeholder-[#0e639c] font-medium animate-pulse' : 'placeholder-[var(--muted)]'}"
+                        />
                       {/if}
                     </div>
                     {#if searchKeys.length > 0 || isListeningForSearchKeys}
@@ -1043,15 +1061,20 @@
                 {/if}
               </div>
 
-              <!-- Switch Buttons (Right side inside the search input) -->
-              <div class="flex items-center bg-[var(--surface-2)] border border-[var(--border)] rounded p-0.5 shrink-0 select-none mr-0.5">
+              <!-- Switch Toggle Container (Right side inside the search input) -->
+              <div class="relative grid grid-cols-2 bg-[var(--surface-2)] border border-[var(--border)] rounded p-0.5 shrink-0 select-none mr-0.5 w-[140px] h-6">
+                <!-- Absolute Sliding Highlight -->
+                <div 
+                  class="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] bg-[#0e639c] rounded shadow shadow-[#0e639c]/20 transition-all duration-200 ease-out z-0 pointer-events-none"
+                  style="transform: translateX({searchMode === 'keys' ? '100%' : '0%'})"
+                ></div>
+
+                <!-- Text Search Button -->
                 <button
                   type="button"
-                  on:click|stopPropagation={() => setSearchMode("text")}
-                  class="px-2 py-0.5 rounded text-[9px] font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer
-                    {searchMode === 'text'
-                      ? 'bg-[#0e639c] text-white shadow shadow-[#0e639c]/20'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]'}"
+                  on:click|stopPropagation={() => setSearchMode(searchMode === 'text' ? 'keys' : 'text')}
+                  class="relative z-10 w-full h-full rounded text-[9px] font-bold transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer"
+                  style="outline: none !important; box-shadow: none !important; border: none !important; -webkit-tap-highlight-color: transparent;"
                   title={labels.textPlaceholder}
                 >
                   <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -1059,13 +1082,13 @@
                   </svg>
                   <span>{labels.text}</span>
                 </button>
+
+                <!-- Keys Search Button -->
                 <button
                   type="button"
-                  on:click|stopPropagation={() => setSearchMode("keys")}
-                  class="px-2 py-0.5 rounded text-[9px] font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer
-                    {searchMode === 'keys'
-                      ? 'bg-[#0e639c] text-white shadow shadow-[#0e639c]/20'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]'}"
+                  on:click|stopPropagation={() => setSearchMode(searchMode === 'text' ? 'keys' : 'text')}
+                  class="relative z-10 w-full h-full rounded text-[9px] font-bold transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer"
+                  style="outline: none !important; box-shadow: none !important; border: none !important; -webkit-tap-highlight-color: transparent;"
                   title={labels.keysPlaceholder}
                 >
                   <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -1079,7 +1102,7 @@
         </div>
         
         <div class="bg-[var(--surface)] rounded border border-[var(--border)] overflow-hidden flex-1 min-h-0 flex flex-col p-2">
-          <div class="overflow-y-auto overflow-x-hidden flex-1 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))] content-start">
+          <div class="overflow-y-auto overflow-x-hidden flex-1 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))] content-start">
           {#each filteredShortcuts as [key, keybind]}
               <!-- svelte-ignore indent -->
               <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -1094,7 +1117,7 @@
                 <div class="flex justify-center text-[var(--muted)]">
                   {@html getIcon(action)}
                 </div>
-                <div class="min-w-0 font-medium leading-snug text-[var(--text-secondary)]">
+                <div class="min-w-0 font-medium leading-snug text-[var(--text-secondary)] truncate" title={getLabel(action)}>
                   {getLabel(action)}
                 </div>
                 <div class="flex justify-end">
