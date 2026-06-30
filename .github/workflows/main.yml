@@ -6,219 +6,277 @@ on:
       - 'v*'
   workflow_dispatch:
 
-jobs:
-  build:
-    name: Build on ${{ matrix.platform }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'linux'
-            os: 'ubuntu-22.04'
-          - platform: 'windows'
-            os: 'windows-latest'
-    
-    steps:
-    - uses: actions/checkout@v6
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '20'
-    
-    - name: Install Rust stable
-      uses: dtolnay/rust-toolchain@stable
-    
-    - name: Rust cache
-      uses: swatinem/rust-cache@v2
-      with:
-        workspaces: './textmerger/src-tauri -> target'
-    
-    - name: Get Version
-      id: get_version
-      shell: bash
-      run: |
-        VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-        TAURI_VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
-        if [ "$VERSION" != "$TAURI_VERSION" ]; then
-          echo "Version mismatch: PKGBUILD=$VERSION tauri.conf.json=$TAURI_VERSION"
-          exit 1
-        fi
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "Detected version from PKGBUILD: $VERSION"
-    
-    - name: Install system dependencies (Linux)
-      if: matrix.platform == 'linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libwebkit2gtk-4.1-dev \
-          librsvg2-dev \
-          patchelf \
-          libgtk-3-dev \
-          libayatana-appindicator3-dev \
-          mold
-    
-    - name: Install frontend dependencies
-      working-directory: textmerger
-      run: npm ci
-    
-    - name: Build Tauri app (Linux)
-      if: matrix.platform == 'linux'
-      working-directory: textmerger
-      run: |
-        NO_STRIP=true npm run tauri build -- --bundles deb,appimage,rpm
-    
-    - name: Build Tauri app (Windows)
-      if: matrix.platform == 'windows'
-      working-directory: textmerger
-      run: |
-        npm run tauri build -- --bundles nsis,msi
-    
-    - name: Upload Artifacts (Linux)
-      if: matrix.platform == 'linux'
-      uses: actions/upload-artifact@v6
-      with:
-        name: packages-linux
-        path: |
-          textmerger/src-tauri/target/release/bundle/deb/*.deb
-          textmerger/src-tauri/target/release/bundle/rpm/*.rpm
-          textmerger/src-tauri/target/release/bundle/appimage/*.AppImage
-    
-    - name: Upload Artifacts (Windows)
-      if: matrix.platform == 'windows'
-      uses: actions/upload-artifact@v6
-      with:
-        name: packages-windows
-        path: |
-          textmerger/src-tauri/target/release/bundle/nsis/*.exe
-          textmerger/src-tauri/target/release/bundle/msi/*.msi
+env:
+  TAURI_APP_DIR: textmerger
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
-  build-arch:
-    name: Build Arch Package
-    needs: build
-    runs-on: ubuntu-latest
-    container: archlinux:base-devel
+jobs:
+  # ===========================================================
+  # Build Linux (.deb .rpm .appimage)
+  # ===========================================================
+  build-linux:
+    name: Build (linux)
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
-      
-      - name: Install dependencies
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: "v1-sccache-linux"
+
+      - name: Get version
+        id: version
+        shell: bash
         run: |
-          pacman -Syu --noconfirm
-          # Install dependencies for building and PKGBUILD usage
-          pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3
-      
-      - name: Download Linux Artifacts
+          VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            mold
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: npm ci
+
+      - name: Normalize line endings
+        shell: bash
+        run: |
+          sed -i 's/\r$//' build-publish-scripts/check_version_consistency.sh
+          sed -i 's/\r$//' build-publish-scripts/PKGBUILD
+
+      - name: Validate version consistency
+        shell: bash
+        run: bash build-publish-scripts/check_version_consistency.sh
+
+      - name: Generate platform icons
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: npx tauri icon src-tauri/icons/icon.png -o src-tauri/icons
+
+      - name: Build Tauri app
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        shell: bash
+        env:
+          NO_STRIP: true
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: npx tauri build --bundles deb,rpm,appimage
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v6
+        with:
+          name: textmerger-linux-deb
+          path: textmerger/src-tauri/target/release/bundle/deb/*.deb
+
+      - name: Upload RPM
+        uses: actions/upload-artifact@v6
+        with:
+          name: textmerger-linux-rpm
+          path: textmerger/src-tauri/target/release/bundle/rpm/*.rpm
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v6
+        with:
+          name: textmerger-linux-appimage
+          path: textmerger/src-tauri/target/release/bundle/appimage/*.AppImage
+
+  # ===========================================================
+  # Arch Linux Package (dipende da build-linux)
+  # ===========================================================
+  build-linux-arch:
+    name: Build (linux-arch)
+    needs: build-linux
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download DEB artifact
         uses: actions/download-artifact@v7
         with:
-          name: packages-linux
-          path: linux-packages
+          name: textmerger-linux-deb
+          path: deb-artifact
 
-      - name: Get Version
+      - name: Arch Linux Package
         run: |
-          VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-          TAURI_VERSION=$(grep -m1 '"version":' textmerger/src-tauri/tauri.conf.json | cut -d '"' -f 4)
-          if [ "$VERSION" != "$TAURI_VERSION" ]; then
-            echo "Version mismatch: PKGBUILD=$VERSION tauri.conf.json=$TAURI_VERSION"
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Prepare Source and PKGBUILD
-        run: |
-          # Find the .deb file in the downloaded artifacts
-          DEB_FILE=$(find linux-packages -name "*.deb" | head -n 1)
-          if [ -z "$DEB_FILE" ]; then
-            echo "Error: No .deb file found in artifacts"
-            exit 1
-          fi
-          echo "Found deb file: $DEB_FILE"
-          
-          # Calculate SHA256
+          DEB_FILE=$(find deb-artifact -name "*.deb" | head -n 1)
           SHA256=$(sha256sum "$DEB_FILE" | awk '{print $1}')
-          echo "SHA256: $SHA256"
-          
-          # Copy .deb to the build directory with the expected name
-          # The PKGBUILD expects textmerger-${pkgver}.deb as the source filename (before ::)
-          # We'll stick to a simple name for our local copy to make the file:// URI clean
           cp "$DEB_FILE" "build-publish-scripts/textmerger-${VERSION}.deb"
-          
-          cd build-publish-scripts
-          
-          # Update pkgver in PKGBUILD
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
-          
-          # Update source to use local file
-          # We use regex to match the first source line that contains the deb URL
-          LOCAL_URI="file://$(pwd)/textmerger-${VERSION}.deb"
-          echo "Setting source to: $LOCAL_URI"
-          sed -i "s|textmerger-\${pkgver}.deb::https://[^ \"]*|textmerger-\${pkgver}.deb::${LOCAL_URI}|" PKGBUILD
-          
-          # Update checksum
-          # We replace the first occurrence of a 64-character hash which typically corresponds to the first source
-          sed -i "0,/[a-f0-9]\{64\}/s//${SHA256}/" PKGBUILD
-          
-          echo "Updated PKGBUILD:"
-          cat PKGBUILD
 
-      - name: Build Package
-        run: |
-          # Create builder user
-          useradd -m builder
-          chown -R builder:builder .
-          
-          # Allow builder to use sudo (sometimes needed)
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          
           cd build-publish-scripts
-          
-          # Run makepkg
-          # -s: install dependencies
-          # -f: force overwrite
-          # -c: clean up
-          su builder -c "makepkg -sfc --noconfirm"
-          
-      - name: Upload Artifacts (Arch)
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          LOCAL_URI="file:///workspace/build-publish-scripts/textmerger-${VERSION}.deb"
+          sed -i "s|textmerger-\${pkgver}.deb::https://[^ \"]*|textmerger-\${pkgver}.deb::${LOCAL_URI}|" PKGBUILD
+          sed -i "0,/[a-f0-9]\{64\}/s//${SHA256}/" PKGBUILD
+
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace/build-publish-scripts archlinux:base-devel bash -c "
+            pacman -Syu --noconfirm git sudo
+            useradd -m builder
+            chown -R builder:builder .
+            echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+            su builder -c 'makepkg -sfc --noconfirm'
+          "
+
+      - name: Upload Arch Package
         uses: actions/upload-artifact@v6
         with:
           name: packages-arch
           path: build-publish-scripts/*.pkg.tar.zst
 
+  # ===========================================================
+  # Build Windows (.exe .msi)
+  # ===========================================================
+  build-windows:
+    name: Build (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: "v1-sccache-windows"
+
+      - name: Cache Tauri tools (NSIS, WiX)
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/AppData/Local/tauri
+          key: tauri-tools-windows-${{ runner.os }}-v1
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: npm ci
+
+      - name: Normalize line endings (windows)
+        shell: bash
+        run: |
+          sed -i 's/\r$//' build-publish-scripts/check_version_consistency.sh
+          sed -i 's/\r$//' build-publish-scripts/PKGBUILD
+
+      - name: Validate version consistency
+        shell: bash
+        run: bash build-publish-scripts/check_version_consistency.sh
+
+      - name: Generate platform icons
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: npx tauri icon src-tauri/icons/icon.png -o src-tauri/icons
+
+      - name: Build Tauri app
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        shell: pwsh
+        env:
+          NO_STRIP: true
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: npx tauri build --bundles nsis,msi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: packages-windows
+          path: |
+            textmerger/src-tauri/target/release/bundle/nsis/*.exe
+            textmerger/src-tauri/target/release/bundle/msi/*.msi
+
+  # ===========================================================
+  # GitHub Release
+  # ===========================================================
   release:
-    needs: [build, build-arch]
-    if: startsWith(github.ref, 'refs/tags/')
+    name: Create Release
+    needs: [build-linux, build-linux-arch, build-windows]
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.build-linux.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
     steps:
-    - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v7
-      with:
-        path: artifacts
-    
-    - name: Display structure of downloaded files
-      run: ls -R artifacts
-    
-    - name: Prepare release files
-      run: |
-        mkdir -p release
-        find artifacts -type f -exec cp {} release/ \;
-        ls -la release/
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
 
-    - name: Extract release notes for tag
-      run: |
-        build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v3
-      with:
-        files: release/*
-        body_path: release-notes-for-tag.md
-        generate_release_notes: false
-        fail_on_unmatched_files: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Display artifact structure
+        run: ls -R artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( \
+            -name "*.deb" -o -name "*.rpm" \
+            -o -name "*.AppImage" \
+            -o -name "*.exe" -o -name "*.msi" \
+            -o -name "*.pkg.tar.zst" \
+          \) -exec cp {} release/ \;
+          echo "=== Release files ==="
+          ls -lh release/
+
+      - name: Extract release notes for tag
+        run: |
+          build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release/*"
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          name: TextMerger ${{ github.ref_name }}
+          bodyFile: release-notes-for-tag.md
+          allowUpdates: true
+          omitBodyDuringUpdate: false
+          replacesArtifacts: true
+          generateReleaseNotes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

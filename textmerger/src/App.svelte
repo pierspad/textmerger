@@ -676,6 +676,7 @@
   
   let draggedTabId: string | null = null;
   let dragOverTabId: string | null = null;
+  let dropPosition: 'left' | 'right' | null = null;
 
   $: hasIpynb = files.some((f) => {
     if (!f.path.toLowerCase().endsWith(".ipynb")) return false;
@@ -1100,30 +1101,73 @@
       showMergeModal = false;
   }
 
-  function handleTabDragStart(e: DragEvent, id: string) {
+  function handleTabPointerDown(e: PointerEvent, id: string) {
+      if (e.button !== 0) return;
+      
+      const target = e.target as HTMLElement;
+      if (target.closest('button[aria-label^="Close"]')) {
+          return;
+      }
+      
       draggedTabId = id;
-      if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.dropEffect = 'move';
+      
+      window.addEventListener('pointermove', handleWindowPointerMove);
+      window.addEventListener('pointerup', handleWindowPointerUp);
+      window.addEventListener('pointercancel', handleWindowPointerCancel);
+  }
+
+  function handleWindowPointerMove(e: PointerEvent) {
+      if (!draggedTabId) return;
+      
+      const element = document.elementFromPoint(e.clientX, e.clientY);
+      if (!element) {
+          dragOverTabId = null;
+          dropPosition = null;
+          return;
+      }
+      
+      const tabItem = element.closest('.tab-item');
+      if (tabItem) {
+          const tabId = tabItem.getAttribute('data-id');
+          if (tabId && tabId !== draggedTabId) {
+              const rect = tabItem.getBoundingClientRect();
+              const midpoint = rect.left + rect.width / 2;
+              dragOverTabId = tabId;
+              dropPosition = e.clientX < midpoint ? 'left' : 'right';
+          } else {
+              dragOverTabId = null;
+              dropPosition = null;
+          }
+      } else {
+          dragOverTabId = null;
+          dropPosition = null;
       }
   }
 
-  function handleTabDragOver(e: DragEvent, id: string) {
-      e.preventDefault();
-      dragOverTabId = id;
+  function handleWindowPointerUp(e: PointerEvent) {
+      if (draggedTabId) {
+          if (dragOverTabId && draggedTabId !== dragOverTabId && dropPosition) {
+              reorderTabs(draggedTabId, dragOverTabId, dropPosition);
+          }
+      }
+      cleanupPointerDrag();
   }
 
-  function handleTabDrop(e: DragEvent, id: string) {
-      e.preventDefault();
-      if (draggedTabId && draggedTabId !== id) {
-           reorderTabs(draggedTabId, id);
-      }
+  function handleWindowPointerCancel(e: PointerEvent) {
+      cleanupPointerDrag();
+  }
+
+  function cleanupPointerDrag() {
       draggedTabId = null;
       dragOverTabId = null;
+      dropPosition = null;
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerCancel);
   }
 
-  function reorderTabs(fromId: string, toId: string) {
-      tabs.reorderTabs(fromId, toId);
+  function reorderTabs(fromId: string, toId: string, position: 'left' | 'right') {
+      tabs.reorderTabs(fromId, toId, position);
   }
 
   function activateTabByIndex(index: number) {
@@ -2066,24 +2110,29 @@
 
           {#each $tabs.tabs as tab (tab.id)}
             <div 
-               class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-pointer border-t border-l border-r border-transparent transition-all duration-200 select-none
+               class="tab-item group relative flex items-center px-3 py-1.5 min-w-[120px] max-w-[200px] rounded-t-lg cursor-grab border-t border-l border-r border-transparent transition-all duration-200 select-none touch-none
                {tab.id === $tabs.activeTabId 
                   ? 'bg-[var(--tab-bg-active)] text-[var(--text)] z-10 border-[var(--border)] border-b-0 shadow-sm' 
                   : 'bg-[var(--tab-bg-inactive)] text-[var(--muted)] hover:bg-[var(--tab-bg-hover)] border-b border-[var(--border)] opacity-80 hover:opacity-100'}"
-               draggable="true"
                role="button"
                tabindex="0"
                data-id={tab.id}
                on:click={() => handleTabClick(tab.id)}
                on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleTabClick(tab.id)}
                on:contextmenu={(e) => handleTabContextMenu(e, tab.id)}
-               on:dragstart={(e) => handleTabDragStart(e, tab.id)}
-               on:dragover={(e) => handleTabDragOver(e, tab.id)}
-               on:drop={(e) => handleTabDrop(e, tab.id)}
+               on:pointerdown={(e) => handleTabPointerDown(e, tab.id)}
                class:brightness-110={dragOverTabId === tab.id}
+               class:opacity-50={draggedTabId === tab.id}
+               class:cursor-grabbing={draggedTabId === tab.id}
                aria-label={`Tab: ${tab.name}`}
                title={getTabTooltip(tab)}
             >
+                {#if dragOverTabId === tab.id && dropPosition === 'left'}
+                  <div class="absolute left-0 top-0 bottom-0 w-[3px] bg-sky-500 rounded-l z-20"></div>
+                {/if}
+                {#if dragOverTabId === tab.id && dropPosition === 'right'}
+                  <div class="absolute right-0 top-0 bottom-0 w-[3px] bg-sky-500 rounded-r z-20"></div>
+                {/if}
                 
                 <div class="truncate text-xs font-medium pr-5 flex-1">{tab.name}</div>
                 <button 

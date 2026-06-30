@@ -302,14 +302,20 @@ function createTabsStore() {
             };
         }),
 
-        reorderTabs: (fromId: string, toId: string) => withPersistence(s => {
+        reorderTabs: (fromId: string, toId: string, position: 'left' | 'right') => withPersistence(s => {
             const fromIndex = s.tabs.findIndex(t => t.id === fromId);
             const toIndex = s.tabs.findIndex(t => t.id === toId);
             if (fromIndex === -1 || toIndex === -1) return s;
 
             const newTabs = [...s.tabs];
             const [moved] = newTabs.splice(fromIndex, 1);
-            newTabs.splice(toIndex, 0, moved);
+
+            let targetIndex = newTabs.findIndex(t => t.id === toId);
+            if (position === 'right') {
+                targetIndex += 1;
+            }
+
+            newTabs.splice(targetIndex, 0, moved);
 
             return { ...s, tabs: newTabs };
         })
