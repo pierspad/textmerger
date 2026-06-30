@@ -1,9 +1,6 @@
-## Release Notes v2.9.1
+## Release Notes v2.9.2
 
 ### Fixes
 
-* **Shortcut panel ui fix** fixed bugs on responsiveness and other elements of the shortcut panel and 
+* **Tab Reordering** fixed tab reordering
 
-### Improvements
-
-* **Faster loading time** when opening settings

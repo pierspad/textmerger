@@ -3966,7 +3966,7 @@ dependencies = [
 
 [[package]]
 name = "textmerger"
-version = "2.9.1"
+version = "2.9.2"
 dependencies = [
  "content_inspector",
  "glob",
