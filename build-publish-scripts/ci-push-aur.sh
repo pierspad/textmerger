@@ -31,6 +31,12 @@ echo "Clonazione repo AUR (fresca)..."
 git clone --depth 1 "$AUR_REMOTE_URL" "$AUR_REPO_DIR"
 
 echo "Aggiornamento checksum con updpkgsums..."
+# updpkgsums riscrive PKGBUILD in-place: serve una directory scrivibile.
+# /workspace è di proprietà di root (montato dal runner), non di builder.
+WORK_DIR="$HOME/pkgbuild-work"
+mkdir -p "$WORK_DIR"
+cp "$PKGBUILD" "$WORK_DIR/PKGBUILD"
+cd "$WORK_DIR"
 updpkgsums
 
 echo "Generazione .SRCINFO..."
@@ -40,6 +46,8 @@ echo "Copia file nel repository AUR..."
 cp PKGBUILD .SRCINFO "$AUR_REPO_DIR/"
 
 cd "$AUR_REPO_DIR"
+git config user.email "aur-bot@textmerger-ci"
+git config user.name "Textmerger CI"
 git add -A
 
 if git diff --staged --quiet; then
