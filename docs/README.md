@@ -2,7 +2,7 @@
 
 ![TextMerger screenshot](image.png)
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/pierspad/textmerger/blob/main/docs/LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/pierspad/textmerger?style=flat&logo=github&color=blue)](https://github.com/pierspad/textmerger/releases/latest)
 
 **TextMerger** is a cross-platform desktop application that lets you collect, preview, and merge content from multiple files into a single, clean output — ready to copy, save, or paste into any tool (including AI prompts).

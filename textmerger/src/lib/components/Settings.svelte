@@ -257,7 +257,7 @@
   const repoUrl = "https://github.com/pierspad/textmerger";
   const latestReleaseApiUrl = "https://api.github.com/repos/pierspad/textmerger/releases/latest";
   const authorUrl = "https://pierspad.com";
-  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/LICENSE";
+  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/docs/LICENSE";
   const releasesUrl = "https://github.com/pierspad/textmerger/releases";
   const authorIconUrl = "https://github.com/pierspad.png";
 
