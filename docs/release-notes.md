@@ -1,5 +1,5 @@
-## Release Notes v2.9.3
+## Release Notes v2.9.4
 
 ### Fixes
 
-* **Updated License link**
+* **Security updated upgrading vite to ^7.3.5**
