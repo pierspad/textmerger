@@ -262,14 +262,12 @@ jobs:
           echo "=== Release files ==="
           ls -lh release/
 
-      - name: Extract release notes for tag
+      - name: Prepare fallback release body
         run: |
-          # Best-effort: il body autorevole lo crea semantic-release
-          # (@semantic-release/github). Questo file è solo un fallback se la
-          # release non esistesse ancora — non deve bloccare l'upload dei binari.
-          if ! build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md; then
-            echo "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details." > release-notes-for-tag.md
-          fi
+          # Il body autorevole è creato da semantic-release (@semantic-release/github)
+          # dai conventional commits. Questo file serve solo come fallback se la
+          # release non esistesse ancora (es. run manuale su un tag orfano).
+          echo "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details." > release-notes-for-tag.md
 
       - name: Create Release
         uses: ncipollo/release-action@v1

@@ -1,20 +1,23 @@
 ---
-description: Linee guida LLM per TextMerger, stack Svelte+Tauri e release notes.
+description: Linee guida LLM per TextMerger, stack Svelte+Tauri e release.
 ---
 
 # Istruzioni Copilot per TextMerger
 
 Queste istruzioni vengono lette automaticamente da GitHub Copilot e da altri LLM compatibili quando lavorano in questo workspace.
 
-## 1. Changelog operativo obbligatorio
+## 1. Conventional Commits obbligatori
 
-Ogni volta che completi un task, bugfix o refactor significativo, documenta le modifiche accodandole in `docs/list_of_things_changed.md`.
+I messaggi di commit SONO le release notes: semantic-release genera il body della GitHub Release e il `CHANGELOG.md` direttamente dai commit. Non esistono file di note manuali da aggiornare.
 
-- Mantieni il titolo principale esattamente: `# Modifiche recenti (in preparazione alla release)`.
-- Raggruppa le modifiche sotto sezioni `## [Data Odierna] - Categoria`.
-- Usa bullet nel formato `- **Etichetta breve**: Descrizione concreta della modifica`.
-- Scrivi cosa e' cambiato e perche' e' utile all'utente.
-- Non chiedere prima conferma: il file serve a compilare le release notes prima della pubblicazione.
+- Usa sempre il formato Conventional Commits: `tipo(scope): descrizione`.
+  - `feat:` → minor bump, sezione "✨ New Features";
+  - `fix:` → patch bump, sezione "🐛 Bug Fixes";
+  - `perf:`/`refactor:` → patch bump;
+  - `feat!:`/`fix!:` o footer `BREAKING CHANGE:` → major bump;
+  - `chore:`/`docs:`/`test:`/`ci:` → nessun rilascio.
+- Scrivi la descrizione pensando all'utente finale che la leggerà nella release: sintetica, concreta, con lo scope che indica l'area toccata.
+- Il dettaglio tecnico va nel body del commit, non serve altrove.
 
 ## 2. UI e i18n
 
@@ -26,33 +29,11 @@ TextMerger usa Svelte, Tauri e Tailwind. Quando modifichi UI o testi visibili:
 
 ## 3. Release
 
-La release GitHub deve usare `docs/release-notes.md` come corpo curato della release. Non sostituirla con release notes generate automaticamente.
+Il rilascio è interamente gestito da **semantic-release** (`release.yml`, config in `.releaserc`), stesso design di vesta. Nessuno script locale, nessun file di note manuale.
 
-Il formato deve seguire questo schema:
-
-```markdown
-## Release Notes
-
-### Fixes
-
-* **Area**: Fix sintetico e concreto
-
-### Improvements
-
-* **Area**: Miglioramento sintetico e concreto
-```
-
-Regole:
-
-- usa `*` nelle release notes, non `-`;
-- mantieni categorie brevi come `Fixes`, `Improvements`, `Packaging`, se servono;
-- non creare sezioni vuote;
-- evita cronologia verbosa: le release notes sono per utenti finali, il dettaglio operativo resta in `docs/list_of_things_changed.md`.
-
-Prima di pubblicare:
-
-- controlla `docs/list_of_things_changed.md`;
-- aggiorna `docs/release-notes.md` nel formato `## Release Notes`;
-- verifica la sezione con `build-publish-scripts/extract-release-notes.sh vX.Y.Z`;
-- verifica la coerenza versioni con `build-publish-scripts/check_version_consistency.sh` (include anche `Cargo.lock`);
-- usa `build-publish-scripts/git-release.sh` per commit, tag e push.
+- **Push su `main`** → release stabile `vX.Y.Z`, marcata Latest su GitHub e pubblicata su AUR.
+- **Push su `dev`** → prerelease `vX.Y.Z-dev.N`, marcata Pre-release: non diventa mai Latest e non va mai su AUR.
+- Il body della release e `CHANGELOG.md` sono generati dai Conventional Commits (§1). Non riscriverli a mano.
+- Il PKGBUILD (`build-publish-scripts/PKGBUILD`) è la Single Source of Truth della versione: `update_project_info.sh` la propaga a tauri.conf.json, Cargo.toml, Cargo.lock, package.json e .desktop. Non bumpare versioni a mano.
+- Coerenza versioni verificata in CI con `build-publish-scripts/check_version_consistency.sh` (include anche `Cargo.lock`).
+- Flusso: semantic-release calcola il bump → propaga versione → commit `chore: Release vX.Y.Z [skip ci]` + tag → crea la GitHub Release → dispatcha "Build and Release" sul tag (upload binari) → backmerge `main → dev`.
