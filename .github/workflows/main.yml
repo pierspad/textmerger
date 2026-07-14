@@ -264,7 +264,12 @@ jobs:
 
       - name: Extract release notes for tag
         run: |
-          build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md
+          # Best-effort: il body autorevole lo crea semantic-release
+          # (@semantic-release/github). Questo file è solo un fallback se la
+          # release non esistesse ancora — non deve bloccare l'upload dei binari.
+          if ! build-publish-scripts/extract-release-notes.sh "${GITHUB_REF_NAME}" docs/release-notes.md release-notes-for-tag.md; then
+            echo "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details." > release-notes-for-tag.md
+          fi
 
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -275,8 +280,9 @@ jobs:
           name: TextMerger ${{ github.ref_name }}
           bodyFile: release-notes-for-tag.md
           allowUpdates: true
-          omitBodyDuringUpdate: false
+          omitBodyDuringUpdate: true
           replacesArtifacts: true
           generateReleaseNotes: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

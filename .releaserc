@@ -1,0 +1,77 @@
+{
+  "branches": [
+    "main",
+    {
+      "name": "dev",
+      "prerelease": true
+    }
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer", {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "type": "fix", "release": "patch" },
+          { "type": "feat", "release": "minor" },
+          { "type": "perf", "release": "patch" },
+          { "type": "refactor", "release": "patch" }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator", {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            { "type": "fix", "section": "🐛 Bug Fixes", "hidden": false },
+            { "type": "feat", "section": "✨ New Features", "hidden": false },
+            { "type": "perf", "section": "🔧 Improvements", "hidden": false },
+            { "type": "refactor", "section": "♻️ Refactoring", "hidden": false }
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog", {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "sed -i 's/^pkgver=.*/pkgver=${nextRelease.version}/' build-publish-scripts/PKGBUILD && bash build-publish-scripts/update_project_info.sh",
+        "publishCmd": "gh workflow run 'Build and Release' --ref 'v${nextRelease.version}'"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "CHANGELOG.md",
+          "build-publish-scripts/PKGBUILD",
+          "packaging/textmerger.desktop",
+          "textmerger/src-tauri/tauri.conf.json",
+          "textmerger/src-tauri/Cargo.toml",
+          "textmerger/src-tauri/Cargo.lock",
+          "textmerger/package.json"
+        ],
+        "message": "chore: Release v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "successComment": false
+      }
+    ],
+    [
+      "@cleyrop-org/semantic-release-backmerge",
+      {
+        "backmergeBranches": [{"from": "main", "to": "dev"}],
+        "clearWorkspace": true,
+        "backmergeStrategy": "merge",
+        "mergeMode": "theirs"
+      }
+    ]
+  ]
+}

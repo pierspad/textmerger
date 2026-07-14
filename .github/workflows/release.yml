@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------------------
+# Release (semantic-release) — stesso design di vesta.
+#
+# Ogni push su main/dev analizza i conventional commits:
+#   - main → release stabile (vX.Y.Z), marcata Latest su GitHub, pubblicata su AUR
+#   - dev  → prerelease (vX.Y.Z-dev.N), marcata Pre-release, MAI Latest, MAI su AUR
+#
+# Flusso: commit-analyzer calcola il bump → exec propaga la versione
+# (PKGBUILD = Single Source of Truth → update_project_info.sh) → git committa
+# e tagga → github crea la release → exec dispatcha "Build and Release" sul tag
+# (i tag pushati con GITHUB_TOKEN non scatenano workflow on:push) → backmerge
+# main → dev.
+# ---------------------------------------------------------------------------
+name: Release (semantic-release)
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    name: Validate and Release
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust stable (sync Cargo.lock)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Normalize line endings
+        shell: bash
+        run: |
+          sed -i 's/\r$//' build-publish-scripts/PKGBUILD \
+                           build-publish-scripts/update_project_info.sh \
+                           build-publish-scripts/check_version_consistency.sh
+
+      - name: Validate version consistency
+        shell: bash
+        run: bash build-publish-scripts/check_version_consistency.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Release via semantic-release
+        uses: cycjimmy/semantic-release-action@v5
+        id: release
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/exec
+            @semantic-release/git
+            @cleyrop-org/semantic-release-backmerge
+            conventional-changelog-conventionalcommits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

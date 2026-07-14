@@ -18,9 +18,11 @@ jobs:
   publish-aur:
     name: Push PKGBUILD to AUR
     runs-on: ubuntu-22.04
+    # Il filtro !contains(head_branch, '-') esclude le prerelease (v2.10.0-dev.1):
+    # su AUR va pubblicata SOLO l'ultima versione stabile.
     if: >
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.head_branch, '-'))
     steps:
       - uses: actions/checkout@v6
         # Checkout del default branch (non del tag): stessa motivazione di vesta.
