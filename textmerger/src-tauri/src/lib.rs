@@ -1,7 +1,8 @@
-use rayon::prelude::*;
 use glob::Pattern;
-use std::path::Path;
+use rayon::iter::Either;
+use rayon::prelude::*;
 use std::collections::HashSet;
+use std::path::Path;
 
 mod file_ops;
 
@@ -28,10 +29,12 @@ struct FilterPatterns {
 
 impl FilterPatterns {
     fn new(excluded_patterns: &[String], hidden_patterns: &[String]) -> Self {
-        let exclude = excluded_patterns.iter()
+        let exclude = excluded_patterns
+            .iter()
             .filter_map(|p| Pattern::new(p).ok())
             .collect();
-        let hide = hidden_patterns.iter()
+        let hide = hidden_patterns
+            .iter()
             .filter_map(|p| Pattern::new(p).ok())
             .collect();
         Self { exclude, hide }
@@ -47,7 +50,7 @@ impl FilterPatterns {
 }
 
 fn escape_html(input: &str) -> String {
-    let mut output = String::with_capacity(input.len() + 10);
+    let mut output = String::with_capacity(input.len());
     for c in input.chars() {
         match c {
             '<' => output.push_str("&lt;"),
@@ -71,10 +74,13 @@ fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns)
 
     if recursive {
         let walker = walkdir::WalkDir::new(path).into_iter();
-        for entry in walker.filter_entry(|e| {
-            let name = e.file_name().to_str().unwrap_or("");
-            !filter.is_excluded(name) && !name.starts_with('.')
-        }).filter_map(|e| e.ok()) {
+        for entry in walker
+            .filter_entry(|e| {
+                let name = e.file_name().to_str().unwrap_or_default();
+                !filter.is_excluded(name) && !name.starts_with('.')
+            })
+            .filter_map(|e| e.ok())
+        {
             let p = entry.path();
             if p.is_file() {
                 if let Some(path_str) = p.to_str() {
@@ -82,15 +88,13 @@ fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns)
                 }
             }
         }
-    } else {
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let p = entry.path();
-                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                if p.is_file() && !filter.is_excluded(name) && !name.starts_with('.') {
-                    if let Some(path_str) = p.to_str() {
-                        files.push(path_str.to_string());
-                    }
+    } else if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let p = entry.path();
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            if p.is_file() && !filter.is_excluded(name) && !name.starts_with('.') {
+                if let Some(path_str) = p.to_str() {
+                    files.push(path_str.to_string());
                 }
             }
         }
@@ -99,56 +103,58 @@ fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns)
 }
 
 fn process_paths_parallel(paths: Vec<String>, filter: &FilterPatterns) -> AddFilesResult {
-    let results: Vec<Result<FileNode, String>> = paths.into_par_iter()
-        .map(|path| {
-            match file_ops::read_and_check_file(&path, "none") {
-                Ok((content, size_bytes)) => {
-                    let path_obj = Path::new(&path);
-                    let name = path_obj.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    let extension = path_obj.extension().unwrap_or_default().to_string_lossy().to_string();
-                    
-                    Ok(FileNode {
-                        path,
-                        name: name.clone(),
-                        // chars().count(), not len(): len() is bytes and diverges
-                        // from JS string lengths on non-ASCII content.
-                        char_count: content.chars().count(),
-                        size_bytes,
-                        extension,
-                        hidden: filter.is_hidden(&name),
-                    })
-                },
-                Err(e) => Err(e),
+    let (files, errors): (Vec<FileNode>, Vec<String>) = paths
+        .into_par_iter()
+        .map(|path| match file_ops::read_and_check_file(&path, "none") {
+            Ok((content, size_bytes)) => {
+                let path_obj = Path::new(&path);
+                let name = path_obj
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned();
+                let extension = path_obj
+                    .extension()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned();
+
+                Ok(FileNode {
+                    path,
+                    hidden: filter.is_hidden(&name),
+                    name,
+                    char_count: content.chars().count(),
+                    size_bytes,
+                    extension,
+                })
             }
+            Err(e) => Err(e),
         })
-        .collect();
-
-    let mut files = Vec::with_capacity(results.len());
-    let mut errors = Vec::new();
-
-    for res in results {
-        match res {
-            Ok(node) => files.push(node),
-            Err(e) => errors.push(e),
-        }
-    }
+        .partition_map(|res| match res {
+            Ok(node) => Either::Left(node),
+            Err(e) => Either::Right(e),
+        });
 
     AddFilesResult { files, errors }
 }
 
 #[tauri::command]
-fn add_files(paths: Vec<String>, excluded_patterns: Vec<String>, hidden_patterns: Vec<String>) -> Result<AddFilesResult, String> {
+fn add_files(
+    paths: Vec<String>,
+    excluded_patterns: Vec<String>,
+    hidden_patterns: Vec<String>,
+) -> Result<AddFilesResult, String> {
     let filter = FilterPatterns::new(&excluded_patterns, &hidden_patterns);
     let mut all_paths = Vec::new();
-    
+
     for path in paths {
         let path_obj = Path::new(&path);
         if path_obj.is_dir() {
             all_paths.extend(collect_directory_files(&path, true, &filter));
         } else {
-            let name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or_default();
             if !filter.is_excluded(name) {
-                 all_paths.push(path);
+                all_paths.push(path);
             }
         }
     }
@@ -157,7 +163,12 @@ fn add_files(paths: Vec<String>, excluded_patterns: Vec<String>, hidden_patterns
 }
 
 #[tauri::command]
-fn scan_directory(path: String, recursive: bool, excluded_patterns: Vec<String>, hidden_patterns: Vec<String>) -> Result<AddFilesResult, String> {
+fn scan_directory(
+    path: String,
+    recursive: bool,
+    excluded_patterns: Vec<String>,
+    hidden_patterns: Vec<String>,
+) -> Result<AddFilesResult, String> {
     let filter = FilterPatterns::new(&excluded_patterns, &hidden_patterns);
     let all_paths = collect_directory_files(&path, recursive, &filter);
     Ok(process_paths_parallel(all_paths, &filter))
@@ -165,45 +176,47 @@ fn scan_directory(path: String, recursive: bool, excluded_patterns: Vec<String>,
 
 #[tauri::command]
 fn get_merged_content(
-    paths: Vec<String>, 
-    hidden_paths: Vec<String>, 
-    ipynb_output_mode: String, 
-    load_full_large_files: bool, 
+    paths: Vec<String>,
+    hidden_paths: Vec<String>,
+    ipynb_output_mode: String,
+    load_full_large_files: bool,
     force_full_load_paths: Vec<String>,
     large_file_threshold: usize,
-    hidden_placeholder: String
+    hidden_placeholder: String,
 ) -> Result<String, String> {
     let hidden_set: HashSet<&str> = hidden_paths.iter().map(|s| s.as_str()).collect();
     let force_set: HashSet<&str> = force_full_load_paths.iter().map(|s| s.as_str()).collect();
 
-    let contents: Vec<String> = paths.par_iter().enumerate()
+    let contents: Vec<String> = paths
+        .par_iter()
+        .enumerate()
         .map(|(index, path)| {
             let path_str = path.as_str();
-            
+
             if hidden_set.contains(path_str) {
                 return format!(
-                    "<div id=\"file-{}\" class=\"file-header\" data-path=\"{}\">\n-------------------\n{} \n-------------------\n</div>\n<pre><code>{}</code></pre>\n<hr/>\n", 
-                    index,
+                    "<div id=\"file-{index}\" class=\"file-header\" data-path=\"{}\">\n-------------------\n{path_str} \n-------------------\n</div>\n<pre><code>{hidden_placeholder}</code></pre>\n<hr/>\n",
                     escape_html(path_str),
-                    path_str, 
-                    hidden_placeholder
                 );
             }
-            
+
             match file_ops::read_and_check_file(path, &ipynb_output_mode) {
                 Ok((mut content, _size)) => {
-                    let ext = std::path::Path::new(path).extension().and_then(|s| s.to_str()).unwrap_or("");
+                    let ext = std::path::Path::new(path)
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or_default();
                     // Count chars (not bytes) for consistency with the frontend
                     let char_count = content.chars().count();
                     let mut is_truncated = false;
-                    
-                    let is_forced = force_set.contains(path_str) || force_set.iter().any(|&p| {
-                        path_str.starts_with(p) && (
-                            path_str.as_bytes().get(p.len()) == Some(&b'/') ||
-                            path_str.as_bytes().get(p.len()) == Some(&b'\\')
-                        )
-                    });
-                    
+
+                    let is_forced = force_set.contains(path_str)
+                        || force_set.iter().any(|&p| {
+                            path_str.starts_with(p)
+                                && (path_str.as_bytes().get(p.len()) == Some(&b'/')
+                                    || path_str.as_bytes().get(p.len()) == Some(&b'\\'))
+                        });
+
                     if !load_full_large_files && char_count > large_file_threshold && !is_forced {
                         // Truncate at the Nth character (not byte) boundary
                         let end = content
@@ -212,26 +225,37 @@ fn get_merged_content(
                             .map(|(i, _)| i)
                             .unwrap_or(content.len());
                         content.truncate(end);
-                        content.push_str("\n\n[... The rest of the file was truncated due to its length ...]");
+                        content.push_str(
+                            "\n\n[... The rest of the file was truncated due to its length ...]",
+                        );
                         is_truncated = true;
                     }
 
                     format!(
-                        "<div id=\"file-{}\" class=\"file-header\" data-path=\"{}\" data-truncated=\"{}\">\n-------------------\n{} \n-------------------\n</div>\n<pre><code class=\"language-{}\">{}</code></pre>\n<hr/>\n", 
-                        index,
+                        "<div id=\"file-{index}\" class=\"file-header\" data-path=\"{}\" data-truncated=\"{is_truncated}\">\n-------------------\n{path_str} \n-------------------\n</div>\n<pre><code class=\"language-{ext}\">{}</code></pre>\n<hr/>\n",
                         escape_html(path_str),
-                        is_truncated,
-                        path_str, 
-                        ext, 
                         escape_html(&content)
                     )
-                },
-                Err(e) => format!("<div class=\"error\">Error reading {}: {}</div>", escape_html(path), escape_html(&e)),
+                }
+                Err(e) => format!(
+                    "<div class=\"error\">Error reading {}: {}</div>",
+                    escape_html(path),
+                    escape_html(&e)
+                ),
             }
         })
         .collect();
-        
-    Ok(contents.join("\n"))
+
+    let total_len: usize = contents.iter().map(|s| s.len() + 1).sum();
+    let mut result = String::with_capacity(total_len);
+    for (i, s) in contents.into_iter().enumerate() {
+        if i > 0 {
+            result.push('\n');
+        }
+        result.push_str(&s);
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -251,15 +275,26 @@ fn exit_app() {
 pub fn run() {
     #[cfg(target_os = "linux")]
     {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        // SAFETY: WEBKIT_DISABLE_DMABUF_RENDERER is set during startup before GTK thread initialization.
+        unsafe {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
     }
+
 
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_log::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![add_files, get_merged_content, scan_directory, exit_app, get_file_content])
+        .invoke_handler(tauri::generate_handler![
+            add_files,
+            get_merged_content,
+            scan_directory,
+            exit_app,
+            get_file_content
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
