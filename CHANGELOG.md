@@ -1,3 +1,9 @@
+## [2.10.1](https://github.com/pierspad/textmerger/compare/v2.10.0...v2.10.1) (2026-08-03)
+
+### 🐛 Bug Fixes
+
+* automatic AUR publish trigger on release tags and retry logic ([02c3526](https://github.com/pierspad/textmerger/commit/02c35266583411da266bec011c110ca7e2e44435))
+
 ## [2.10.0](https://github.com/pierspad/textmerger/compare/v2.9.6...v2.10.0) (2026-08-03)
 
 ### ✨ New Features
