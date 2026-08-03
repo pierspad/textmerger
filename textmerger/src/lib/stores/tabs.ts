@@ -230,7 +230,7 @@ function createTabsStore() {
                                 newName = newFiles[0].name;
                             } else {
                                 const splitPaths = newFiles.map(f => f.path.split(/[/\\]/));
-                                const minLen = Math.min(...splitPaths.map(p => p.length));
+                                const minLen = splitPaths.reduce((min, p) => Math.min(min, p.length), splitPaths[0]?.length || 0);
                                 let commonLen = 0;
                                 for (let i = 0; i < minLen; i++) {
                                     const part = splitPaths[0][i];

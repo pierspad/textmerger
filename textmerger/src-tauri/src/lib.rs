@@ -85,19 +85,18 @@ fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns)
             })
             .filter_map(|e| e.ok())
         {
-            let p = entry.path();
-            if p.is_file() {
-                if let Some(path_str) = p.to_str() {
+            if entry.file_type().is_file() {
+                if let Some(path_str) = entry.path().to_str() {
                     files.push(path_str.to_string());
                 }
             }
         }
     } else if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.filter_map(|e| e.ok()) {
-            let p = entry.path();
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if p.is_file() && !filter.is_excluded(name) && !name.starts_with('.') {
-                if let Some(path_str) = p.to_str() {
+            let name = entry.file_name().to_str().unwrap_or_default().to_string();
+            let is_file = entry.file_type().map_or(false, |ft| ft.is_file());
+            if is_file && !filter.is_excluded(&name) && !name.starts_with('.') {
+                if let Some(path_str) = entry.path().to_str() {
                     files.push(path_str.to_string());
                 }
             }
@@ -149,19 +148,22 @@ fn add_files(
     hidden_patterns: Vec<String>,
 ) -> Result<AddFilesResult, String> {
     let filter = FilterPatterns::new(&excluded_patterns, &hidden_patterns);
-    let mut all_paths = Vec::new();
-
-    for path in paths {
-        let path_obj = Path::new(&path);
-        if path_obj.is_dir() {
-            all_paths.extend(collect_directory_files(&path, true, &filter));
-        } else {
-            let name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if !filter.is_excluded(name) {
-                all_paths.push(path);
+    let all_paths: Vec<String> = paths
+        .into_par_iter()
+        .flat_map(|path| {
+            let path_obj = Path::new(&path);
+            if path_obj.is_dir() {
+                collect_directory_files(&path, true, &filter)
+            } else {
+                let name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+                if !filter.is_excluded(name) {
+                    vec![path]
+                } else {
+                    Vec::new()
+                }
             }
-        }
-    }
+        })
+        .collect();
 
     Ok(process_paths_parallel(all_paths, &filter))
 }
