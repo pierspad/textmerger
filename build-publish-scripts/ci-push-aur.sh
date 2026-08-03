@@ -27,8 +27,24 @@ AUR_REPO_DIR="$HOME/aur-repo"
 echo "Verifica coerenza versioni..."
 bash "$CHECK_SCRIPT"
 
+MAX_ATTEMPTS=5
+RETRY_DELAY=15
+
 echo "Clonazione repo AUR (fresca)..."
-git clone --depth 1 "$AUR_REMOTE_URL" "$AUR_REPO_DIR"
+CLONED=0
+for i in $(seq 1 $MAX_ATTEMPTS); do
+    if git clone --depth 1 "$AUR_REMOTE_URL" "$AUR_REPO_DIR"; then
+        CLONED=1
+        break
+    fi
+    echo "Tentativo $i/$MAX_ATTEMPTS di clonazione AUR fallito (AUR potrebbe essere temporaneamente in manutenzione). Riprovo tra ${RETRY_DELAY}s..."
+    sleep "$RETRY_DELAY"
+done
+
+if [ "$CLONED" -ne 1 ]; then
+    echo "Errore: Impossibile clonare il repository AUR dopo $MAX_ATTEMPTS tentativi." >&2
+    exit 1
+fi
 
 echo "Aggiornamento checksum con updpkgsums..."
 # updpkgsums riscrive PKGBUILD in-place: serve una directory scrivibile.
@@ -59,5 +75,20 @@ VERSION=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' PKGBUILD | tr -d '\
 
 echo "Commit e push su AUR (v${VERSION})..."
 git commit -m "Update to v${VERSION}"
-git push
+
+PUSHED=0
+for i in $(seq 1 $MAX_ATTEMPTS); do
+    if git push; then
+        PUSHED=1
+        break
+    fi
+    echo "Tentativo $i/$MAX_ATTEMPTS di push su AUR fallito. Riprovo tra ${RETRY_DELAY}s..."
+    sleep "$RETRY_DELAY"
+done
+
+if [ "$PUSHED" -ne 1 ]; then
+    echo "Errore: Impossibile effettuare il push su AUR dopo $MAX_ATTEMPTS tentativi." >&2
+    exit 1
+fi
+
 echo "Push completato su AUR."

@@ -446,7 +446,7 @@ Builds a matrix: Linux `ubuntu-22.04` → `.deb`/`.rpm` (+AppImage where wanted)
 
 ## 16. AUR Publishing — `aur-publish.yml` + `ci-push-aur.sh` (fully automatic)
 
-* **Trigger**: `workflow_run` on "Build and Release" `completed` with `branches: ['v*']` — for tag-triggered runs `head_branch` **is the tag name**, so the filter matches releases and excludes manual dispatches on `main`. `release: published` does **not** work here: releases created with `GITHUB_TOKEN` never propagate the event (anti-loop). Keep `workflow_dispatch` as manual retry.
+* **Trigger**: `workflow_run` on "Build and Release" `completed` (WITHOUT `branches:` filter, since GitHub Actions `branches` filter ignores git tags like `v2.10.0`). Non-prerelease tags are filtered via job `if:` (`!contains(head_branch, '-')`). `release: published` does **not** work here: releases created with `GITHUB_TOKEN` never propagate the event (anti-loop). Keep `workflow_dispatch` as manual retry.
 * **Checkout the default branch, not the tag** — the CI scripts receive fixes on the default branch; checking out the tag would run the (possibly buggy) script version frozen at release time.
 * **Wait for the asset**: poll `HEAD` on the released `.deb` URL (reconstructed from the PKGBUILD's `url` + `pkgver` + `_pkgname`) for up to ~3 minutes before publishing.
 * **SSH**: secrets `AUR_SSH_PRIVATE_KEY` + `AUR_KNOWN_HOSTS`, written to a throwaway dir, `StrictHostKeyChecking yes`, host `aur.archlinux.org`, user `aur`.

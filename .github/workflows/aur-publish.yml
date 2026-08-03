@@ -3,11 +3,11 @@ name: Publish to AUR
 on:
   # Stessa motivazione di vesta: release: published non scatta quando la release
   # è creata via GITHUB_TOKEN. workflow_run è l'unico trigger affidabile.
+  # NOTA: NON specificare `branches:` sotto workflow_run, altrimenti GitHub Actions
+  # ignora i workflow scatenati dai TAG (es. v2.10.0) e l'action non parte in automatico.
   workflow_run:
     workflows: ["Build and Release"]
     types: [completed]
-    branches:
-      - 'v*'
   workflow_dispatch: {}  # per retry manuale, nessun input necessario
 
 concurrency:
@@ -22,11 +22,13 @@ jobs:
     # su AUR va pubblicata SOLO l'ultima versione stabile.
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.head_branch, '-'))
+      (github.event.workflow_run.conclusion == 'success' &&
+       !contains(github.event.workflow_run.head_branch, '-') &&
+       github.event.workflow_run.head_branch != 'dev')
     steps:
       - uses: actions/checkout@v6
         # Checkout del default branch (non del tag): stessa motivazione di vesta.
-        # Gli script CI ricevono fix sul default branch; checkou del tag eseguirebbe
+        # Gli script CI ricevono fix sul default branch; checkout del tag eseguirebbe
         # la versione al momento del release, potenzialmente buggata.
 
       - name: Normalize line endings
@@ -96,6 +98,9 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
 
+          pacman-key --init || true
+          pacman-key --populate archlinux || true
+          pacman -Sy --noconfirm archlinux-keyring || true
           pacman -Syu --noconfirm git sudo openssh pacman-contrib base-devel
 
           useradd -m builder
