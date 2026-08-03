@@ -1,3 +1,9 @@
+## [2.9.6](https://github.com/pierspad/textmerger/compare/v2.9.5...v2.9.6) (2026-08-03)
+
+### 🔧 Improvements
+
+* **rust:** upgrade rust-version to 1.97.0 and leverage zero-alloc stack buffer & let-else idioms ([a11ce7e](https://github.com/pierspad/textmerger/commit/a11ce7e8d2eab818cc9fcf81eaa85dfe6b4a793d))
+
 ## [2.9.5](https://github.com/pierspad/textmerger/compare/v2.9.4...v2.9.5) (2026-08-03)
 
 ### 🐛 Bug Fixes
