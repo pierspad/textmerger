@@ -1,3 +1,17 @@
+## [2.10.0](https://github.com/pierspad/textmerger/compare/v2.9.6...v2.10.0) (2026-08-03)
+
+### ✨ New Features
+
+* **core:** upgrade to Rust 2024 & Rust 1.97 with multi-folder parallel scanning and reactive UI tree memoization ([b0bfa00](https://github.com/pierspad/textmerger/commit/b0bfa00960930d230be04a5ae15ec18dc3b13bf2))
+
+### 🔧 Improvements
+
+* memoize FileIcon SVG string to eliminate inline re-parsing ([c88e859](https://github.com/pierspad/textmerger/commit/c88e859d0b0edd7dd3419f751bf82c49fc673fda))
+* memoize FileTreeNode sortedChildren and nodeHidden reactively ([9e1dff4](https://github.com/pierspad/textmerger/commit/9e1dff484a388f9fc4095593f04ebef7507b66a9))
+* optimize backend filesystem traversal, frontend tree memoization, and single-pass html extraction ([2a3bcbf](https://github.com/pierspad/textmerger/commit/2a3bcbfd6cd295e0f99f97da2a86433f5629c596))
+* optimize directory traversal using cached file_type and parallel flat_map, fix stack limit in tab path calculation ([abd98b9](https://github.com/pierspad/textmerger/commit/abd98b9c3d3d64c90ccfa0b4188ecf817d2779c1))
+* optimize tree compaction, isForcedFullLoad, removeSelected lookups, and avoid redundant re-merging on settings changes ([616ba62](https://github.com/pierspad/textmerger/commit/616ba62635aaf1308330a192dc79a4e678e6d24c))
+
 ## [2.9.6](https://github.com/pierspad/textmerger/compare/v2.9.5...v2.9.6) (2026-08-03)
 
 ### 🔧 Improvements
