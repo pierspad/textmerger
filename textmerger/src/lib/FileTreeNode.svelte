@@ -51,24 +51,31 @@
       return '#ef4444';
   }
 
-  function getSortedChildren(children: any): any[] {
-     if (!children) return [];
-     return Object.values(children).sort((a: any, b: any) => {
+  $: nodeHidden = isNodeHidden(node);
+
+  let sortedChildren: any[] = [];
+  $: {
+    if (!node || node.isFile || !node.children) {
+      sortedChildren = [];
+    } else {
+      sortedChildren = Object.values(node.children).sort((a: any, b: any) => {
         if (a.isFile === b.isFile) {
-            if (sortType === 'alphabetical') {
-                return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-            } else if (sortType === 'size') {
-                const aSize = a.sizeBytes || a.charCount || 0;
-                const bSize = b.sizeBytes || b.charCount || 0;
-                return sortAscending ? aSize - bSize : bSize - aSize;
-            }
-            return a.name.localeCompare(b.name);
+          if (sortType === 'alphabetical') {
+            return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+          } else if (sortType === 'size') {
+            const aSize = a.sizeBytes || a.charCount || 0;
+            const bSize = b.sizeBytes || b.charCount || 0;
+            return sortAscending ? aSize - bSize : bSize - aSize;
+          }
+          return a.name.localeCompare(b.name);
         }
         return a.isFile ? 1 : -1;
-     });
+      });
+    }
   }
 
   function isNodeHidden(n: any): boolean {
+    if (!n) return false;
     if (n.isFile) {
       return n.hidden === true;
     }
@@ -82,7 +89,7 @@
 <div>
   <div 
     class="flex items-center py-1 px-2 hover:bg-[var(--bg-hover)] cursor-pointer {selectedFiles.has(node.path) ? 'bg-[#374151]' : ''} {focusedFilePath === node.path ? 'outline outline-1 outline-[#0e639c]' : ''}"
-    class:opacity-40={isNodeHidden(node)}
+    class:opacity-40={nodeHidden}
     style="padding-left: {depth * 12 + 4}px"
     role="button"
     tabindex="0"
@@ -99,7 +106,7 @@
   >
     <span class="mr-2 relative flex items-center shrink-0" on:click|stopPropagation={toggle} role="button" tabindex="0" on:keydown={() => {}}>
       <FileIcon name={node.name} isFile={node.isFile} isOpen={node.isOpen} />
-      {#if isNodeHidden(node)}
+      {#if nodeHidden}
         <div class="absolute inset-0 flex items-center justify-center opacity-40 pointer-events-none text-white drop-shadow-md">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
@@ -118,7 +125,7 @@
 
   {#if !node.isFile && node.isOpen && node.children}
     <div transition:slide|local={{ duration: 200 }}>
-      {#each getSortedChildren(node.children) as child (child.path)}
+      {#each sortedChildren as child (child.path)}
         <svelte:self 
           node={child} 
           tree={tree} 
@@ -139,3 +146,4 @@
     </div>
   {/if}
 </div>
+
