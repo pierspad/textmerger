@@ -1,3 +1,9 @@
+## [2.10.3](https://github.com/pierspad/textmerger/compare/v2.10.2...v2.10.3) (2026-08-03)
+
+### 🐛 Bug Fixes
+
+* integrate AUR publish step directly into Build and Release pipeline ([6ee0ee7](https://github.com/pierspad/textmerger/commit/6ee0ee79d7a390256f96266e7a7d9d161ebb5830))
+
 ## [2.10.2](https://github.com/pierspad/textmerger/compare/v2.10.1...v2.10.2) (2026-08-03)
 
 ### 🐛 Bug Fixes
