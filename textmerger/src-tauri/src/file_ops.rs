@@ -11,6 +11,8 @@ use mime_guess::from_path;
 use nom_exif::{MediaParser, MediaSource};
 use serde_json::Value;
 
+const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10MB limit
+
 const MEDIA_EXTENSIONS: &[&str] = &[
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "mp4", "mov", "avi", "mkv", "webm", "m4v", "3gp",
 ];
@@ -28,19 +30,14 @@ pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<(String, u64
         .unwrap_or("")
         .to_lowercase();
 
-    if ext == "pdf" {
-        return read_pdf(path);
+    match ext.as_str() {
+        "pdf" => return read_pdf(path),
+        "ipynb" => return read_ipynb(path, output_mode),
+        e if MEDIA_EXTENSIONS.contains(&e) => return read_metadata(path),
+        _ => {}
     }
 
-    if ext == "ipynb" {
-        return read_ipynb(path, output_mode);
-    }
-
-    if MEDIA_EXTENSIONS.contains(&ext.as_str()) {
-        return read_metadata(path);
-    }
-
-    let file = fs::File::open(path).map_err(|e| format!("Could not open file: {e}"))?;
+    let mut file = fs::File::open(path).map_err(|e| format!("Could not open file: {e}"))?;
     let metadata = file
         .metadata()
         .map_err(|e| format!("Could not read metadata: {e}"))?;
@@ -50,28 +47,27 @@ pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<(String, u64
     }
 
     let size = metadata.len();
-    if size > 10 * 1024 * 1024 {
+    if size > MAX_FILE_SIZE {
         return Err(format!("File too large (>10MB): {path}"));
     }
 
-    let mut buffer = Vec::with_capacity(size as usize);
-
-    let mut handle = file.take(1024);
-    handle
-        .read_to_end(&mut buffer)
+    // Inspect first 1024 bytes on the stack without heap allocation
+    let mut header = [0u8; 1024];
+    let n = file
+        .read(&mut header)
         .map_err(|e| format!("Error reading header: {e}"))?;
 
-    if buffer.is_empty() {
+    if n == 0 {
         return Ok((String::new(), 0));
     }
 
-    if inspect(&buffer) == ContentType::BINARY {
+    if inspect(&header[..n]) == ContentType::BINARY {
         return Err(format!("Binary file detected: {path}"));
     }
 
-    let mut original_file = handle.into_inner();
-    original_file
-        .read_to_end(&mut buffer)
+    let mut buffer = Vec::with_capacity(size as usize);
+    buffer.extend_from_slice(&header[..n]);
+    file.read_to_end(&mut buffer)
         .map_err(|e| format!("Error reading content: {e}"))?;
 
     let content = String::from_utf8(buffer)
@@ -105,24 +101,28 @@ fn read_metadata(path: &str) -> Result<(String, u64), String> {
         }
     }
 
-    let mut parser = MediaParser::new();
-    if let Ok(ms) = MediaSource::file_path(path) {
-        let iter: Result<nom_exif::ExifIter, _> = parser.parse(ms);
-        if let Ok(iter) = iter {
-            for entry in iter {
-                let tag_str = entry
-                    .tag()
-                    .map(|t| t.to_string())
-                    .unwrap_or_else(|| "Unknown".to_string());
-                let value = entry.get_value().map(|v| v.to_string()).unwrap_or_default();
+    let Ok(ms) = MediaSource::file_path(path) else {
+        return Ok((output, size));
+    };
 
-                match tag_str.as_str() {
-                    "Duration" | "ImageWidth" | "ImageHeight" | "Make" | "Model"
-                    | "CreateDate" | "FrameRate" | "BitRate" => {
-                        output.push_str(&format!("{tag_str}: {value}\n"));
-                    }
-                    _ => {}
+    let mut parser = MediaParser::new();
+    let iter: Result<nom_exif::ExifIter, _> = parser.parse(ms);
+    if let Ok(iter) = iter {
+        for entry in iter {
+
+
+            let tag_str = entry
+                .tag()
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "Unknown".to_string());
+            let value = entry.get_value().map(|v| v.to_string()).unwrap_or_default();
+
+            match tag_str.as_str() {
+                "Duration" | "ImageWidth" | "ImageHeight" | "Make" | "Model"
+                | "CreateDate" | "FrameRate" | "BitRate" => {
+                    output.push_str(&format!("{tag_str}: {value}\n"));
                 }
+                _ => {}
             }
         }
     }
@@ -161,82 +161,85 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
 
     let mut output = String::with_capacity(content.len());
 
-    if let Some(cells) = json["cells"].as_array() {
-        for (i, cell) in cells.iter().enumerate() {
-            let cell_type = cell["cell_type"].as_str().unwrap_or("unknown");
-            let source = cell["source"].as_array();
+    let Some(cells) = json["cells"].as_array() else {
+        return Ok((output, size));
+    };
 
-            output.push_str("-------------------\n");
-            output.push_str(&format!(
-                "Begin Cell {} - {}\n",
-                i + 1,
-                cell_type.to_uppercase()
-            ));
+    for (i, cell) in cells.iter().enumerate() {
+        let cell_type = cell["cell_type"].as_str().unwrap_or("unknown");
+        let source = cell["source"].as_array();
 
-            if let Some(lines) = source {
-                for line in lines {
-                    if let Some(l) = line.as_str() {
-                        output.push_str(l);
-                    }
-                }
-                if !output.ends_with('\n') {
-                    output.push('\n');
+        output.push_str("-------------------\n");
+        output.push_str(&format!(
+            "Begin Cell {} - {}\n",
+            i + 1,
+            cell_type.to_uppercase()
+        ));
+
+        if let Some(lines) = source {
+            for line in lines {
+                if let Some(l) = line.as_str() {
+                    output.push_str(l);
                 }
             }
+            if !output.ends_with('\n') {
+                output.push('\n');
+            }
+        }
 
-            if output_mode != "none" {
-                if let Some(outputs) = cell["outputs"].as_array() {
-                    if !outputs.is_empty() {
-                        output.push_str("\nCell Outputs:\n");
-                        let mut output_text = String::new();
-                        for out in outputs {
-                            if let Some(text) = out["text"].as_array() {
-                                for line in text {
-                                    if let Some(l) = line.as_str() {
-                                        output_text.push_str(l);
-                                    }
+        if output_mode != "none" {
+            if let Some(outputs) = cell["outputs"].as_array() {
+                if !outputs.is_empty() {
+                    output.push_str("\nCell Outputs:\n");
+                    let mut output_text = String::new();
+                    for out in outputs {
+                        if let Some(text) = out["text"].as_array() {
+                            for line in text {
+                                if let Some(l) = line.as_str() {
+                                    output_text.push_str(l);
                                 }
-                            } else if let Some(data) = out.get("data") {
-                                if let Some(text_plain) = data.get("text/plain") {
-                                    if let Some(lines) = text_plain.as_array() {
-                                        for line in lines {
-                                            if let Some(l) = line.as_str() {
-                                                output_text.push_str(l);
-                                            }
+                            }
+                        } else if let Some(data) = out.get("data") {
+                            if let Some(text_plain) = data.get("text/plain") {
+                                if let Some(lines) = text_plain.as_array() {
+                                    for line in lines {
+                                        if let Some(l) = line.as_str() {
+                                            output_text.push_str(l);
                                         }
                                     }
                                 }
                             }
                         }
+                    }
 
-                        if output_mode == "reduced" {
-                            let lines: Vec<&str> = output_text.lines().collect();
-                            if lines.len() > 10 {
-                                output.push_str(&lines[..10].join("\n"));
-                                output.push_str("\n\n... [Output reduced] ...\n");
-                            } else {
-                                output.push_str(&output_text);
-                            }
+                    if output_mode == "reduced" {
+                        let lines: Vec<&str> = output_text.lines().collect();
+                        if lines.len() > 10 {
+                            output.push_str(&lines[..10].join("\n"));
+                            output.push_str("\n\n... [Output reduced] ...\n");
                         } else {
                             output.push_str(&output_text);
                         }
+                    } else {
+                        output.push_str(&output_text);
+                    }
 
-                        if !output.ends_with('\n') {
-                            output.push('\n');
-                        }
+                    if !output.ends_with('\n') {
+                        output.push('\n');
                     }
                 }
             }
-
-            output.push_str(&format!(
-                "End Cell {} - {}\n",
-                i + 1,
-                cell_type.to_uppercase()
-            ));
-            output.push_str("-------------------\n\n");
         }
+
+        output.push_str(&format!(
+            "End Cell {} - {}\n",
+            i + 1,
+            cell_type.to_uppercase()
+        ));
+        output.push_str("-------------------\n\n");
     }
 
     Ok((output, size))
 }
+
 

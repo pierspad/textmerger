@@ -1,6 +1,7 @@
 use glob::Pattern;
 use rayon::iter::Either;
 use rayon::prelude::*;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -49,8 +50,11 @@ impl FilterPatterns {
     }
 }
 
-fn escape_html(input: &str) -> String {
-    let mut output = String::with_capacity(input.len());
+fn escape_html(input: &str) -> Cow<'_, str> {
+    if !input.contains(['<', '>', '&', '"', '\'']) {
+        return Cow::Borrowed(input);
+    }
+    let mut output = String::with_capacity(input.len() + 16);
     for c in input.chars() {
         match c {
             '<' => output.push_str("&lt;"),
@@ -61,7 +65,7 @@ fn escape_html(input: &str) -> String {
             _ => output.push(c),
         }
     }
-    output
+    Cow::Owned(output)
 }
 
 fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns) -> Vec<String> {
@@ -212,9 +216,9 @@ fn get_merged_content(
 
                     let is_forced = force_set.contains(path_str)
                         || force_set.iter().any(|&p| {
-                            path_str.starts_with(p)
-                                && (path_str.as_bytes().get(p.len()) == Some(&b'/')
-                                    || path_str.as_bytes().get(p.len()) == Some(&b'\\'))
+                            path_str.strip_prefix(p).map_or(false, |rest| {
+                                rest.starts_with('/') || rest.starts_with('\\')
+                            })
                         });
 
                     if !load_full_large_files && char_count > large_file_threshold && !is_forced {
@@ -257,6 +261,7 @@ fn get_merged_content(
 
     Ok(result)
 }
+
 
 #[tauri::command]
 fn get_file_content(path: String, ipynb_output_mode: String) -> Result<String, String> {
