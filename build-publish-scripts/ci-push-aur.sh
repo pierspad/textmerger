@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ci-push-aur.sh — variante non interattiva di push-aur.sh per GitHub Actions.
+# ci-push-aur.sh — publisher AUR usato da .github/workflows/aur-publish.yml.
 # Eseguito come utente non privilegiato dentro un container archlinux:base-devel.
 
 set -euo pipefail

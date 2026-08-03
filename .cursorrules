@@ -3,18 +3,20 @@
 > **Purpose.** This file is the single, canonical "manual of good software" for this workspace.
 > It encodes every pattern that is already **standard, consolidated and battle-tested** across the
 > apps so that an agentic LLM can **replicate a new desktop application end-to-end, fast and consistently**:
-> the banded shell + sidebar, dark/light theming, 15-language i18n, the toast/dialog/shortcut systems,
-> the Whisper integration (including the real build fix), and the full Git + AUR release pipeline with all
-> its safety checks.
+> the banded shell + sidebar, dark/light theming, 15-language i18n, the toast/dialog/shortcut systems
+> (including the searchable, rebindable shortcuts tab), the custom select/dialog components,
+> the Whisper integration (including the real build fix), and the **fully automated GitHub Actions
+> release pipeline**: SemVer bump → multi-platform build → GitHub Release → AUR publish → backmerge.
 >
 > **This exact file is copied identically** into every project (`reaper`, `vesta`, `textmerger`,
 > `effywhisper`, and the workspace root). Project-specific values (palette, Vite port, CSS framework)
 > live in the clearly-labelled per-project sub-sections — read the one that matches the repo you are in.
 >
 > **How to use it.** Treat every rule below as a hard requirement unless the user explicitly overrides it.
-> When in doubt, mirror the most mature reference implementation: **`reaper` and `vesta`** are the gold
-> standard for layout, Whisper, and the release scripts; `textmerger` is the gold standard for the simpler
-> single-crate structure. Prefer *reusing* an existing consolidated solution over inventing a new one.
+> When in doubt, mirror the most mature reference implementation: **`vesta`** is the gold standard for
+> the CI release automation, Whisper, i18n tooling and the shortcuts/select components; `reaper` for the
+> banded layout; `textmerger` for the simpler single-crate structure. Prefer *reusing* an existing
+> consolidated solution over inventing a new one.
 
 ---
 
@@ -25,7 +27,7 @@
 3. **One source of truth per concern.** Version → `PKGBUILD` `pkgver`. Heavy logic → a shared crate in `lib/`. Translations → `en.json` (master) + per-language overrides.
 4. **Don't duplicate heavy logic across apps.** Extract it into a decoupled, callback-driven Rust crate (§12, §13).
 5. **Every change is logged.** Append a dated technical entry to `docs/list_of_things_changed.md` as you edit source.
-6. **Validate before declaring done.** `cargo check` (not full build) for Rust; run the i18n audit; for a release, run the full pipeline in §15.
+6. **Validate before declaring done.** `cargo check` (not full build) for Rust; run the i18n audit; a release is performed by the **Release GitHub Action** (§15) — never by hand-rolled local scripts.
 7. **Return whole files when you modify code/scripts.** Never hand back fragments of a script the user has to splice in.
 8. **Accessibility and RTL are not optional.** Keyboard handlers on every custom control; logical CSS properties everywhere (§5.12).
 
@@ -37,7 +39,7 @@
 
 | Project | Structure | CSS framework | Vite/Tauri dev port | Whisper | Notes |
 |---|---|---|---|---|---|
-| **reaper** | Cargo **workspace** (`apps/<app>-gui/src-tauri`, `core/*`, `lib/*`) | **Vanilla CSS only** | **5173** | yes (`lib/whisper-common`) | yt-dlp/ffmpeg music archiver. Reference for layout + release. |
+| **reaper** | Cargo **workspace** (`apps/<app>-gui/src-tauri`, `core/*`, `lib/*`) | **Vanilla CSS only** | **5173** | yes (`lib/whisper-common`) | yt-dlp/ffmpeg music archiver. Reference for the banded layout. |
 | **textmerger** | **Single crate** (`textmerger/src-tauri`) | Vanilla CSS (some legacy Tailwind — do **not** add new Tailwind) | **5174** | no | Reference for the simple single-crate setup. |
 | **vesta** | Cargo **workspace** (`apps/srt-gui/src-tauri`, `core/*`, `lib/*`, `cli/*`) | **Tailwind CSS v4** (`@import "tailwindcss";`) | **5175** | yes (`lib/whisper-common`) | Subtitles/Whisper/flashcards. Reference for Whisper + i18n tooling. |
 | **effywhisper** | SvelteKit + `src-tauri` (less stable) | Vanilla CSS | (own) | benchmarks | Treat as experimental; stabilize toward this manual. |
@@ -155,9 +157,15 @@ A **workspace** app (reaper/vesta) — the default for anything non-trivial or w
 │  └─ src-tauri/{Cargo.toml, tauri.conf.json, capabilities/default.json, src/…, build.rs}
 ├─ core/*  lib/*                    # pure-logic crates + shared heavy crates (e.g. whisper-common §12)
 ├─ vendor/whisper-rs-sys-0.15.0/   # patched FFI crate, pinned via [patch.crates-io] (§12)
-├─ build-publish-scripts/  (vesta: build-scripts/)   # the release pipeline (§14–§16)
+├─ build-publish-scripts/  (vesta: build-scripts/)   # ONLY the files CI needs (§14–§16):
+│    PKGBUILD  .SRCINFO  LICENSE  update_project_info.sh  check_version_consistency.sh
+│    extract-release-notes.sh  ci-push-aur.sh  (+ flatpak manifest where used)
+│    # No manual build-aur/push-aur/git-release scripts: the Actions replace them.
 ├─ docs/{release-notes.md, list_of_things_changed.md, README.md}
-└─ .github/workflows/*.yml         # CI build + GitHub Release (§15)
+└─ .github/workflows/
+     release.yml        # SemVer bump + tag + backmerge (workflow_dispatch, §15)
+     build.yml          # multi-platform build + GitHub Release (on tag v*, §15)
+     aur-publish.yml    # AUR publish (workflow_run after build, §16)
 ```
 
 A **single-crate** app (textmerger): same `src/` frontend layout, but `src-tauri` sits directly under the project and there is no `core/`/`lib/` workspace. Everything in this manual still applies except the multi-crate version checks.
@@ -239,7 +247,7 @@ Premium desktop suite — every element must look intentional and consistent.
 
 **5.4 Toggle cards / checkboxes** — never native `<input type=checkbox>`. Use `role="button" tabindex="0"` cards with `.active` → `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 15%, var(--surface-2))`. Always add keydown: `Enter`/`Space` → `preventDefault()` + toggle.
 
-**5.5 Dropdowns / selects** — never raw `<select>` for styled selects. Overlay: `position:absolute; z-index:50; top:calc(100% + 4px); background:var(--surface-2); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow)`. Flip upward near the bottom edge. Close on `Escape`, backdrop click, or selection.
+**5.5 Dropdowns / selects** — never raw `<select>` for styled selects. Overlay: `position:absolute; z-index:50; top:calc(100% + 4px); background:var(--surface-2); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow)`. Flip upward near the bottom edge. Close on `Escape`, backdrop click, or selection. The canonical component is **`SearchableSelect.svelte`** (vesta): trigger button styled as a §5.1 field, overlay with an inline filter input for long lists, full keyboard support (`ArrowUp/Down` to move, `Enter` to pick, `Escape` to close), `aria-expanded`/`role="listbox"`, and options rendered from `{value, label, icon?}` items. Every select in every app goes through this one component — same look, same behaviour.
 
 **5.6 Range sliders** — pass progress as a custom prop `style="--percent:{(value-min)/(max-min)*100}%"` and use it to fill the track; `accent-color:var(--accent)`.
 
@@ -293,12 +301,28 @@ No external i18n package — a lightweight reactive derived store keeps the bund
 
 ---
 
-## 8. Keyboard Shortcuts Engine (`stores/shortcuts.ts` + `KeybindRecorder.svelte`)
+## 8. Keyboard Shortcuts Engine (`stores/shortcuts.ts` + `KeybindRecorder.svelte` + a Shortcuts tab)
 
 * **Input protection** — in the global `handleKeydown` window listener, bail out if the target is `INPUT`, `TEXTAREA`, or `isContentEditable`.
 * **Normalized combo** — parse modifiers in fixed order `Ctrl, Alt, Shift, Meta`, then the uppercased key; `SPACE` denotes spacebar: `const combo = keys.join('+').toUpperCase()`.
 * **Interactive recording** — `KeybindRecorder.svelte` captures modifiers + key live and updates the `shortcuts` store.
 * **Conflict prevention** — before saving a binding, check it against existing ones in the store and warn (toast) on duplicates.
+* **Persistence** — user overrides live in `localStorage` (`"<app>-shortcut-overrides"`), merged over the defaults at load; a "reset all" action clears the key.
+
+### 8.1 Shortcuts tab (MANDATORY in every app — vesta's `ShortcutsTab.svelte` is the reference)
+
+A dedicated settings tab listing every shortcut, grouped by area, where the user can **rebind and search**:
+
+* **Dual-mode search box** with a segmented `TEXT | KEYS` toggle:
+  * **TEXT mode** — plain substring search over the (localized) action names.
+  * **KEYS mode** — "keyboard search": the box becomes a live key-capture field
+    (`window.addEventListener('keydown', …, true)` while listening); the pressed
+    combo is normalized exactly like §8 combos and filters the list to the
+    shortcuts containing those keys. `Escape` stops listening; a clear button
+    resets. Always remove the global listener on stop/destroy.
+* **Per-row rebind** via `KeybindRecorder` (click → "Press keys…" → capture → conflict check → save override).
+* **Reset** per-row and reset-all (with `ConfirmDialog`).
+* Rows show the combo as keycap chips (`formatKey(combo)` → one `<kbd>` per key), never raw strings.
 
 ---
 
@@ -388,48 +412,46 @@ For any heavy, optional, or reusable feature (Whisper, yt-dlp downloading, trans
 
 ## 14. Versioning & Release-Notes Governance
 
-* **Single source of truth: `PKGBUILD` `pkgver`.** Everything else is derived from it.
-* **Propagation** — `update_project_info.sh` writes that version into `apps/<app>-gui/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the workspace `[workspace.package].version`, every `core/*` & `lib/*` `Cargo.toml`, and the internal path-dependency `version="…"` pins.
+* **Single source of truth: `PKGBUILD` `pkgver`.** Everything else is derived from it. The bump itself is performed **by the Release Action** (§15) — humans and agents never hand-edit version numbers across files.
+* **Propagation** — `update_project_info.sh` writes that version into `apps/<app>-gui/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, the workspace `[workspace.package].version`, every `core/*` & `lib/*` `Cargo.toml`, the internal path-dependency `version="…"` pins, and syncs `Cargo.lock`.
 * **Consistency gate** — `check_version_consistency.sh` (vesta: `check_internal_crate_versions.sh`) fails the release if any of the above (incl. `Cargo.lock`'s entry for the app crate) disagrees with `pkgver`.
-* **Release notes** — `docs/release-notes.md` holds one `## v<version>` section per release; the CI publishes **only the section matching the tag** (via `extract-release-notes.sh`). If the section for the new version is missing, the release script bootstraps a clean template for you to fill.
-* **Change log** — `docs/list_of_things_changed.md`: append a dated technical entry for every source change as you make it. (On a new dev cycle, when the version already equals the release-notes version, the agent overwrites/reset notes for the next version — do **not** wipe them mid-release.)
+* **Release notes** — `docs/release-notes.md` is a **rolling section** `## Release Notes v<version>`; the CI publishes only the section matching the tag (via `extract-release-notes.sh`). Write the bullets during the dev cycle: the Release Action re-aligns the header to the bumped version, and if the file was **not touched since the last tag** it regenerates the section from `git log <last-tag>..HEAD` instead of shipping stale notes.
+* **Change log** — `docs/list_of_things_changed.md`: append a dated technical entry for every source change as you make it.
 
 ---
 
-## 15. Git Release Pipeline — `build-publish-scripts/git-release.sh` (run in this exact order)
+## 15. Release Pipeline — three GitHub Actions, zero manual steps
 
-The release script is interactive and **fail-fast (`set -euo pipefail`)**. Reproduce/maintain it with all of these guards. Do not skip steps or reorder them.
+The whole release is CI-driven. **Do not create local release scripts** (`git-release.sh`, `push-aur.sh`, `build-aur.sh` are retired patterns): the only human action is *Actions → "Release (semver bump)" → Run workflow*.
 
-1. **Preconditions** — assert every required file exists: `PKGBUILD`, `update_project_info.sh`, `check_version_consistency.sh`, `extract-release-notes.sh`, `docs/release-notes.md`, the i18n audit script, and `locales/en.json`. Abort if any is missing.
-2. **Open `PKGBUILD` blocking** — open it in `$EDITOR`/`code --wait` (fallback: prompt + wait for Enter) so the human bumps `pkgver` first; then read `pkgver` → `VERSION`, abort if empty. `TAG_VERSION="v$VERSION"`.
-3. **Propagate** — run `update_project_info.sh` (sync all version fields).
-4. **Version consistency** — run `check_version_consistency.sh`; abort on any mismatch.
-5. **i18n audit** — run `check_missing_translations.py --fail-on-issues --block-reasons missing_locale,missing_key,empty_value,placeholder_mismatch`; abort on issues. (Needs `python3`/`python`.)
-6. **Bootstrap release notes** — if `docs/release-notes.md` has no `## v<version>` section, replace it with a clean template (`# Release Notes\n\n## v<version>\n\n- `).
-7. **Open release notes blocking** — let the human write the bullets, save & close. Then assert the file is **non-empty** (abort otherwise).
-8. **Extract & preview** — `extract-release-notes.sh "$TAG_VERSION" docs/release-notes.md <tmp>` validates the section exists and is non-empty; print the preview so the human sees exactly what will be published.
-9. **Regenerate `.SRCINFO`** — `makepkg --printsrcinfo > .SRCINFO` (skip gracefully if `makepkg` absent).
-10. **Sync lockfile** — `cargo update --workspace` so `Cargo.lock` matches the new versions.
-11. **Show `git status --short`** and **ask for explicit confirmation** (`[s/N]`). Abort on anything but yes.
-12. **Commit** — `git add -A`; commit `chore: release v<version>` only if there's something staged.
-13. **Tag (idempotent)** — if the local tag exists, delete & recreate it; if the **remote** tag exists (`git ls-remote --tags`), delete it remotely too. This is the "redo the release cleanly when the number is the same" rule.
-14. **Atomic push** — detect current branch (abort if detached HEAD); `git push --atomic origin "$BRANCH" "$TAG_VERSION"`.
-15. **Hand off** — the GitHub Action builds the artifacts and creates the Release from the extracted notes; afterwards run `push-aur.sh` (§16).
+### 15.1 `release.yml` — "Release (semver bump)" (`workflow_dispatch`)
 
-**CI (`.github/workflows/*.yml`)** triggers on `tag: v*`: builds a matrix (Linux `ubuntu-22.04` → deb/appimage/rpm with `mold`; Windows → nsis/msi), **re-checks `pkgver == tauri.conf.json.version`** and aborts on mismatch, builds the Arch package in an `archlinux:base-devel` container from the produced `.deb`, then the `release` job publishes the GitHub Release with the tag's notes section.
+Inputs: `bump` = `patch|minor|major` (default patch) **or** an explicit `version`. Steps, in order, all fail-fast:
+
+1. `actions/checkout` with `fetch-depth: 0` (tags are needed for auto-notes) on the branch it was dispatched from.
+2. **Compute the new version** from `PKGBUILD` `pkgver` (+SemVer bump or the explicit input); abort if the tag `v<version>` already exists. Write it back to `PKGBUILD`.
+3. **Propagate** — `update_project_info.sh`; then the **consistency gate**; then (where present) the **i18n audit** with `--fail-on-issues --block-reasons missing_locale,missing_key,empty_value,placeholder_mismatch`.
+4. **Release notes** — re-align the rolling header to `## Release Notes v<version>`; if the file is stale (unchanged since the last tag) or the section is empty, generate bullets from `git log <last-tag>..HEAD --no-merges` (excluding `chore: release` commits). Print the preview in the job log.
+5. **Commit `chore: release v<version>` + tag + `git push --atomic origin <branch> v<version>`** (bot identity).
+6. **Dispatch the build explicitly**: `gh workflow run "Build and Release" --ref v<version>`. This is mandatory — tags pushed with `GITHUB_TOKEN` do **not** fire `on: push` workflows (GitHub anti-recursion rule).
+7. **Backmerge job** — after a release from `main`, merge into `dev` (and vice versa) and push; skip silently if the sibling branch doesn't exist; emit a warning and fail the job on conflicts (a human resolves).
+
+Required workflow permissions: `contents: write`, `actions: write`. Concurrency group `release`, no cancel-in-progress.
+
+### 15.2 `build.yml` — "Build and Release" (`on: push: tags: v*` + `workflow_dispatch`)
+
+Builds a matrix: Linux `ubuntu-22.04` → `.deb`/`.rpm` (+AppImage where wanted) with sccache + rust-cache; Windows → `nsis`/`msi`; an **Arch job** that repackages the produced `.deb` with `makepkg` inside an `archlinux:base-devel` container; (vesta) a **Flatpak job** from the same `.deb`. Every job re-reads the version from `PKGBUILD` and re-runs the consistency gate. The final `release` job downloads all artifacts, extracts the tag's notes section with `extract-release-notes.sh`, and publishes the GitHub Release (`ncipollo/release-action`, `allowUpdates: true`).
 
 ---
 
-## 16. AUR Publishing — `build-publish-scripts/push-aur.sh` (after the GitHub Release exists)
+## 16. AUR Publishing — `aur-publish.yml` + `ci-push-aur.sh` (fully automatic)
 
-Run **only after** the GitHub Release and its `.deb` assets are live (the `-bin` PKGBUILD downloads the released `.deb`).
-
-1. Re-run `update_project_info.sh` + `check_version_consistency.sh`.
-2. **Remote-URL guard** — if a local AUR checkout exists, assert its `origin` is exactly `ssh://aur@aur.archlinux.org/<pkgname>.git`; otherwise back up the stray dir and `git clone` fresh. Never push to the wrong remote.
-3. Clean previous artifacts (`pkg/ src/ *.pkg.*`).
-4. **`updpkgsums`** — recompute the `sha256sums` for the released `.deb` (requires `pacman-contrib`; abort if missing).
-5. **`makepkg --printsrcinfo > .SRCINFO`**.
-6. Copy `PKGBUILD` + `.SRCINFO` into the AUR checkout, `git add -A`, and commit `Update to v<version>` **only if something changed**, then `git push origin master`.
+* **Trigger**: `workflow_run` on "Build and Release" `completed` with `branches: ['v*']` — for tag-triggered runs `head_branch` **is the tag name**, so the filter matches releases and excludes manual dispatches on `main`. `release: published` does **not** work here: releases created with `GITHUB_TOKEN` never propagate the event (anti-loop). Keep `workflow_dispatch` as manual retry.
+* **Checkout the default branch, not the tag** — the CI scripts receive fixes on the default branch; checking out the tag would run the (possibly buggy) script version frozen at release time.
+* **Wait for the asset**: poll `HEAD` on the released `.deb` URL (reconstructed from the PKGBUILD's `url` + `pkgver` + `_pkgname`) for up to ~3 minutes before publishing.
+* **SSH**: secrets `AUR_SSH_PRIVATE_KEY` + `AUR_KNOWN_HOSTS`, written to a throwaway dir, `StrictHostKeyChecking yes`, host `aur.archlinux.org`, user `aur`.
+* **Publish** inside `archlinux:base-devel` (as an unprivileged `builder` user) via `ci-push-aur.sh`: re-run the consistency gate → `git clone ssh://aur@aur.archlinux.org/<pkgname>.git` → `updpkgsums` (in a writable work dir) → `makepkg --printsrcinfo > .SRCINFO` → copy `PKGBUILD` + `.SRCINFO` → commit `Update to v<version>` **only if something changed** → push.
+* **First release of a new app**: the AUR auto-creates the package repo on first push — cloning a not-yet-existing `<app>-bin.git` yields an empty repo (warning, not error), so the same workflow bootstraps the AUR package with **no manual step besides registering the SSH key on the AUR account**.
 
 PKGBUILD conventions: `pkgname=<app>-bin`, `_pkgname=<app>`, `provides`/`conflicts=(<app>)`, `options=('!debug')`, `source=("…::https://github.com/pierspad/<app>/releases/download/v${pkgver}/<Asset>_${pkgver}_amd64.deb")`, real runtime `depends` (e.g. `webkit2gtk-4.1 gtk3 libsoup3 yt-dlp ffmpeg …`). Keep the `sha256sums` placeholder of 64 zeros in the repo; `updpkgsums` fills it at publish time.
 
@@ -452,8 +474,10 @@ PKGBUILD conventions: `pkgname=<app>-bin`, `_pkgname=<app>`, `provides`/`conflic
 ## 18. Definition of Done (quality gates before you stop)
 
 * No hardcoded colors; all custom controls keyboard-operable; logical CSS properties used.
-* New strings added to `en.json` (+ ideally translated); i18n audit passes.
+* Selects via `SearchableSelect`, dialogs via the shared Modal/ConfirmDialog patterns (§5) — never one-off variants.
+* New strings added to `en.json` **and to all 15 locales**; i18n audit passes.
+* New shortcuts registered in the store **and** visible/rebindable in the Shortcuts tab (§8.1).
 * Rust compiles under `cargo check`; tests touched by the change pass.
-* `docs/list_of_things_changed.md` updated.
-* For a release: §15 pipeline run to green, notes previewed, tag pushed atomically, then §16.
+* `docs/list_of_things_changed.md` updated; release-notes bullets added while developing (§14).
+* For a release: run the **Release Action** (§15) — never tag or push versions by hand.
 * Whole modified files returned to the user; no fragments.
