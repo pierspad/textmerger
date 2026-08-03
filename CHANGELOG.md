@@ -1,3 +1,9 @@
+## [2.10.2](https://github.com/pierspad/textmerger/compare/v2.10.1...v2.10.2) (2026-08-03)
+
+### 🐛 Bug Fixes
+
+* **deps:** update Cargo.lock to resolve Dependabot alerts (serde_with 3.21.0) ([32164d2](https://github.com/pierspad/textmerger/commit/32164d2319b2e60fa64c32ba6b2d518242ec4eb5))
+
 ## [2.10.1](https://github.com/pierspad/textmerger/compare/v2.10.0...v2.10.1) (2026-08-03)
 
 ### 🐛 Bug Fixes
