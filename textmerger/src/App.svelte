@@ -110,9 +110,14 @@
     const compactedRoots = roots.map(rootPath => {
       let current = rootPath;
       while (tree[current]) {
-        const children = Array.from(tree[current].children);
-        if (children.length === 1 && !tree[children[0]].isFile) {
-          current = children[0];
+        const children = tree[current].children;
+        if (children.size === 1) {
+          const childPath = children.values().next().value!;
+          if (!tree[childPath].isFile) {
+            current = childPath;
+          } else {
+            break;
+          }
         } else {
           break;
         }
@@ -124,7 +129,7 @@
   }
 
   function getRelativePathFromRoot(path: string, compactedRoots: string[]): string {
-    const stdPath = path.replace(/\\/g, '/');
+    const stdPath = path.includes('\\') ? path.replace(/\\/g, '/') : path;
     let bestRoot = "";
     for (const root of compactedRoots) {
       if (stdPath === root) {
@@ -298,9 +303,13 @@
   const TRUNCATION_NOTICE = "\n\n[... The rest of the file was truncated due to its length ...]";
 
   function isForcedFullLoad(path: string, forcePaths: Set<string>): boolean {
-    return forcePaths.has(path) || Array.from(forcePaths).some(p =>
-      path.startsWith(p) && (path.charAt(p.length) === '/' || path.charAt(p.length) === '\\')
-    );
+    if (forcePaths.has(path)) return true;
+    for (const p of forcePaths) {
+      if (path.startsWith(p) && (path.charAt(p.length) === '/' || path.charAt(p.length) === '\\')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Length of a single file's section in the merged output, EXCLUDING the "\n"
@@ -812,8 +821,11 @@
 
   // Note: sortType/sortAscending only affect the sidebar tree, not the merged
   // content, so they must NOT trigger a re-merge (which re-reads files from disk).
+  let lastMergedStateKey = "";
   $: {
-    if ($settings || ipynbOutputMode) {
+    const currentStateKey = `${$settings.largeFileThreshold}:${$settings.excludedPatterns.join(",")}:${$settings.hiddenPatterns.join(",")}:${ipynbOutputMode}`;
+    if (lastMergedStateKey !== currentStateKey) {
+      lastMergedStateKey = currentStateKey;
       debouncedUpdateContent();
     }
   }
@@ -893,9 +905,10 @@
     if (selectedFiles.size === 0) return;
 
     const filesToRemove = new Set<string>();
+    const existingFilePaths = new Set(files.map(f => f.path));
 
     for (const selectedPath of selectedFiles) {
-      if (files.some(f => f.path === selectedPath)) {
+      if (existingFilePaths.has(selectedPath)) {
         filesToRemove.add(selectedPath);
       } else {
          const normSelected = normalize(selectedPath);
