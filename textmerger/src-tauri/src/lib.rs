@@ -70,11 +70,6 @@ fn escape_html(input: &str) -> Cow<'_, str> {
 
 fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns) -> Vec<String> {
     let mut files = Vec::new();
-    let path_obj = Path::new(path);
-
-    if !path_obj.is_dir() {
-        return files;
-    }
 
     if recursive {
         let walker = walkdir::WalkDir::new(path).into_iter();
@@ -93,11 +88,14 @@ fn collect_directory_files(path: &str, recursive: bool, filter: &FilterPatterns)
         }
     } else if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.filter_map(|e| e.ok()) {
-            let name = entry.file_name().to_str().unwrap_or_default().to_string();
             let is_file = entry.file_type().map_or(false, |ft| ft.is_file());
-            if is_file && !filter.is_excluded(&name) && !name.starts_with('.') {
-                if let Some(path_str) = entry.path().to_str() {
-                    files.push(path_str.to_string());
+            if is_file {
+                let name_os = entry.file_name();
+                let name = name_os.to_str().unwrap_or_default();
+                if !filter.is_excluded(name) && !name.starts_with('.') {
+                    if let Some(path_str) = entry.path().to_str() {
+                        files.push(path_str.to_string());
+                    }
                 }
             }
         }
@@ -153,13 +151,13 @@ fn add_files(
         .flat_map(|path| {
             let path_obj = Path::new(&path);
             if path_obj.is_dir() {
-                collect_directory_files(&path, true, &filter)
+                Either::Left(collect_directory_files(&path, true, &filter).into_par_iter())
             } else {
                 let name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or_default();
                 if !filter.is_excluded(name) {
-                    vec![path]
+                    Either::Right(Either::Left(rayon::iter::once(path)))
                 } else {
-                    Vec::new()
+                    Either::Right(Either::Right(rayon::iter::empty()))
                 }
             }
         })

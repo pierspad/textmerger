@@ -286,16 +286,20 @@
     }
   }
 
+  const ENTITY_MAP: Record<string, string> = {
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#x27;": "'",
+    "&amp;": "&",
+  };
+
   // Highly optimized HTML plain-text extraction to avoid DOM layout overhead and browser freezes
   function extractPlainText(html: string): string {
     if (!html) return "";
-    return html
-      .replace(/<[^>]*>/g, "")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#x27;/g, "'")
-      .replace(/&amp;/g, "&");
+    return html.replace(/<[^>]*>|&lt;|&gt;|&quot;|&#x27;|&amp;/g, (m) =>
+      m.startsWith("<") ? "" : ENTITY_MAP[m] || m
+    );
   }
 
   // Truncation notice appended to oversized files. Single source of truth so
@@ -1341,7 +1345,7 @@
       }
     } else if (combo === "ENTER") {
       if (!isEditing) {
-        const targetPath = focusedFilePath || (selectedFiles.size === 1 ? Array.from(selectedFiles)[0] : null);
+        const targetPath = focusedFilePath || (selectedFiles.size === 1 ? selectedFiles.values().next().value : null);
         if (targetPath) {
           event.preventDefault();
           const isFile = files.some(f => f.path === targetPath);

@@ -51,7 +51,7 @@
       return '#ef4444';
   }
 
-  $: nodeHidden = isNodeHidden(node);
+  $: nodeHidden = node?.hidden === true;
 
   let sortedChildren: any[] = [];
   $: {
@@ -72,17 +72,6 @@
         return a.isFile ? 1 : -1;
       });
     }
-  }
-
-  function isNodeHidden(n: any): boolean {
-    if (!n) return false;
-    if (n.isFile) {
-      return n.hidden === true;
-    }
-    if (n.children && Object.keys(n.children).length > 0) {
-      return Object.values(n.children).every(c => isNodeHidden(c));
-    }
-    return false;
   }
 </script>
 

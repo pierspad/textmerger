@@ -154,9 +154,7 @@ fn read_pdf(path: &str) -> Result<(String, u64), String> {
 
 fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let size = std::fs::metadata(path)
-        .map(|m| m.len())
-        .unwrap_or(content.len() as u64);
+    let size = content.len() as u64;
     let json: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
 
     let mut output = String::with_capacity(content.len());
@@ -213,9 +211,15 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
                     }
 
                     if output_mode == "reduced" {
-                        let lines: Vec<&str> = output_text.lines().collect();
-                        if lines.len() > 10 {
-                            output.push_str(&lines[..10].join("\n"));
+                        let mut line_iter = output_text.lines();
+                        let first_10: Vec<&str> = line_iter.by_ref().take(10).collect();
+                        if line_iter.next().is_some() {
+                            for (idx, line) in first_10.iter().enumerate() {
+                                if idx > 0 {
+                                    output.push('\n');
+                                }
+                                output.push_str(line);
+                            }
                             output.push_str("\n\n... [Output reduced] ...\n");
                         } else {
                             output.push_str(&output_text);

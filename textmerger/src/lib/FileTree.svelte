@@ -84,7 +84,7 @@
         return nodeMap[path];
     };
 
-    [...currentFiles].sort((a, b) => a.path.localeCompare(b.path)).forEach((file) => {
+    currentFiles.forEach((file) => {
         const parts = file.path.split(/[/\\]/);
         
         let parent: TreeNode | null = null;
@@ -144,19 +144,29 @@
         let charSum = 0;
         let sizeSum = 0;
         let tokenSum = 0;
+        let allChildrenHidden = true;
 
         if (node.children) {
-            Object.values(node.children).forEach(child => {
-                const stats = aggregateStats(child);
-                charSum += stats.charCount;
-                sizeSum += stats.sizeBytes;
-                tokenSum += stats.tokenCount;
-            });
+            const childList = Object.values(node.children);
+            if (childList.length === 0) {
+                allChildrenHidden = false;
+            } else {
+                childList.forEach(child => {
+                    const stats = aggregateStats(child);
+                    charSum += stats.charCount;
+                    sizeSum += stats.sizeBytes;
+                    tokenSum += stats.tokenCount;
+                    if (!child.hidden) allChildrenHidden = false;
+                });
+            }
+        } else {
+            allChildrenHidden = false;
         }
 
         node.charCount = charSum;
         node.sizeBytes = sizeSum;
         node.tokenCount = tokenSum;
+        node.hidden = allChildrenHidden;
 
         return { charCount: charSum, sizeBytes: sizeSum, tokenCount: tokenSum };
     };
@@ -187,7 +197,7 @@
         }
     };
     
-    [...rootNodes].forEach(key => {
+    rootNodes.forEach(key => {
         compactNode(tree[key]);
     });
     
@@ -313,13 +323,15 @@
               nextPath = visiblePaths[nextIndex];
           }
       } else if (selectedFiles.size === 1) {
-          const currentSelected = Array.from(selectedFiles)[0];
-          const currentIndex = visiblePaths.indexOf(currentSelected);
-          if (currentIndex !== -1) {
-              let nextIndex = currentIndex + direction;
-              if (nextIndex < 0) nextIndex = 0;
-              if (nextIndex >= visiblePaths.length) nextIndex = visiblePaths.length - 1;
-              nextPath = visiblePaths[nextIndex];
+          const currentSelected = selectedFiles.values().next().value;
+          if (currentSelected) {
+              const currentIndex = visiblePaths.indexOf(currentSelected);
+              if (currentIndex !== -1) {
+                  let nextIndex = currentIndex + direction;
+                  if (nextIndex < 0) nextIndex = 0;
+                  if (nextIndex >= visiblePaths.length) nextIndex = visiblePaths.length - 1;
+                  nextPath = visiblePaths[nextIndex];
+              }
           }
       }
       
