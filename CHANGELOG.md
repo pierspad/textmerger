@@ -1,3 +1,10 @@
+## [2.10.4](https://github.com/pierspad/textmerger/compare/v2.10.3...v2.10.4) (2026-09-10)
+
+### 🐛 Bug Fixes
+
+* **aur:** correggi URL LICENSE (root, non docs/) ([e3e4619](https://github.com/pierspad/textmerger/commit/e3e461961c6760eddb6ac0dc43bf7606a0ef1caf))
+* **ci:** pubblicazione AUR affidabile e auto-diagnosticante ([745cbd5](https://github.com/pierspad/textmerger/commit/745cbd5485ce30162621c8bcab912f4c8771c584))
+
 ## [2.10.3](https://github.com/pierspad/textmerger/compare/v2.10.2...v2.10.3) (2026-08-03)
 
 ### 🐛 Bug Fixes
