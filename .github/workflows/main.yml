@@ -293,6 +293,14 @@ jobs:
     needs: release
     if: ${{ always() && needs.release.result == 'success' && !contains(github.ref_name, '-') && github.ref_name != 'dev' }}
     runs-on: ubuntu-22.04
+    # ci-push-aur.sh ritenta il clone dell'AUR con backoff fino a ~25 min
+    # (l'AUR va regolarmente in manutenzione): il timeout deve stare sopra.
+    timeout-minutes: 35
+    # Stesso gruppo di aur-publish.yml: il retry manuale/schedulato e la
+    # pubblicazione del release non devono mai pushare sull'AUR in parallelo.
+    concurrency:
+      group: aur-publish
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
 
@@ -350,6 +358,14 @@ jobs:
           printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > "$RUNNER_TEMP/ssh/id_aur"
           printf '%s\n' "${{ secrets.AUR_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
           chmod 600 "$RUNNER_TEMP/ssh/id_aur"
+
+          # Stampa SOLO il fingerprint pubblico (mai la chiave): serve a capire
+          # a colpo d'occhio se il segreto corrisponde a una chiave registrata
+          # su https://aur.archlinux.org/account/ quando l'AUR risponde
+          # "Permission denied (publickey)".
+          echo "Fingerprint della chiave SSH in uso:"
+          ssh-keygen -lf "$RUNNER_TEMP/ssh/id_aur" || \
+            echo "::warning::impossibile leggere il fingerprint: AUR_SSH_PRIVATE_KEY non e' una chiave valida"
 
       - name: Write container entrypoint
         shell: bash

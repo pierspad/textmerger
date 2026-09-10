@@ -1,14 +1,26 @@
 name: Publish to AUR
 
 on:
-  # Stessa motivazione di vesta: release: published non scatta quando la release
-  # è creata via GITHUB_TOKEN. workflow_run è l'unico trigger affidabile.
-  # NOTA: NON specificare `branches:` sotto workflow_run, altrimenti GitHub Actions
-  # ignora i workflow scatenati dai TAG (es. v2.10.0) e l'action non parte in automatico.
-  workflow_run:
-    workflows: ["Build and Release"]
-    types: [completed]
-  workflow_dispatch: {}  # per retry manuale, nessun input necessario
+  # STORIA — perché qui NON c'è più `workflow_run`:
+  # Questo workflow si agganciava a `workflow_run: ["Build and Release"]`.
+  # Non può funzionare: da v2.9.5 "Build and Release" non è più scatenato dal
+  # push del tag ma è dispatchato da release.yml con `gh workflow run`
+  # autenticato col GITHUB_TOKEN, e GitHub NON emette eventi (workflow_run
+  # incluso) per run creati col GITHUB_TOKEN — è la protezione anti-loop.
+  # Risultato: da v2.9.5 a v2.10.2 questo workflow non è mai partito e l'AUR
+  # è rimasto fermo a 2.9.4 senza che nulla fallisse.
+  #
+  # La pubblicazione automatica è ora il job `publish-aur` dentro main.yml, che
+  # gira nello stesso run del tag (needs: release) e quindi non dipende da
+  # nessun evento derivato. Questo workflow resta per due motivi:
+  #   1. retry manuale, se l'AUR era in manutenzione durante il release
+  #      (è esattamente quello che è successo con v2.10.3);
+  #   2. rete di sicurezza schedulata: ogni giorno confronta la versione
+  #      pubblicata su AUR con il pkgver del default branch e ripubblica se
+  #      l'AUR è rimasto indietro.
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch: {}  # retry manuale, nessun input necessario
 
 concurrency:
   group: aur-publish
@@ -18,20 +30,44 @@ jobs:
   publish-aur:
     name: Push PKGBUILD to AUR
     runs-on: ubuntu-22.04
-    # Il filtro !contains(head_branch, '-') esclude le prerelease (v2.10.0-dev.1):
-    # su AUR va pubblicata SOLO l'ultima versione stabile.
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       !contains(github.event.workflow_run.head_branch, '-') &&
-       github.event.workflow_run.head_branch != 'dev')
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
         # Checkout del default branch (non del tag): stessa motivazione di vesta.
         # Gli script CI ricevono fix sul default branch; checkout del tag eseguirebbe
         # la versione al momento del release, potenzialmente buggata.
+        # Il PKGBUILD sul default branch riflette sempre l'ultimo release stabile
+        # perché semantic-release lo aggiorna e committa prima di taggare.
+
+      - name: Check AUR drift
+        id: drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKGNAME=$(awk -F'=' '/^pkgname[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          PKGVER=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          PKGREL=$(awk -F'=' '/^pkgrel[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
+          EXPECTED="${PKGVER}-${PKGREL}"
+
+          AUR_VERSION=$(curl --silent --fail --max-time 30 \
+            "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${PKGNAME}" \
+            | grep -oP '"Version":"\K[^"]+' | head -n1 || true)
+
+          echo "Repo:  $EXPECTED"
+          echo "AUR:   ${AUR_VERSION:-<non leggibile>}"
+
+          # Su dispatch manuale si procede sempre (l'RPC può essere down proprio
+          # quando serve il retry); ci-push-aur.sh è comunque idempotente ed esce
+          # senza errori se non c'è nulla da pushare.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$AUR_VERSION" = "$EXPECTED" ]; then
+            echo "AUR già allineato, niente da fare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Normalize line endings
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           sed -i 's/\r$//' build-publish-scripts/PKGBUILD
@@ -39,6 +75,7 @@ jobs:
 
       - name: Get version
         id: version
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -51,6 +88,7 @@ jobs:
           echo "Versione: $VERSION"
 
       - name: Wait for release asset availability
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -83,6 +121,7 @@ jobs:
           exit 1
 
       - name: Prepare SSH materials
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -91,7 +130,16 @@ jobs:
           printf '%s\n' "${{ secrets.AUR_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
           chmod 600 "$RUNNER_TEMP/ssh/id_aur"
 
+          # Stampa SOLO il fingerprint pubblico (mai la chiave): serve a capire
+          # a colpo d'occhio se il segreto corrisponde a una chiave registrata
+          # su https://aur.archlinux.org/account/ quando l'AUR risponde
+          # "Permission denied (publickey)".
+          echo "Fingerprint della chiave SSH in uso:"
+          ssh-keygen -lf "$RUNNER_TEMP/ssh/id_aur" || \
+            echo "::warning::impossibile leggere il fingerprint: AUR_SSH_PRIVATE_KEY non e' una chiave valida"
+
       - name: Write container entrypoint
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/entrypoint.sh" <<'EOF'
@@ -129,6 +177,7 @@ jobs:
           chmod +x "$RUNNER_TEMP/entrypoint.sh"
 
       - name: Build & push AUR package
+        if: steps.drift.outputs.skip != 'true'
         shell: bash
         run: |
           docker run --rm \
