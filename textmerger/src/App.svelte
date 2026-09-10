@@ -428,7 +428,7 @@
   let sidebarWidth = 300;
   const repoUrl = "https://github.com/pierspad/textmerger";
   const releasesUrl = "https://github.com/pierspad/textmerger/releases";
-  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/docs/LICENSE";
+  const licenseUrl = "https://github.com/pierspad/textmerger/blob/main/LICENSE";
   const authorUrl = "https://pierspad.com";
   const authorIconUrl = authorAvatar;
   const appVersionNum = "v2.7.1";
