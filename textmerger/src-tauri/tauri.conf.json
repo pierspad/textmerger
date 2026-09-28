@@ -27,14 +27,35 @@
   },
   "bundle": {
     "active": true,
+    "category": "Utility",
+    "shortDescription": "A Rust/Tauri GTK3 application for merging text files",
+    "longDescription": "TextMerger is a cross-platform desktop application that lets you collect, preview, and merge content from multiple files into a single, clean output.",
+    "copyright": "Copyright © 2026 Pierpaolo Spadafora",
+    "license": "GPL-3.0-only",
     "targets": [
       "deb",
       "appimage"
     ],
+    "linux": {
+      "appimage": {
+        "files": {
+          "usr/share/metainfo/com.textmerger.app.metainfo.xml": "../../packaging/com.textmerger.app.metainfo.xml",
+          "usr/share/metainfo/com.textmerger.app.appdata.xml": "../../packaging/com.textmerger.app.metainfo.xml"
+        }
+      },
+      "deb": {
+        "files": {
+          "usr/share/metainfo/com.textmerger.app.metainfo.xml": "../../packaging/com.textmerger.app.metainfo.xml",
+          "usr/share/metainfo/com.textmerger.app.appdata.xml": "../../packaging/com.textmerger.app.metainfo.xml"
+        }
+      }
+    },
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.png",
       "icons/icon.ico",
       "icons/icon.icns"
     ]

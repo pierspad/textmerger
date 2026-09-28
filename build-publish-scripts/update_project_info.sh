@@ -18,6 +18,7 @@ TAURI_CARGO="$PROJECT_ROOT/textmerger/src-tauri/Cargo.toml"
 TAURI_LOCK="$PROJECT_ROOT/textmerger/src-tauri/Cargo.lock"
 FRONTEND_PKG="$PROJECT_ROOT/textmerger/package.json"
 DESKTOP_FILE="$PROJECT_ROOT/packaging/textmerger.desktop"
+METAINFO_FILE="$PROJECT_ROOT/packaging/com.textmerger.app.metainfo.xml"
 
 read_pkgbuild_var() {
     local key="$1"
@@ -153,6 +154,14 @@ EOF
     echo -e "  ${GREEN}OK${NC} packaging/textmerger.desktop - metadata aggiornati"
 else
     echo -e "  ${YELLOW}WARN${NC} packaging/textmerger.desktop non trovato, skip"
+fi
+
+if [ -f "$METAINFO_FILE" ]; then
+    CURRENT_DATE="$(date +%Y-%m-%d)"
+    sed -i "s|<release version=\".*\" date=\".*\"|<release version=\"${VERSION}\" date=\"${CURRENT_DATE}\"|" "$METAINFO_FILE"
+    echo -e "  ${GREEN}OK${NC} packaging/com.textmerger.app.metainfo.xml - release version e date"
+else
+    echo -e "  ${YELLOW}WARN${NC} packaging/com.textmerger.app.metainfo.xml non trovato, skip"
 fi
 
 if command -v makepkg >/dev/null 2>&1; then

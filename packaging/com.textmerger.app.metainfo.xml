@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.textmerger.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>TextMerger</name>
+  <summary>Text merging tool for multiple files, PDFs, notebooks and more</summary>
+  <description>
+    <p>
+      TextMerger is a cross-platform desktop application that lets you collect, preview, and merge content from multiple files into a single, clean output — ready to copy, save, or paste into any tool.
+    </p>
+  </description>
+  <launchable type="desktop-id">textmerger.desktop</launchable>
+  <url type="homepage">https://github.com/pierspad/textmerger</url>
+  <url type="bugtracker">https://github.com/pierspad/textmerger/issues</url>
+  <developer id="com.textmerger">
+    <name>Pierpaolo Spadafora</name>
+  </developer>
+  <provides>
+    <binary>textmerger</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="2.10.4" date="2026-09-28" />
+  </releases>
+</component>

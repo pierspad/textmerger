@@ -55,6 +55,8 @@ jobs:
             patchelf \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
+            desktop-file-utils \
+            appstream \
             mold
 
       - name: Install frontend dependencies
@@ -83,6 +85,64 @@ jobs:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
         run: npx tauri build --bundles deb,rpm,appimage
+
+      - name: Validate AppImage integrity
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          APPIMAGES=(src-tauri/target/release/bundle/appimage/*.AppImage)
+          if [ ${#APPIMAGES[@]} -eq 0 ]; then
+            echo "::error::No AppImage found in src-tauri/target/release/bundle/appimage/"
+            exit 1
+          fi
+
+          for appimage in "${APPIMAGES[@]}"; do
+            echo "Verifying AppImage: $appimage"
+            chmod +x "$appimage"
+            WORKDIR=$(mktemp -d)
+            (
+              cd "$WORKDIR"
+              "$GITHUB_WORKSPACE/$TAURI_APP_DIR/$appimage" --appimage-extract
+              
+              echo "Checking .DirIcon..."
+              if [ ! -e squashfs-root/.DirIcon ]; then
+                echo "::error::.DirIcon is missing or broken in $appimage"
+                exit 1
+              fi
+              
+              if [ -L squashfs-root/.DirIcon ]; then
+                TARGET=$(readlink squashfs-root/.DirIcon)
+                echo ".DirIcon is symlink pointing to: $TARGET"
+                if [[ "$TARGET" = /* ]]; then
+                  echo "::error::.DirIcon is an absolute symlink ($TARGET)! AppImage requires relative paths."
+                  exit 1
+                fi
+              fi
+              
+              echo "Validating desktop file..."
+              DESKTOP_FILE=$(ls squashfs-root/*.desktop | head -n 1)
+              desktop-file-validate "$DESKTOP_FILE"
+              
+              echo "Checking Categories in $DESKTOP_FILE..."
+              if grep -q '^Categories=[[:space:]]*$' "$DESKTOP_FILE"; then
+                echo "::error::Categories is empty in $DESKTOP_FILE"
+                exit 1
+              fi
+              
+              echo "Checking AppStream metainfo..."
+              if [ -d squashfs-root/usr/share/metainfo ]; then
+                ls -la squashfs-root/usr/share/metainfo
+                if command -v appstreamcli >/dev/null 2>&1; then
+                  appstreamcli validate-tree squashfs-root || true
+                fi
+              fi
+              
+              echo "AppImage verification passed successfully!"
+            )
+            rm -rf "$WORKDIR"
+          done
 
       - name: Upload DEB
         uses: actions/upload-artifact@v6
