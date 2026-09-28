@@ -1,3 +1,9 @@
+## [2.10.5](https://github.com/pierspad/textmerger/compare/v2.10.4...v2.10.5) (2026-09-28)
+
+### 🐛 Bug Fixes
+
+* **appimage:** fix .DirIcon symlink, desktop categories, and add AppStream metainfo ([9c595fe](https://github.com/pierspad/textmerger/commit/9c595fe852c6f4f23aebcbaad0a9707ddace0bc8))
+
 ## [2.10.4](https://github.com/pierspad/textmerger/compare/v2.10.3...v2.10.4) (2026-09-10)
 
 ### 🐛 Bug Fixes
