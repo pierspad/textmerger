@@ -1,6 +1,6 @@
 [package]
 name = "textmerger"
-version = "2.10.8"
+version = "2.11.0"
 description = "Merge text from multiple files into a single output"
 authors = ["you"]
 license = "GPL-3.0-only"

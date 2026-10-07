@@ -1,3 +1,9 @@
+## [2.11.0](https://github.com/pierspad/textmerger/compare/v2.10.8...v2.11.0) (2026-10-07)
+
+### ✨ New Features
+
+* support UTF-16 text and complete notebook extraction ([08c46c4](https://github.com/pierspad/textmerger/commit/08c46c4d1d2b6e9e1c69e6e2aef8ebcd8b3321f0))
+
 ## [2.10.8](https://github.com/pierspad/textmerger/compare/v2.10.7...v2.10.8) (2026-10-07)
 
 ### 🐛 Bug Fixes
