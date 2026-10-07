@@ -1,3 +1,9 @@
+## [2.10.7](https://github.com/pierspad/textmerger/compare/v2.10.6...v2.10.7) (2026-10-07)
+
+### 🐛 Bug Fixes
+
+* patch vulnerable frontend development dependencies ([a355f8e](https://github.com/pierspad/textmerger/commit/a355f8e078a9b180215485068954386ff039e658))
+
 ## [2.10.6](https://github.com/pierspad/textmerger/compare/v2.10.5...v2.10.6) (2026-10-07)
 
 ### 🐛 Bug Fixes
