@@ -1,3 +1,9 @@
+## [2.10.6](https://github.com/pierspad/textmerger/compare/v2.10.5...v2.10.6) (2026-10-07)
+
+### 🐛 Bug Fixes
+
+* sync merged content with natural file sorting ([48e564b](https://github.com/pierspad/textmerger/commit/48e564b5c49b0a73a19e352075413b077afa7c7c))
+
 ## [2.10.5](https://github.com/pierspad/textmerger/compare/v2.10.4...v2.10.5) (2026-09-28)
 
 ### 🐛 Bug Fixes
