@@ -1,7 +1,7 @@
 [package]
 name = "textmerger"
 version = "2.10.7"
-description = "A Rust/Tauri GTK3 application for merging text files"
+description = "Merge text from multiple files into a single output"
 authors = ["you"]
 license = "GPL-3.0-only"
 repository = "https://github.com/pierspad/textmerger"

@@ -48,10 +48,13 @@ jobs:
           PKGVER=$(awk -F'=' '/^pkgver[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
           PKGREL=$(awk -F'=' '/^pkgrel[[:space:]]*=/{print $2; exit}' build-publish-scripts/PKGBUILD | tr -d '\r' | xargs)
           EXPECTED="${PKGVER}-${PKGREL}"
+          EXPECTED_DESC=$(bash -c 'source build-publish-scripts/PKGBUILD; printf "%s" "$pkgdesc"')
 
-          AUR_VERSION=$(curl --silent --fail --max-time 30 \
+          AUR_INFO=$(curl --silent --fail --max-time 30 \
             "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=${PKGNAME}" \
-            | grep -oP '"Version":"\K[^"]+' | head -n1 || true)
+            || true)
+          AUR_VERSION=$(printf '%s' "$AUR_INFO" | python3 -c 'import json,sys; print(json.load(sys.stdin)["results"][0]["Version"])' 2>/dev/null || true)
+          AUR_DESC=$(printf '%s' "$AUR_INFO" | python3 -c 'import json,sys; print(json.load(sys.stdin)["results"][0]["Description"])' 2>/dev/null || true)
 
           echo "Repo:  $EXPECTED"
           echo "AUR:   ${AUR_VERSION:-<non leggibile>}"
@@ -59,7 +62,7 @@ jobs:
           # Su dispatch manuale si procede sempre (l'RPC può essere down proprio
           # quando serve il retry); ci-push-aur.sh è comunque idempotente ed esce
           # senza errori se non c'è nulla da pushare.
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "$AUR_VERSION" = "$EXPECTED" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$AUR_VERSION" = "$EXPECTED" ] && [ "$AUR_DESC" = "$EXPECTED_DESC" ]; then
             echo "AUR già allineato, niente da fare."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else

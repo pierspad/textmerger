@@ -86,6 +86,16 @@ jobs:
           RUSTC_WRAPPER: "sccache"
         run: npx tauri build --bundles deb,rpm,appimage
 
+      - name: Keep Linux release asset names stable
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' asset; do
+            filename=$(basename "$asset")
+            mv "$asset" "$(dirname "$asset")/${filename/#TextMerger/textmerger}"
+          done < <(find src-tauri/target/release/bundle -type f -name 'TextMerger*' \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -print0)
+
       - name: Validate AppImage integrity
         working-directory: ${{ env.TAURI_APP_DIR }}
         shell: bash

@@ -69,6 +69,14 @@ if [ "$CLONED" -ne 1 ]; then
     exit 1
 fi
 
+# A manual retry from an older checkout must never downgrade the live package.
+LOCAL_VERSION=$(bash -c 'source "$1"; printf "%s-%s" "$pkgver" "$pkgrel"' _ "$PKGBUILD")
+AUR_VERSION=$(bash -c 'source "$1"; printf "%s-%s" "$pkgver" "$pkgrel"' _ "$AUR_REPO_DIR/PKGBUILD")
+if [ "$(vercmp "$LOCAL_VERSION" "$AUR_VERSION")" -lt 0 ]; then
+    echo "AUR ($AUR_VERSION) is newer than this checkout ($LOCAL_VERSION); skipping."
+    exit 0
+fi
+
 echo "Aggiornamento checksum con updpkgsums..."
 # updpkgsums riscrive PKGBUILD in-place: serve una directory scrivibile.
 # /workspace è di proprietà di root (montato dal runner), non di builder.
@@ -86,7 +94,7 @@ cp PKGBUILD .SRCINFO "$AUR_REPO_DIR/"
 
 cd "$AUR_REPO_DIR"
 git config user.email "aur-bot@textmerger-ci"
-git config user.name "Textmerger CI"
+git config user.name "TextMerger CI"
 git add -A
 
 if git diff --staged --quiet; then

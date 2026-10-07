@@ -2,7 +2,7 @@
 Version=2.10.7
 Type=Application
 Name=TextMerger
-Comment=A Rust/Tauri GTK3 application for merging text files
+Comment=Merge text from multiple files into a single output
 Exec=textmerger
 Icon=textmerger
 Terminal=false

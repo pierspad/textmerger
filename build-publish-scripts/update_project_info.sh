@@ -98,6 +98,8 @@ ERRORS=0
 
 if [ -f "$TAURI_CONF" ]; then
     sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" "$TAURI_CONF"
+    sed -i 's/"productName": ".*"/"productName": "TextMerger"/' "$TAURI_CONF"
+    sed -i "s/\"shortDescription\": \".*\"/\"shortDescription\": \"${SAFE_PKGDESC}\"/" "$TAURI_CONF"
     echo -e "  ${GREEN}OK${NC} textmerger/src-tauri/tauri.conf.json - version"
 else
     echo -e "  ${RED}ERR${NC} textmerger/src-tauri/tauri.conf.json non trovato"
