@@ -1,3 +1,9 @@
+## [2.10.8](https://github.com/pierspad/textmerger/compare/v2.10.7...v2.10.8) (2026-10-07)
+
+### 🐛 Bug Fixes
+
+* unify TextMerger branding and describe its purpose ([0f340be](https://github.com/pierspad/textmerger/commit/0f340bebd095b2ee24d5665415c13b98667905cf))
+
 ## [2.10.7](https://github.com/pierspad/textmerger/compare/v2.10.6...v2.10.7) (2026-10-07)
 
 ### 🐛 Bug Fixes
