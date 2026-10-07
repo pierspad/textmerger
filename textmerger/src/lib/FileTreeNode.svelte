@@ -11,7 +11,7 @@
   export let maxCharCount = 0;
   export let largeFileThreshold = 20000;
   export let forceFullLoadPaths: Set<string> = new Set();
-  export let sortType: 'original' | 'alphabetical' | 'size' = 'original';
+  export let sortType: 'alphabetical' | 'size' = 'alphabetical';
   export let sortAscending = true;
 
   const dispatch = createEventDispatcher();
@@ -61,13 +61,13 @@
       sortedChildren = Object.values(node.children).sort((a: any, b: any) => {
         if (a.isFile === b.isFile) {
           if (sortType === 'alphabetical') {
-            return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+            return sortAscending ? a.name.localeCompare(b.name, undefined, { numeric: true }) : b.name.localeCompare(a.name, undefined, { numeric: true });
           } else if (sortType === 'size') {
             const aSize = a.sizeBytes || a.charCount || 0;
             const bSize = b.sizeBytes || b.charCount || 0;
             return sortAscending ? aSize - bSize : bSize - aSize;
           }
-          return a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name, undefined, { numeric: true });
         }
         return a.isFile ? 1 : -1;
       });

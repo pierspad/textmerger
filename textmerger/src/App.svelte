@@ -187,6 +187,11 @@
   }
 
   let mergedContent = "";
+  let mergedSections: Record<string, string> = {};
+  let orderedFilePaths: string[] = [];
+  let mergeRequest = 0;
+  $: mergedContent = (orderedFilePaths.length ? orderedFilePaths : files.map(f => f.path))
+    .map(path => mergedSections[path] || "").filter(Boolean).join("\n");
   let fileContentsCache: Record<string, string> = {};
   let fileTokensCache: Record<string, number> = {};
   let totalCharacterCount = 0;
@@ -635,10 +640,10 @@
   let newTabName = "";
   
   const savedSortType = localStorage.getItem('textmerger_sort_type');
-  let sortType: 'original' | 'alphabetical' | 'size' = 
-    (savedSortType === 'original' || savedSortType === 'alphabetical' || savedSortType === 'size') 
+  let sortType: 'alphabetical' | 'size' =
+    (savedSortType === 'alphabetical' || savedSortType === 'size')
       ? savedSortType 
-      : 'original';
+      : 'alphabetical';
       
   const savedSortAscending = localStorage.getItem('textmerger_sort_ascending');
   let sortAscending = savedSortAscending === null ? true : savedSortAscending === 'true';
@@ -739,14 +744,15 @@
   }
 
   async function updateContent() {
+    const request = ++mergeRequest;
     try {
       if (files.length === 0) {
-        mergedContent = "";
+        mergedSections = {};
         return;
       }
       const paths = files.map((f) => f.path);
       const hiddenPaths = files.filter(f => f.hidden).map(f => f.path);
-      mergedContent = await invoke("get_merged_content", {
+      const sections = await invoke<string[]>("get_merged_content", {
         paths,
         hiddenPaths,
         ipynbOutputMode,
@@ -755,10 +761,13 @@
         largeFileThreshold: $settings.largeFileThreshold,
         hiddenPlaceholder: $t("messages.fileOmitted")
       });
+      if (request !== mergeRequest) return;
+      mergedSections = Object.fromEntries(paths.map((path, index) => [path, sections[index]]));
     } catch (e) {
       console.error(e);
       const msg = String(e).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      mergedContent = `<div class='error'>Error: ${msg}</div>`;
+      if (request !== mergeRequest) return;
+      mergedSections = Object.fromEntries(files.map(f => [f.path, `<div class='error'>Error: ${msg}</div>`]));
     }
   }
 
@@ -823,8 +832,7 @@
     return text.substring(0, lastSpaceIdx) + '\n' + text.substring(lastSpaceIdx + 1);
   }
 
-  // Note: sortType/sortAscending only affect the sidebar tree, not the merged
-  // content, so they must NOT trigger a re-merge (which re-reads files from disk).
+  // Sorting reassembles cached sections; only content settings require disk reads.
   let lastMergedStateKey = "";
   $: {
     const currentStateKey = `${$settings.largeFileThreshold}:${$settings.excludedPatterns.join(",")}:${$settings.hiddenPatterns.join(",")}:${ipynbOutputMode}`;
@@ -1959,12 +1967,12 @@
           <button
             class="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] rounded px-2 py-1 text-xs cursor-pointer hover:bg-[var(--bg-hover)] transition-colors select-none font-medium min-w-[80px] text-center"
             on:click={() => {
-              const options = ['original', 'alphabetical', 'size'] as const;
+              const options = ['alphabetical', 'size'] as const;
               const idx = options.indexOf(sortType);
               sortType = options[(idx + 1) % options.length];
             }}
           >
-            {sortType === 'original' ? $t('app.sortOriginal') : sortType === 'alphabetical' ? $t('app.sortAlphabetical') : $t('app.sortCharacters')}
+            {sortType === 'alphabetical' ? $t('app.sortAlphanumeric') : $t('app.sortCharacters')}
           </button>
           <button 
             class="p-1 hover:bg-[var(--bg-hover-strong)] hover:text-[var(--text)] rounded text-[var(--muted)] transition-colors"
@@ -2021,6 +2029,7 @@
             {sortAscending}
             {forceFullLoadPaths}
             largeFileThreshold={$settings.largeFileThreshold}
+            on:orderchange={(event) => { orderedFilePaths = event.detail; }}
             on:contextmenu={handleContextMenu}
             on:dblclick={handleFileDblClick}
           />

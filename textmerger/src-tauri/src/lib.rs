@@ -187,7 +187,7 @@ fn get_merged_content(
     force_full_load_paths: Vec<String>,
     large_file_threshold: usize,
     hidden_placeholder: String,
-) -> Result<String, String> {
+) -> Result<Vec<String>, String> {
     let hidden_set: HashSet<&str> = hidden_paths.iter().map(|s| s.as_str()).collect();
     let force_set: HashSet<&str> = force_full_load_paths.iter().map(|s| s.as_str()).collect();
 
@@ -250,16 +250,7 @@ fn get_merged_content(
         })
         .collect();
 
-    let total_len: usize = contents.iter().map(|s| s.len() + 1).sum();
-    let mut result = String::with_capacity(total_len);
-    for (i, s) in contents.into_iter().enumerate() {
-        if i > 0 {
-            result.push('\n');
-        }
-        result.push_str(&s);
-    }
-
-    Ok(result)
+    Ok(contents)
 }
 
 
