@@ -2,6 +2,8 @@ name: Build and Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -10,13 +12,18 @@ env:
   TAURI_APP_DIR: textmerger
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+# Main builds populate caches that future release tags can restore.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   # ===========================================================
   # Build Linux (.deb .rpm .appimage)
   # ===========================================================
   build-linux:
     name: Build (linux)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
 
@@ -28,14 +35,12 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: '. -> target'
-          shared-key: "v1-sccache-linux"
+          workspaces: 'textmerger/src-tauri -> target'
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          shared-key: "v2-cargo-linux-ubuntu26"
 
       - name: Get version
         id: version
@@ -57,7 +62,8 @@ jobs:
             libayatana-appindicator3-dev \
             desktop-file-utils \
             appstream \
-            mold
+            mold \
+            clang
 
       - name: Install frontend dependencies
         working-directory: ${{ env.TAURI_APP_DIR }}
@@ -82,8 +88,6 @@ jobs:
         shell: bash
         env:
           NO_STRIP: true
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
         run: npx tauri build --bundles deb,rpm,appimage
 
       - name: Keep Linux release asset names stable
@@ -155,18 +159,21 @@ jobs:
           done
 
       - name: Upload DEB
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v6
         with:
           name: textmerger-linux-deb
           path: textmerger/src-tauri/target/release/bundle/deb/*.deb
 
       - name: Upload RPM
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v6
         with:
           name: textmerger-linux-rpm
           path: textmerger/src-tauri/target/release/bundle/rpm/*.rpm
 
       - name: Upload AppImage
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v6
         with:
           name: textmerger-linux-appimage
@@ -178,7 +185,8 @@ jobs:
   build-linux-arch:
     name: Build (linux-arch)
     needs: build-linux
-    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6
 
@@ -239,14 +247,12 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: '. -> target'
-          shared-key: "v1-sccache-windows"
+          workspaces: 'textmerger/src-tauri -> target'
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          shared-key: "v2-cargo-windows"
 
       - name: Cache Tauri tools (NSIS, WiX)
         uses: actions/cache@v5
@@ -287,11 +293,10 @@ jobs:
         shell: pwsh
         env:
           NO_STRIP: true
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
         run: npx tauri build --bundles nsis,msi
 
       - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v6
         with:
           name: packages-windows
@@ -305,8 +310,8 @@ jobs:
   release:
     name: Create Release
     needs: [build-linux, build-linux-arch, build-windows]
-    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.build-linux.result == 'success' }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.build-linux.result == 'success' && needs.build-linux-arch.result == 'success' && needs.build-windows.result == 'success' }}
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -362,7 +367,7 @@ jobs:
     name: Push PKGBUILD to AUR
     needs: release
     if: ${{ always() && needs.release.result == 'success' && !contains(github.ref_name, '-') && github.ref_name != 'dev' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     # ci-push-aur.sh ritenta il clone dell'AUR con backoff fino a ~25 min
     # (l'AUR va regolarmente in manutenzione): il timeout deve stare sopra.
     timeout-minutes: 35
