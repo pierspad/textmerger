@@ -83,12 +83,20 @@ jobs:
         working-directory: ${{ env.TAURI_APP_DIR }}
         run: npx tauri icon src-tauri/icons/icon.png -o src-tauri/icons
 
+      - name: Check frontend
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: npm run check
+
       - name: Build Tauri app
         working-directory: ${{ env.TAURI_APP_DIR }}
         shell: bash
         env:
           NO_STRIP: true
         run: npx tauri build --bundles deb,rpm,appimage
+
+      - name: Test file readers and backend
+        working-directory: ${{ env.TAURI_APP_DIR }}
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
       - name: Keep Linux release asset names stable
         working-directory: ${{ env.TAURI_APP_DIR }}

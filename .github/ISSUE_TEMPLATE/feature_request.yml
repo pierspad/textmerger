@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What everyday task would this improve?
+      description: Describe the problem and your current workaround.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested behavior
+      description: Give a concrete example of the desired result.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or references
+  - type: input
+    id: environment
+    attributes:
+      label: Environment and version
+      description: Include device or operating system details when relevant.

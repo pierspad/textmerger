@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 use std::time::SystemTime;
 
-use content_inspector::{inspect, ContentType};
+use content_inspector::{ContentType, inspect};
 use image::io::Reader as ImageReader;
 use mime_guess::from_path;
 use nom_exif::{MediaParser, MediaSource};
@@ -61,7 +61,8 @@ pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<(String, u64
         return Ok((String::new(), 0));
     }
 
-    if inspect(&header[..n]) == ContentType::BINARY {
+    let encoding = inspect(&header[..n]);
+    if encoding == ContentType::BINARY {
         return Err(format!("Binary file detected: {path}"));
     }
 
@@ -70,10 +71,47 @@ pub fn read_and_check_file(path: &str, output_mode: &str) -> Result<(String, u64
     file.read_to_end(&mut buffer)
         .map_err(|e| format!("Error reading content: {e}"))?;
 
-    let content = String::from_utf8(buffer)
-        .map_err(|e| format!("File contains invalid UTF-8: {e}"))?;
+    let content = decode_text(buffer, encoding)?;
 
     Ok((content, size))
+}
+
+fn decode_text(buffer: Vec<u8>, encoding: ContentType) -> Result<String, String> {
+    match encoding {
+        ContentType::UTF_16LE | ContentType::UTF_16BE => {
+            // content_inspector identifies UTF-16 by its BOM. Reject incomplete
+            // code units and invalid surrogate pairs instead of replacing text.
+            let bytes = &buffer[2..];
+            if bytes.len() % 2 != 0 {
+                return Err("File contains incomplete UTF-16 code unit".to_string());
+            }
+            let units = bytes.chunks_exact(2).map(|pair| {
+                let pair = [pair[0], pair[1]];
+                if encoding == ContentType::UTF_16LE {
+                    u16::from_le_bytes(pair)
+                } else {
+                    u16::from_be_bytes(pair)
+                }
+            });
+            char::decode_utf16(units)
+                .collect::<Result<String, _>>()
+                .map_err(|e| format!("File contains invalid UTF-16: {e}"))
+        }
+        _ => String::from_utf8(buffer).map_err(|e| format!("File contains invalid UTF-8: {e}")),
+    }
+}
+
+// Notebook multiline fields may be one string or an array of strings.
+fn append_notebook_text(output: &mut String, value: &Value) {
+    if let Some(text) = value.as_str() {
+        output.push_str(text);
+    } else if let Some(lines) = value.as_array() {
+        for line in lines {
+            if let Some(text) = line.as_str() {
+                output.push_str(text);
+            }
+        }
+    }
 }
 
 fn read_metadata(path: &str) -> Result<(String, u64), String> {
@@ -109,8 +147,6 @@ fn read_metadata(path: &str) -> Result<(String, u64), String> {
     let iter: Result<nom_exif::ExifIter, _> = parser.parse(ms);
     if let Ok(iter) = iter {
         for entry in iter {
-
-
             let tag_str = entry
                 .tag()
                 .map(|t| t.to_string())
@@ -118,8 +154,8 @@ fn read_metadata(path: &str) -> Result<(String, u64), String> {
             let value = entry.get_value().map(|v| v.to_string()).unwrap_or_default();
 
             match tag_str.as_str() {
-                "Duration" | "ImageWidth" | "ImageHeight" | "Make" | "Model"
-                | "CreateDate" | "FrameRate" | "BitRate" => {
+                "Duration" | "ImageWidth" | "ImageHeight" | "Make" | "Model" | "CreateDate"
+                | "FrameRate" | "BitRate" => {
                     output.push_str(&format!("{tag_str}: {value}\n"));
                 }
                 _ => {}
@@ -165,7 +201,7 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
 
     for (i, cell) in cells.iter().enumerate() {
         let cell_type = cell["cell_type"].as_str().unwrap_or("unknown");
-        let source = cell["source"].as_array();
+        let source = &cell["source"];
 
         output.push_str("-------------------\n");
         output.push_str(&format!(
@@ -174,15 +210,9 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
             cell_type.to_uppercase()
         ));
 
-        if let Some(lines) = source {
-            for line in lines {
-                if let Some(l) = line.as_str() {
-                    output.push_str(l);
-                }
-            }
-            if !output.ends_with('\n') {
-                output.push('\n');
-            }
+        append_notebook_text(&mut output, source);
+        if !output.ends_with('\n') {
+            output.push('\n');
         }
 
         if output_mode != "none" {
@@ -191,22 +221,12 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
                     output.push_str("\nCell Outputs:\n");
                     let mut output_text = String::new();
                     for out in outputs {
-                        if let Some(text) = out["text"].as_array() {
-                            for line in text {
-                                if let Some(l) = line.as_str() {
-                                    output_text.push_str(l);
-                                }
-                            }
-                        } else if let Some(data) = out.get("data") {
-                            if let Some(text_plain) = data.get("text/plain") {
-                                if let Some(lines) = text_plain.as_array() {
-                                    for line in lines {
-                                        if let Some(l) = line.as_str() {
-                                            output_text.push_str(l);
-                                        }
-                                    }
-                                }
-                            }
+                        if let Some(text) = out.get("text") {
+                            append_notebook_text(&mut output_text, text);
+                        } else if let Some(text) =
+                            out.get("data").and_then(|data| data.get("text/plain"))
+                        {
+                            append_notebook_text(&mut output_text, text);
                         }
                     }
 
@@ -246,4 +266,129 @@ fn read_ipynb(path: &str, output_mode: &str) -> Result<(String, u64), String> {
     Ok((output, size))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
+    static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new(ext: &str, bytes: &[u8]) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "textmerger-test-{}-{}.{}",
+                std::process::id(),
+                NEXT_FILE.fetch_add(1, Ordering::Relaxed),
+                ext
+            ));
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+                .unwrap();
+            file.write_all(bytes).unwrap();
+            Self(path)
+        }
+        fn read(&self, mode: &str) -> Result<(String, u64), String> {
+            read_and_check_file(self.0.to_str().unwrap(), mode)
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_file(&self.0);
+        }
+    }
+
+    #[test]
+    fn utf16_both_byte_orders_preserve_unicode_and_byte_size() {
+        let expected = "Hello, caffè — 日本語 🦀\n";
+        for little_endian in [true, false] {
+            let mut bytes = if little_endian {
+                vec![0xff, 0xfe]
+            } else {
+                vec![0xfe, 0xff]
+            };
+            for unit in expected.encode_utf16() {
+                bytes.extend_from_slice(&if little_endian {
+                    unit.to_le_bytes()
+                } else {
+                    unit.to_be_bytes()
+                });
+            }
+            assert_eq!(
+                Fixture::new("txt", &bytes).read("none").unwrap(),
+                (expected.to_string(), bytes.len() as u64)
+            );
+        }
+    }
+    #[test]
+    fn malformed_utf16_is_rejected() {
+        for bytes in [&[0xff, 0xfe, 0x41][..], &[0xfe, 0xff, 0xd8, 0x00][..]] {
+            assert!(
+                Fixture::new("txt", bytes)
+                    .read("none")
+                    .unwrap_err()
+                    .contains("UTF-16")
+            );
+        }
+    }
+    #[test]
+    fn plain_text_and_binary_behavior_is_preserved() {
+        let text = "Plain UTF-8: caffè 🦀\n";
+        assert_eq!(
+            Fixture::new("unknown", text.as_bytes())
+                .read("none")
+                .unwrap()
+                .0,
+            text
+        );
+        assert!(
+            Fixture::new("bin", &[0, 1, 2, 0, 255])
+                .read("none")
+                .is_err()
+        );
+        assert!(
+            Fixture::new("txt", &[0x80, 0x81, 0x82])
+                .read("none")
+                .is_err()
+        );
+        assert_eq!(
+            Fixture::new("txt", &[]).read("none").unwrap(),
+            (String::new(), 0)
+        );
+    }
+    #[test]
+    fn notebook_string_and_array_fields_produce_identical_output() {
+        let variants = [
+            serde_json::json!({"cells": [{"cell_type": "code", "source": "print(1)\n", "outputs": [
+                {"text": "stream\n"}, {"data": {"text/plain": "result\n"}}]}]}),
+            serde_json::json!({"cells": [{"cell_type": "code", "source": ["print(1)\n"], "outputs": [
+                {"text": ["stream\n"]}, {"data": {"text/plain": ["result\n"]}}]}]}),
+        ];
+        let files: Vec<_> = variants
+            .iter()
+            .map(|v| Fixture::new("ipynb", v.to_string().as_bytes()))
+            .collect();
+        for mode in ["none", "reduced", "full"] {
+            let output = files[0].read(mode).unwrap().0;
+            assert_eq!(output, files[1].read(mode).unwrap().0);
+            assert!(output.contains("print(1)"));
+            assert_eq!(output.contains("stream\nresult"), mode != "none");
+        }
+    }
+    #[test]
+    fn reduced_notebook_output_keeps_ten_lines() {
+        let lines: String = (1..=12).map(|i| format!("line {i}\n")).collect();
+        let json = serde_json::json!({"cells": [{"cell_type": "code", "source": [], "outputs": [{"text": lines}]}]});
+        let file = Fixture::new("ipynb", json.to_string().as_bytes());
+        let reduced = file.read("reduced").unwrap().0;
+        assert!(reduced.contains("line 10\n"));
+        assert!(!reduced.contains("line 11"));
+        assert!(reduced.contains("[Output reduced]"));
+        let full = file.read("full").unwrap().0;
+        assert!(full.contains("line 12"));
+        assert!(!full.contains("[Output reduced]"));
+    }
+}

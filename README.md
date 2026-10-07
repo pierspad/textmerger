@@ -1,182 +1,78 @@
-# TextMerger
+# <img src="textmerger/src-tauri/icons/icon.png" alt="TextMerger" height="42" align="absmiddle"> TextMerger
 
-![TextMerger screenshot](image.png)
-
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/pierspad/textmerger/blob/main/LICENSE)
+[![CI](https://github.com/pierspad/textmerger/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/pierspad/textmerger/actions/workflows/main.yml)
 [![GitHub release](https://img.shields.io/github/v/release/pierspad/textmerger?style=flat&logo=github&color=blue)](https://github.com/pierspad/textmerger/releases/latest)
 
-**TextMerger** is a cross-platform desktop application that lets you collect, preview, and merge content from multiple files into a single, clean output — ready to copy, save, or paste into any tool (including AI prompts).
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?logo=github&style=flat)](https://github.com/sponsors/pierspad) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-yellow?logo=buymeacoffee)](https://buymeacoffee.com/pierspad) [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=ko-fi)](https://ko-fi.com/pierspad)
 
----
+Merge files and folders into one text output. Preview, copy or save the result.
 
-## Table of Contents
-
-- [Why TextMerger?](#why-textmerger)
-- [Features](#features)
-  - [Core workflow](#core-workflow)
-  - [Organization](#organization)
-  - [Output control](#output-control)
-  - [Usability](#usability)
-- [Supported Formats](#supported-formats)
-- [Installation](#installation)
-  - [Windows](#windows)
-  - [Linux](#linux)
-  - [Arch Linux (AUR)](#arch-linux-aur)
-  - [AppImage (any distro, no install required)](#appimage-any-distro-no-install-required)
-- [Building from Source](#building-from-source)
-- [Contributing](#contributing)
-- [AI Disclosure](#ai-disclosure)
-- [License](#license)
-
----
-
-## Why TextMerger?
-
-When working with AI assistants, code reviews, or documentation tools, you often need to feed them the contents of many files at once. TextMerger makes that effortless:
-
-- Drop a folder in, exclude what you don't need, and copy everything in one click
-- Keep multiple merge sessions open simultaneously with tabs
-- Works with source code, notebooks, PDFs, CSVs, and more — not just plain text
-
----
+![TextMerger screenshot](docs/image.png)
 
 ## Features
 
-### Core workflow
-- **Drag & drop** files and entire folders directly into the window
-- **One-click copy** — the merged output is always one click away from your clipboard
-- **Save to file** — export the merged result to a new file at any time
-- **Automatic refresh** — files are re-read at configurable intervals, so the output stays up to date
+- Drag and drop files or folders; organize independent sessions in tabs.
+- Exclude paths with patterns, hide individual files and limit content per file.
+- Keep file headers, refresh changed files and copy or save the merged output.
+- Count characters and estimate tokens with a selectable tokenizer.
+- Extract PDF text, choose notebook output verbosity and inspect media metadata.
+- File type icons, configurable shortcuts, keyboard navigation and light/dark themes.
+- Interface in 15 languages.
 
-### Organization
-- **Tabbed interface** — run multiple independent merge sessions without losing work; create, rename, reorder, and close tabs freely
-- **Smart file exclusions** — define global patterns (e.g. `node_modules`, `.git`, `*.lock`) to automatically skip unwanted files and folders
-- **Per-file visibility controls** — hide or show individual file contents in the output without removing the file from the list
+## Supported files
 
-### Output control
-- **Content truncation** — set a character limit per file to keep the output manageable; expand individual files when needed
-- **File headers preserved** — even when content is filtered or truncated, file paths are kept in the output for full context
-- **Toggle preview** — quickly show or hide the full merged output while you're still organizing files
-
-### Usability
-- **File type icons** — at-a-glance recognition of each file's type
-- **Customizable keyboard shortcuts** — with category-based filtering to quickly find what you need
-- **Multi-language support** — English, Italian, German, French, Spanish
-- **Light / Dark theme**
-- **Full keyboard navigation** — the entire interface is accessible without a mouse
-
----
-
-## Supported Formats
-
-| Category | Extensions |
+| Files | Output |
 |---|---|
-| Source code | `.py` `.js` `.ts` `.rs` `.c` `.cpp` `.java` `.go` `.rb` `.php` `.swift` `.kt` and more |
-| Web | `.html` `.css` `.scss` `.jsx` `.tsx` `.vue` `.svelte` |
-| Config & markup | `.json` `.yaml` `.toml` `.xml` `.md` `.ini` `.env` |
-| Data & documents | `.csv`, PDF, Jupyter Notebooks (`.ipynb`) |
+| UTF-8 or BOM-marked UTF-16 text, source code, markup, configuration, CSV/TSV, subtitles | Text, regardless of extension; up to 10 MiB per file |
+| PDF | Embedded text; no OCR for scanned pages |
+| Jupyter (`.ipynb`) | Cell sources, with text outputs omitted, limited to 10 lines per cell, or included in full |
+| JPEG, PNG, GIF, BMP, WebP | File information, dimensions and available metadata |
+| MP4, MOV, AVI, MKV, WebM, M4V, 3GP | File information and available metadata |
 
----
+Other binary files and unsupported text encodings are rejected. Images and videos contribute metadata, not their visual content. File icons identify types; they do not imply content extraction support.
 
 ## Installation
 
-### Windows
+Download a package from [Releases](https://github.com/pierspad/textmerger/releases/latest).
 
-Download the installer from the [Releases](https://github.com/pierspad/textmerger/releases) page:
+| Platform | Package |
+|---|---|
+| Windows | `.exe` (NSIS) or `.msi` |
+| Debian / Ubuntu | `.deb`: `sudo apt install ./textmerger_<version>_amd64.deb` |
+| Fedora | `.rpm`: `sudo dnf install ./textmerger-<version>-1.x86_64.rpm` |
+| openSUSE | `.rpm`: `sudo zypper install ./textmerger-<version>-1.x86_64.rpm` |
+| Arch Linux / AUR | `yay -S textmerger-bin` or `paru -S textmerger-bin` |
+| Other Linux distributions | `.AppImage`: make executable, then run |
 
-| Format | Description |
-|--------|-------------|
-| `.exe` | NSIS installer (recommended) |
-| `.msi` | MSI installer for enterprise deployment |
+Use the actual downloaded filename in the commands above.
 
-### Linux
+## Building from source
 
-#### Debian / Ubuntu
+Requires Rust 1.97+, Node.js 22.12+ and npm. Linux also needs the Tauri development libraries:
 
-```bash
-sudo apt install ./textmerger_x.x.x_amd64.deb
-```
+```sh
+# Debian / Ubuntu
+sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev \
+  librsvg2-dev patchelf libgtk-3-dev libayatana-appindicator3-dev
 
-#### Fedora / RHEL / openSUSE
-
-```bash
-# Fedora
-sudo dnf install textmerger-x.x.x-1.x86_64.rpm
-
-# RHEL/CentOS
-sudo yum install textmerger-x.x.x-1.x86_64.rpm
-
-# openSUSE
-sudo zypper install textmerger-x.x.x-1.x86_64.rpm
-```
-
-#### Arch Linux (AUR)
-
-```bash
-yay -S textmerger
-# or
-paru -S textmerger
-```
-
-#### AppImage (any distro, no install required)
-
-```bash
-chmod +x textmerger_x.x.x_amd64.AppImage
-./textmerger_x.x.x_amd64.AppImage
-```
-
-> **Tip:** Use [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) to integrate AppImages with your desktop environment.
-
----
-
-## Building from Source
-
-<details>
-<summary>Prerequisites & build steps</summary>
-
-**Prerequisites:**
-- [Rust](https://rustup.rs/) 1.77+
-- [Node.js](https://nodejs.org/) v18+ and npm
-
-**Linux system dependencies:**
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev patchelf libgtk-3-dev libayatana-appindicator3-dev
-
-# Fedora
-sudo dnf install -y webkit2gtk4.1-devel librsvg2-devel gtk3-devel libappindicator-gtk3-devel patchelf
-
-# Arch Linux
-sudo pacman -S webkit2gtk gtk3 cairo gdk-pixbuf2 glib2 pango libappindicator-gtk3
-```
-
-**Build:**
-
-```bash
 git clone https://github.com/pierspad/textmerger.git
 cd textmerger/textmerger
-npm install
-npm run tauri dev      # development mode
-npm run tauri build    # production build → src-tauri/target/release/bundle/
+npm ci
+npm run tauri dev
+# Production packages: src-tauri/target/release/bundle/
+npm run tauri build
 ```
 
-</details>
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for validation commands.
 
 ## Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss your ideas.
-
----
+Bug reports and pull requests are welcome. For major changes, open an issue first. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## AI Disclosure
 
 This project was developed with the assistance of Large Language Models, used to support code writing and documentation.
 
----
-
 ## License
 
-This project is licensed under the GPL v3 License — see the [LICENSE](LICENSE) file for details.
+See [LICENSE](LICENSE).

@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a crash or unexpected behavior.
+title: "[Bug]: "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version and installation source
+      description: Release version or commit, and package type.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include relevant settings and a small sample file if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Previous working version and troubleshooting
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Logs, screenshots or sample files
+      description: Remove personal content and credentials before attaching files.
