@@ -5,7 +5,8 @@
   "type": "module",
   "overrides": {
     "esbuild": ">=0.28.1",
-    "postcss": "^8.5.18"
+    "postcss": "^8.5.18",
+    "postcss-selector-parser": "^7.1.6"
   },
   "scripts": {
     "dev": "vite",
