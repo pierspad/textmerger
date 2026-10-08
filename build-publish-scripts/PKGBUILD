@@ -1,7 +1,7 @@
 # Maintainer: pierspad <pierpaolospadafora@proton.me>
 pkgname=textmerger-bin
 _pkgname=textmerger
-pkgver=2.11.0
+pkgver=2.11.1
 pkgrel=1
 pkgdesc="Merge text from multiple files into a single output"
 arch=('x86_64')

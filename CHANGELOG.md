@@ -1,3 +1,9 @@
+## [2.11.1](https://github.com/pierspad/textmerger/compare/v2.11.0...v2.11.1) (2026-10-08)
+
+### 🐛 Bug Fixes
+
+* **packaging:** enable AppImage updates and validate desktop metadata ([66c7f34](https://github.com/pierspad/textmerger/commit/66c7f34aa0b782424cc606de02813428fb7d31e7))
+
 ## [2.11.0](https://github.com/pierspad/textmerger/compare/v2.10.8...v2.11.0) (2026-10-07)
 
 ### ✨ New Features
