@@ -1,11 +1,12 @@
 [Desktop Entry]
-Version=2.11.0
+Version=1.0
+X-AppVersion=2.11.0
 Type=Application
 Name=TextMerger
 Comment=Merge text from multiple files into a single output
 Exec=textmerger
 Icon=textmerger
 Terminal=false
-Categories=Office;Utility;TextEditor;
+Categories=Utility;TextEditor;
 Keywords=text;merge;files;editor;
 StartupNotify=true

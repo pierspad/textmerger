@@ -30,14 +30,15 @@ package() {
 
     cat <<EOF > "${srcdir}/textmerger.desktop.custom"
 [Desktop Entry]
-Version=${pkgver}
+Version=1.0
+X-AppVersion=${pkgver}
 Type=Application
 Name=TextMerger
 Comment=Merge text from multiple files into a single output
 Exec=textmerger
 Icon=textmerger
 Terminal=false
-Categories=Office;Utility;TextEditor;
+Categories=Utility;TextEditor;
 Keywords=text;merge;files;editor;
 StartupNotify=true
 EOF

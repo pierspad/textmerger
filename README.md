@@ -46,6 +46,14 @@ Download a package from [Releases](https://github.com/pierspad/textmerger/releas
 
 Use the actual downloaded filename in the commands above.
 
+Linux packages use the system's glibc. Release builds currently run on Ubuntu
+26.04; the AppImage also requires a compatible glibc and is not guaranteed to
+run on older distributions. Build from source on your target system if needed.
+
+AppImages produced by the release workflow include update information for
+AppImageUpdate. The matching `.AppImage.zsync` file is published alongside each
+AppImage; keep it available on the release for update checks and downloads.
+
 ## Building from source
 
 Requires Rust 1.97+, Node.js 22.12+ and npm. Linux also needs the Tauri development libraries:

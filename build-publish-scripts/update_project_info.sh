@@ -142,14 +142,15 @@ fi
 if [ -f "$DESKTOP_FILE" ]; then
     cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
-Version=${VERSION}
+Version=1.0
+X-AppVersion=${VERSION}
 Type=Application
 Name=TextMerger
 Comment=${PKGDESC}
 Exec=textmerger
 Icon=textmerger
 Terminal=false
-Categories=Office;Utility;TextEditor;
+Categories=Utility;TextEditor;
 Keywords=text;merge;files;editor;
 StartupNotify=true
 EOF

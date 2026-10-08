@@ -103,16 +103,16 @@ else
 fi
 
 if [ -f "$DESKTOP_FILE" ]; then
-    DESKTOP_VERSION="$(awk -F'=' '/^Version=/{print $2; exit}' "$DESKTOP_FILE" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    DESKTOP_VERSION="$(awk -F'=' '/^X-AppVersion=/{print $2; exit}' "$DESKTOP_FILE" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     check_equals "packaging/textmerger.desktop" "$DESKTOP_FILE" "$DESKTOP_VERSION"
 else
     echo -e "  ${YELLOW}WARN${NC} packaging/textmerger.desktop non trovato, skip"
 fi
 
-if grep -q '^Version=${pkgver}$' "$PKGBUILD"; then
+if grep -q '^X-AppVersion=${pkgver}$' "$PKGBUILD"; then
     echo -e "  ${GREEN}OK${NC} build-publish-scripts/PKGBUILD desktop version dinamica"
 else
-    echo -e "  ${RED}ERR${NC} build-publish-scripts/PKGBUILD desktop version non dinamica (atteso: Version=\${pkgver})"
+    echo -e "  ${RED}ERR${NC} build-publish-scripts/PKGBUILD desktop version non dinamica (atteso: X-AppVersion=\${pkgver})"
     ERRORS=$((ERRORS + 1))
 fi
 
